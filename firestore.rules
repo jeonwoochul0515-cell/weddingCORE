@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthed() { return request.auth != null; }
+    function myAgencyId() { return request.auth.token.agencyId; }
+    function myRole() { return request.auth.token.role; }
+    function isAdmin() { return isAuthed() && myRole() == 'admin'; }
+    function isLawyer() { return isAuthed() && myRole() == 'lawyer'; }
+    function isAgencyMember(aid) {
+      return isAuthed() && myAgencyId() == aid
+        && myRole() in ['owner', 'manager', 'staff', 'readonly'];
+    }
+    function canWriteAgency(aid) {
+      return isAuthed() && myAgencyId() == aid
+        && myRole() in ['owner', 'manager', 'staff'];
+    }
+
+    // 공유 마스터 데이터
+    match /regulations/{s} {
+      allow read: if isAuthed();
+      allow write: if false;
+      match /articles/{a} {
+        allow read: if isAuthed();
+        allow write: if false;
+      }
+    }
+    match /regulatoryDelta/{id} {
+      allow read: if isAuthed();
+      allow write: if false;
+    }
+    match /obligationTemplates/{id} {
+      allow read: if isAuthed();
+      allow write: if isLawyer() || isAdmin();
+    }
+    match /visaRules/{year} {
+      allow read: if true;
+      allow write: if isLawyer() || isAdmin();
+      match /rules/{id} {
+        allow read: if true;
+        allow write: if isLawyer() || isAdmin();
+      }
+    }
+    match /legalTerms/{id} {
+      allow read: if true;
+      allow write: if isLawyer() || isAdmin();
+    }
+
+    // 사용자
+    match /users/{uid} {
+      allow read: if isAuthed() && (request.auth.uid == uid || isAdmin());
+      allow create: if isAuthed() && request.auth.uid == uid;
+      allow update: if isAuthed() && request.auth.uid == uid;
+      allow delete: if isAdmin();
+    }
+    match /lawyers/{lid} {
+      allow read: if isAuthed();
+      allow write: if isAdmin();
+    }
+
+    // 업체 (멀티테넌트)
+    function isAgencyCreator(aid) {
+      return isAuthed() && aid == 'ag_' + request.auth.uid[0:12];
+    }
+    function isPendingSignup() {
+      return request.resource.data.verificationStatus == 'pending'
+        && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /agencies/{aid} {
+      allow read: if isAgencyMember(aid) || isAdmin()
+                  || (isAuthed() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isAgencyCreator(aid) && isPendingSignup();
+      // 승인 후: owner가 claim으로 관리
+      allow update: if canWriteAgency(aid) && myRole() == 'owner';
+      // 승인 전 부트스트랩: 본인이 만든 pending 업체 자체 재쓰기 허용
+      allow update: if isAgencyCreator(aid) && isPendingSignup()
+                    && resource.data.verificationStatus == 'pending';
+      allow delete: if isAdmin();
+    }
+    // 부트스트랩: 가입 직후 본인 업체에 owner 멤버 문서를 자기 손으로 생성.
+    // Custom Claims(agencyId) 주입 전이라 catch-all 규칙을 못 통과하므로 예외.
+    match /agencies/{aid}/members/{uid} {
+      allow read: if isAgencyMember(aid) || (isAuthed() && request.auth.uid == uid);
+      // 승인 후: 정상 claim 기반 관리
+      allow write: if canWriteAgency(aid);
+      // 승인 전 부트스트랩: 본인 uid로 owner 멤버 upsert
+      allow write: if isAuthed()
+                   && request.auth.uid == uid
+                   && aid == 'ag_' + uid[0:12]
+                   && request.resource.data.role == 'owner';
+    }
+
+    match /agencies/{aid}/{document=**} {
+      allow read: if isAgencyMember(aid);
+      allow write: if canWriteAgency(aid);
+    }
+
+    // 비자 시뮬레이션 (익명)
+    match /visaSimulations/{sid} {
+      allow read, create: if true;
+      allow update, delete: if false;
+    }
+
+    // 감사 로그
+    match /auditLogs/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+  }
+}

@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #0f172a;
+  --color-accent: #1d4ed8;
+  --font-sans: "Pretendard", "Noto Sans KR", system-ui, -apple-system, sans-serif;
+}
+
+html, body, #root {
+  height: 100%;
+}
+body {
+  font-family: var(--font-sans);
+}

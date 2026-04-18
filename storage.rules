@@ -1,0 +1,25 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 업체 가입 시 등록증 업로드 — 아직 agencyId 클레임이 없으므로
+    // aid(= ag_${uid.slice(0,12)})의 접두어가 본인 uid와 일치하는지 검사.
+    match /agencies/{aid}/registration/{file} {
+      allow read: if request.auth != null
+                  && (request.auth.token.agencyId == aid || request.auth.token.role == 'admin');
+      allow write: if request.auth != null
+                   && aid == 'ag_' + request.auth.uid[0:12]
+                   && request.resource.size < 20 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*|application/pdf');
+    }
+
+    match /agencies/{aid}/clients/{cid}/documents/{docId}/{file} {
+      allow read: if request.auth != null
+                  && request.auth.token.agencyId == aid;
+      allow write: if request.auth != null
+                   && request.auth.token.agencyId == aid
+                   && request.auth.token.role in ['owner', 'manager', 'staff']
+                   && request.resource.size < 20 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*|application/pdf');
+    }
+  }
+}
