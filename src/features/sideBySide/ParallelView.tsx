@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { AlertCircle, CheckCircle2, Languages, PenLine } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { AlertCircle, CheckCircle2, Languages, PenLine, Pencil, X } from 'lucide-react';
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import { app } from '@/lib/firebase';
 import {
@@ -11,7 +11,7 @@ import {
 } from './fields';
 import {
   saveTranslation,
-  signTranslation,
+  signBackgroundTranslation,
   type BackgroundInfoDoc,
   type TranslationDoc,
 } from './useBackgroundInfo';
@@ -69,6 +69,12 @@ export default function ParallelView({
     ? Math.round(((BG_INFO_FIELDS.length - missingFields.length) / BG_INFO_FIELDS.length) * 100)
     : 0;
 
+  // B1: stale 감지
+  const isStale = useMemo(() => {
+    if (!targetTranslation?.translatedAt || !info.fieldsUpdatedAt) return false;
+    return info.fieldsUpdatedAt.toMillis() > targetTranslation.translatedAt.toMillis();
+  }, [info.fieldsUpdatedAt, targetTranslation?.translatedAt]);
+
   return (
     <div>
       {/* 헤더: 언어 선택 + 번역 버튼 + 공정성 지표 */}
@@ -96,15 +102,20 @@ export default function ParallelView({
               className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
             >
               <Languages size={14} />
-              {translating ? 'AI 번역 중…' : 'AI 번역 생성'}
+              {translating ? 'AI 번역 중…' : isStale ? 'AI 번역 재생성' : 'AI 번역 생성'}
             </button>
           </div>
           <ParityIndicator pct={parityPct} missing={missingFields.length} />
         </div>
         {translateError && <p className="mt-2 text-sm text-red-600">{translateError}</p>}
-        {targetTranslation?.translatedBy === 'ai' && (
+        {targetTranslation?.translatedBy === 'ai' && !isStale && (
           <p className="mt-2 rounded-md bg-amber-50 border border-amber-200 p-2 text-xs text-amber-800">
             ⚠ AI 번역은 초안입니다. 법률 용어 정확도를 반드시 검수 후 서명해 주세요.
+          </p>
+        )}
+        {isStale && (
+          <p className="mt-2 rounded-md bg-red-50 border border-red-200 p-2 text-xs text-red-800">
+            ⚠ 원본이 변경되었습니다. 번역을 다시 생성한 후 서명해 주세요.
           </p>
         )}
       </div>
@@ -117,6 +128,9 @@ export default function ParallelView({
           values={info.fields}
           missing={[]}
           isSource
+          editable={false}
+          translation={null}
+          info={info}
         />
         <LangColumn
           lang={targetLang}
@@ -124,6 +138,9 @@ export default function ParallelView({
           values={targetTranslation?.fields ?? {}}
           missing={missingFields}
           isSource={false}
+          editable={!!targetTranslation && !targetTranslation.signedAt}
+          translation={targetTranslation}
+          info={info}
         />
       </div>
 
@@ -140,11 +157,15 @@ export default function ParallelView({
             signedAt: null,
             signedByName: null,
           }}
+          missingCount={0}
+          isStale={false}
         />
         <SignatureBox
           lang={targetLang}
           info={info}
           translation={targetTranslation}
+          missingCount={missingFields.length}
+          isStale={isStale}
         />
       </div>
     </div>
@@ -168,32 +189,119 @@ function LangColumn({
   values,
   missing,
   isSource,
+  editable,
+  translation,
+  info,
 }: {
   lang: SupportedLang;
   title: string;
   values: Record<string, unknown>;
   missing: FieldKey[];
   isSource: boolean;
+  editable: boolean;
+  translation: TranslationDoc | null;
+  info: BackgroundInfoDoc;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Partial<Record<FieldKey, string>>>({});
+  const [saving, setSaving] = useState(false);
+
+  function startEdit() {
+    const initial: Partial<Record<FieldKey, string>> = {};
+    for (const f of BG_INFO_FIELDS) {
+      initial[f.key] = String((values as Record<string, unknown>)[f.key] ?? '');
+    }
+    setDraft(initial);
+    setEditing(true);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const merged: Partial<Record<FieldKey, string>> = {
+        ...(translation?.fields ?? {}),
+        ...draft,
+      };
+      await saveTranslation({
+        agencyId: info.agencyId,
+        clientId: info.clientId,
+        infoId: info.id,
+        lang,
+        fields: merged,
+        translatedBy: 'human',
+      });
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const qualityBadge =
+    !isSource && translation?.translationQuality === 'reviewed' ? (
+      <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-normal text-blue-700">
+        인간 검수됨
+      </span>
+    ) : null;
+
   return (
     <div className="rounded-lg border border-slate-200 bg-white">
-      <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
-        {title} {isSource && <span className="text-xs text-slate-500">(원본)</span>}
+      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
+        <div className="flex items-center">
+          {title} {isSource && <span className="text-xs text-slate-500">(원본)</span>}
+          {qualityBadge}
+        </div>
+        {editable && !editing && (
+          <button
+            onClick={startEdit}
+            className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs hover:bg-slate-50"
+          >
+            <Pencil size={12} />
+            편집
+          </button>
+        )}
+        {editing && (
+          <div className="flex gap-1">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-md bg-slate-900 px-2 py-0.5 text-xs text-white hover:bg-slate-800 disabled:opacity-50"
+            >
+              {saving ? '저장 중…' : '저장'}
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              disabled={saving}
+              className="flex items-center gap-0.5 rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs hover:bg-slate-50"
+            >
+              <X size={12} />
+              취소
+            </button>
+          </div>
+        )}
       </div>
       <div className="divide-y divide-slate-100">
         {BG_INFO_FIELDS.map((f) => {
           const value = values[f.key];
           const isMissing = missing.includes(f.key);
           return (
-            <div key={f.key} className={`p-3 ${isMissing ? 'bg-red-50' : ''}`}>
+            <div key={f.key} className={`p-3 ${isMissing && !editing ? 'bg-red-50' : ''}`}>
               <div className="text-xs text-slate-500">{fieldLabel(f.key, lang)}</div>
-              <div className={`mt-1 text-sm ${isMissing ? 'text-red-600' : 'text-slate-900'}`}>
-                {isMissing
-                  ? '— 번역 누락 (정보 비대칭) —'
-                  : value
-                  ? String(value)
-                  : '—'}
-              </div>
+              {editing ? (
+                <textarea
+                  value={draft[f.key] ?? ''}
+                  onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
+                  rows={2}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                />
+              ) : (
+                <div className={`mt-1 text-sm ${isMissing ? 'text-red-600' : 'text-slate-900'}`}>
+                  {isMissing
+                    ? '— 번역 누락 (정보 비대칭) —'
+                    : value
+                    ? String(value)
+                    : '—'}
+                </div>
+              )}
             </div>
           );
         })}
@@ -206,37 +314,43 @@ function SignatureBox({
   lang,
   info,
   translation,
+  missingCount,
+  isStale,
 }: {
   lang: SupportedLang;
   info: BackgroundInfoDoc;
   translation: TranslationDoc | null;
+  missingCount: number;
+  isStale: boolean;
 }) {
   const [name, setName] = useState('');
   const [signing, setSigning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const signed = translation?.signedAt != null;
 
+  const canSign = !!translation && missingCount === 0 && !isStale && !!name.trim();
+  const reason = !translation
+    ? 'AI 번역을 먼저 생성해 주세요.'
+    : isStale
+    ? '번역이 구버전입니다. 재생성 후 서명하세요.'
+    : missingCount > 0
+    ? `누락 필드 ${missingCount}개 해결 필요`
+    : null;
+
   async function handleSign() {
-    if (!name.trim()) return;
+    if (!canSign) return;
     setSigning(true);
+    setError(null);
     try {
-      if (lang === info.sourceLang) {
-        // 원본은 별도 doc이 아니므로 원본 자체를 서명 완료로 기록
-        await saveTranslation({
-          agencyId: info.agencyId,
-          clientId: info.clientId,
-          infoId: info.id,
-          lang: info.sourceLang,
-          fields: info.fields as Record<string, string>,
-          translatedBy: 'human',
-        });
-      }
-      await signTranslation({
+      await signBackgroundTranslation({
         agencyId: info.agencyId,
         clientId: info.clientId,
         infoId: info.id,
         lang,
         signerName: name.trim(),
       });
+    } catch (err) {
+      setError((err as Error).message ?? '서명 실패');
     } finally {
       setSigning(false);
     }
@@ -265,14 +379,13 @@ function SignatureBox({
           />
           <button
             onClick={handleSign}
-            disabled={signing || !name.trim() || !translation}
+            disabled={signing || !canSign}
             className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
           >
             {signing ? '서명 중…' : '이해했으며 서명합니다'}
           </button>
-          {!translation && (
-            <p className="text-xs text-slate-500">AI 번역을 먼저 생성해 주세요.</p>
-          )}
+          {reason && <p className="text-xs text-slate-500">{reason}</p>}
+          {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
       )}
     </div>

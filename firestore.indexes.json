@@ -10,6 +10,14 @@
       ]
     },
     {
+      "collectionGroup": "timeline",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "dueDate", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "documents",
       "queryScope": "COLLECTION_GROUP",
       "fields": [

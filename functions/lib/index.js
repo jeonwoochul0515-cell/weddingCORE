@@ -107,6 +107,9 @@ export { checkExpiringDocuments } from './documents/index.js';
 // Obligation Templates Admin (W5-7)
 export { seedObligationTemplates } from './admin/index.js';
 // Timeline Seeding on Client Creation (W5-7)
-export { onClientCreated } from './timeline/index.js';
+export { onClientCreated, onTimelineItemUpdated, markAnchorEvent, checkTimelineOverdue, } from './timeline/index.js';
 // Background Info Translation (W9-10)
 export { translateBackgroundInfo } from './translation/index.js';
+export { signBackgroundTranslation } from './translation/sign.js';
+// Public Registry Lookup (Phase 2 단계 1)
+export { searchBrokerRegistry } from './registry/lookup.js';

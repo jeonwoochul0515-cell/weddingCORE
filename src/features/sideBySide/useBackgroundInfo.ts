@@ -10,11 +10,13 @@ import {
   setDoc,
   Timestamp,
   updateDoc,
-  where,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { httpsCallable, getFunctions } from 'firebase/functions';
+import { app, db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import type { FieldKey, SupportedLang } from './fields';
+
+const functions = getFunctions(app, 'asia-northeast3');
 
 export type BackgroundSubject = 'korean' | 'partner';
 
@@ -25,6 +27,7 @@ export type BackgroundInfoDoc = {
   subject: BackgroundSubject;
   sourceLang: SupportedLang;
   fields: Partial<Record<FieldKey, string | number>>;
+  fieldsUpdatedAt?: Timestamp;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
@@ -100,6 +103,7 @@ export async function createBackgroundInfo(params: {
       subject: params.subject,
       sourceLang: params.sourceLang,
       fields: params.fields,
+      fieldsUpdatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     },
@@ -114,7 +118,11 @@ export async function updateBackgroundInfoFields(
   fields: Partial<Record<FieldKey, string | number>>,
 ) {
   const ref = doc(db, `agencies/${agencyId}/clients/${clientId}/backgroundInfo/${infoId}`);
-  await updateDoc(ref, { fields, updatedAt: serverTimestamp() });
+  await updateDoc(ref, {
+    fields,
+    fieldsUpdatedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function saveTranslation(params: {
@@ -129,30 +137,31 @@ export async function saveTranslation(params: {
     db,
     `agencies/${params.agencyId}/clients/${params.clientId}/backgroundInfo/${params.infoId}/translations/${params.lang}`,
   );
-  await setDoc(ref, {
-    lang: params.lang,
-    fields: params.fields,
-    translatedBy: params.translatedBy ?? 'ai',
-    translationQuality: 'draft',
-    signedAt: null,
-    signedByName: null,
-    translatedAt: serverTimestamp(),
-  }, { merge: true });
+  const translatedBy = params.translatedBy ?? 'ai';
+  await setDoc(
+    ref,
+    {
+      lang: params.lang,
+      fields: params.fields,
+      translatedBy,
+      translationQuality: translatedBy === 'human' ? 'reviewed' : 'draft',
+      translatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
 }
 
-export async function signTranslation(params: {
+export async function signBackgroundTranslation(params: {
   agencyId: string;
   clientId: string;
   infoId: string;
   lang: SupportedLang;
   signerName: string;
-}) {
-  const ref = doc(
-    db,
-    `agencies/${params.agencyId}/clients/${params.clientId}/backgroundInfo/${params.infoId}/translations/${params.lang}`,
+}): Promise<{ ok: boolean }> {
+  const fn = httpsCallable<typeof params, { ok: boolean }>(
+    functions,
+    'signBackgroundTranslation',
   );
-  await updateDoc(ref, {
-    signedAt: serverTimestamp(),
-    signedByName: params.signerName,
-  });
+  const res = await fn(params);
+  return res.data;
 }

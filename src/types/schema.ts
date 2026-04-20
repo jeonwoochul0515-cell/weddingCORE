@@ -101,6 +101,21 @@ export type Lawyer = {
 
 // ===== 업체 (테넌트) =====
 
+export type AgencyPublicProfile = {
+  linkedAt: Timestamp;
+  entrpsNm: string;           // 공시상 업체명 (정규화 매칭 키)
+  rprsvNm: string;            // 공시상 대표자명
+  region: string;             // "시도 시군구"
+  mrbrkRegYmd: string | null; // YYYYMMDD
+  operYn: boolean;
+  hasSanctions: boolean;
+  location: { lat: number; lng: number } | null;
+  lastSyncAt: Timestamp;
+  discloseSanctions?: boolean; // 처분 이력 공개 동의 (단계 2에서 사용)
+  sanctions?: Array<{ ymd: string; content: string }>;
+  badgeToken?: string;         // /verify/:agencyId 공개 접근 토큰 (단계 2)
+};
+
 export type Agency = {
   agencyId: string;
   businessNumber: string;
@@ -119,6 +134,7 @@ export type Agency = {
     defaultPartnerLanguages: string[];
     notificationChannels: ('email' | 'fcm' | 'kakao')[];
   };
+  publicProfile?: AgencyPublicProfile; // 단계 1: 공시 DB 매칭된 업체만
   createdAt: Timestamp;
 };
 
@@ -161,6 +177,13 @@ export type BirthInfo = {
     | '오시' | '미시' | '신시' | '유시' | '술시' | '해시' | null;
 };
 
+export type AnchorKey =
+  | 'client_created'
+  | 'contract_signed'
+  | 'meeting_scheduled'
+  | 'marriage_registered'
+  | 'entry_date';
+
 export type Client = {
   clientId: string;
   agencyId: string;
@@ -181,6 +204,7 @@ export type Client = {
   currentStage: 1 | 2 | 3 | 4 | 5 | 6;
   overallProgress: number;
   status: 'active' | 'completed' | 'cancelled';
+  anchors?: Partial<Record<AnchorKey, Timestamp>>;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
@@ -266,6 +290,17 @@ export type TimelineItemStatus =
   | 'violated'
   | 'blocked';
 
+export type TimelineCheckRule = {
+  type: 'manual' | 'document_uploaded' | 'field_filled' | 'translation_completed';
+  params: Record<string, unknown>;
+};
+
+export type TimelineDueDateRule = {
+  type: 'relative' | 'absolute';
+  anchor: AnchorKey;
+  offsetDays: number;
+};
+
 export type TimelineItem = {
   itemId: string;
   agencyId: string; // collectionGroup 쿼리를 위한 비정규화
@@ -282,6 +317,8 @@ export type TimelineItem = {
   blockedReason: string | null;
   warningReason: string | null;
   notes: string;
+  dueDateRule?: TimelineDueDateRule;
+  checkRule?: TimelineCheckRule;
   updatedAt: Timestamp;
 };
 

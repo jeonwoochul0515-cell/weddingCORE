@@ -9,7 +9,7 @@ import {
   Timestamp,
   where,
 } from 'firebase/firestore';
-import { AlertTriangle, CalendarClock, Users } from 'lucide-react';
+import { AlertTriangle, CalendarClock, ShieldAlert, Users } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
@@ -50,9 +50,41 @@ function useUpcomingTimeline() {
   return { items, loading };
 }
 
+function useOverdueCounts(agencyId: string | null | undefined) {
+  const [warning, setWarning] = useState(0);
+  const [violated, setViolated] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!agencyId) { setLoading(false); return; }
+    const q = query(
+      collectionGroup(db, 'timeline'),
+      where('agencyId', '==', agencyId),
+      where('status', 'in', ['warning', 'violated']),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      let w = 0;
+      let v = 0;
+      snap.forEach((d) => {
+        const s = (d.data() as TimelineItem).status;
+        if (s === 'warning') w++;
+        else if (s === 'violated') v++;
+      });
+      setWarning(w);
+      setViolated(v);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [agencyId]);
+
+  return { warning, violated, loading };
+}
+
 export default function AgencyDashboardPage() {
+  const agencyId = useAuthStore((s) => s.user?.agencyId);
   const { items: clients, loading: loadingClients } = useAgencyClients();
   const { items: upcoming, loading: loadingTimeline } = useUpcomingTimeline();
+  const { warning, violated, loading: loadingOverdue } = useOverdueCounts(agencyId);
 
   const stageCounts = useMemo(() => {
     const acc: Record<number, number> = {};
@@ -60,21 +92,20 @@ export default function AgencyDashboardPage() {
     return acc;
   }, [clients]);
 
-  const now = Date.now();
-  const overdueCount = upcoming.filter((i) => i.dueDate.toMillis() < now).length;
+  const overdueTotal = warning + violated;
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-slate-900">대시보드</h1>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard
           icon={<Users size={18} />}
           label="진행 중 고객"
           value={loadingClients ? '…' : String(clients.length)}
           hint={
             Object.keys(stageCounts).length > 0
-              ? `맞선 단계 ${stageCounts[3] ?? 0 + (stageCounts[4] ?? 0)}명, 비자 단계 ${stageCounts[5] ?? 0}명`
+              ? `맞선 단계 ${(stageCounts[3] ?? 0) + (stageCounts[4] ?? 0)}명, 비자 단계 ${stageCounts[5] ?? 0}명`
               : undefined
           }
         />
@@ -82,16 +113,48 @@ export default function AgencyDashboardPage() {
           icon={<CalendarClock size={18} />}
           label="조치 임박 항목"
           value={loadingTimeline ? '…' : String(upcoming.length)}
-          hint="7일 이내 마감 예정"
+          hint="곧 마감 예정"
         />
-        <StatCard
-          icon={<AlertTriangle size={18} className={overdueCount > 0 ? 'text-red-600' : ''} />}
-          label="기한 초과"
-          value={loadingTimeline ? '…' : String(overdueCount)}
-          hint={overdueCount > 0 ? '즉시 확인 필요' : '없음'}
-          danger={overdueCount > 0}
-        />
+        <Link to="/agency/clients?filter=overdue" className="contents">
+          <StatCard
+            icon={
+              <AlertTriangle
+                size={18}
+                className={warning > 0 ? 'text-amber-600' : ''}
+              />
+            }
+            label="기한 경고 (≤3일 경과)"
+            value={loadingOverdue ? '…' : String(warning)}
+            hint={warning > 0 ? '조치 필요' : '없음'}
+            warn={warning > 0}
+            clickable
+          />
+        </Link>
+        <Link to="/agency/clients?filter=overdue" className="contents">
+          <StatCard
+            icon={
+              <ShieldAlert
+                size={18}
+                className={violated > 0 ? 'text-red-600' : ''}
+              />
+            }
+            label="법적 위반 (>3일 경과)"
+            value={loadingOverdue ? '…' : String(violated)}
+            hint={violated > 0 ? '즉시 대응' : '없음'}
+            danger={violated > 0}
+            clickable
+          />
+        </Link>
       </div>
+
+      {overdueTotal > 0 && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <div className="font-medium">기한을 넘긴 항목이 있습니다.</div>
+          <div className="mt-1 text-xs">
+            법적 위반 {violated}건, 경고 {warning}건 — 해당 고객 상세 페이지에서 즉시 확인하세요.
+          </div>
+        </div>
+      )}
 
       <section className="rounded-lg border border-slate-200 bg-white">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
@@ -136,26 +199,34 @@ function StatCard({
   value,
   hint,
   danger,
+  warn,
+  clickable,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   hint?: string;
   danger?: boolean;
+  warn?: boolean;
+  clickable?: boolean;
 }) {
+  const borderTone = danger
+    ? 'border-red-200'
+    : warn
+      ? 'border-amber-200'
+      : 'border-slate-200';
+  const valueTone = danger ? 'text-red-600' : warn ? 'text-amber-700' : 'text-slate-900';
   return (
     <div
-      className={`rounded-lg border bg-white p-5 ${
-        danger ? 'border-red-200' : 'border-slate-200'
+      className={`rounded-lg border bg-white p-5 ${borderTone} ${
+        clickable ? 'transition-shadow hover:shadow-sm' : ''
       }`}
     >
       <div className="mb-2 flex items-center gap-2 text-slate-500">
         {icon}
         <span className="text-xs font-medium">{label}</span>
       </div>
-      <div className={`text-2xl font-semibold ${danger ? 'text-red-600' : 'text-slate-900'}`}>
-        {value}
-      </div>
+      <div className={`text-2xl font-semibold ${valueTone}`}>{value}</div>
       {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
     </div>
   );

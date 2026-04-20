@@ -1,11 +1,29 @@
 import { useMemo, useState } from 'react';
-import { Check, Clock, AlertTriangle, Lock, CircleDot, XCircle } from 'lucide-react';
-import { useClientTimeline, updateTimelineItem, type TimelineItemView } from './useTimeline';
+import { Timestamp } from 'firebase/firestore';
+import { Check, Clock, AlertTriangle, Lock, CircleDot, XCircle, CalendarPlus, Link2 } from 'lucide-react';
+import {
+  linkEvidence,
+  markAnchorEvent,
+  useClientTimeline,
+  updateTimelineItem,
+  type TimelineItemView,
+} from './useTimeline';
+import { useClientDocuments } from '@/features/documents/useClientDocuments';
+import { DOC_TYPE_LABEL } from '@/features/documents/types';
 import { useAuthStore } from '@/store/authStore';
+import type { AnchorKey } from '@/types/schema';
 
 const STAGE_LABEL: Record<number, string> = {
   1: '계약 전', 2: '계약 체결', 3: '맞선 준비',
   4: '맞선·혼인', 5: '비자 신청', 6: '사후관리',
+};
+
+const ANCHOR_LABEL: Record<AnchorKey, string> = {
+  client_created: '고객 등록',
+  contract_signed: '계약 체결일',
+  meeting_scheduled: '맞선 예정일',
+  marriage_registered: '혼인신고일',
+  entry_date: '입국일',
 };
 
 const STATUS_META: Record<
@@ -18,13 +36,6 @@ const STATUS_META: Record<
   warning:     { label: '경고',     icon: AlertTriangle,  tone: 'text-amber-600 bg-amber-50' },
   violated:    { label: '위반',     icon: XCircle,        tone: 'text-red-600 bg-red-50' },
   blocked:     { label: '차단',     icon: Lock,           tone: 'text-slate-400 bg-slate-100' },
-};
-
-const SEVERITY_BADGE: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700',
-  high:     'bg-amber-100 text-amber-700',
-  medium:   'bg-slate-100 text-slate-700',
-  low:      'bg-slate-50 text-slate-500',
 };
 
 export default function TimelineView({ clientId }: { clientId: string }) {
@@ -166,6 +177,18 @@ function TimelineDetail({
   const user = useAuthStore((s) => s.user);
   const [notes, setNotes] = useState(item.notes ?? '');
   const [saving, setSaving] = useState(false);
+  const { items: documents } = useClientDocuments(clientId);
+
+  const anchor = item.dueDateRule?.anchor;
+  const canRecordAnchor = anchor && anchor !== 'client_created';
+  const [anchorDate, setAnchorDate] = useState<string>(() =>
+    new Date().toISOString().slice(0, 10),
+  );
+
+  const requiredDocType =
+    item.checkRule?.type === 'document_uploaded'
+      ? (item.checkRule.params?.docType as string | undefined)
+      : undefined;
 
   async function setStatus(status: TimelineItemView['status']) {
     if (!user?.agencyId) return;
@@ -187,6 +210,44 @@ function TimelineDetail({
     }
   }
 
+  async function handleMarkAnchor() {
+    if (!user?.agencyId || !anchor) return;
+    setSaving(true);
+    try {
+      await markAnchorEvent({
+        agencyId: user.agencyId,
+        clientId,
+        anchor,
+        eventDate: new Date(anchorDate),
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleEvidence(docId: string, on: boolean) {
+    if (!user?.agencyId) return;
+    setSaving(true);
+    try {
+      if (on) {
+        await linkEvidence(user.agencyId, clientId, item.id,
+          { docId, addedAt: Timestamp.now() }, 'add');
+      } else {
+        const existing = item.evidence.find((e) => e.docId === docId);
+        if (existing) {
+          await linkEvidence(user.agencyId, clientId, item.id, existing, 'remove');
+        }
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const linkableDocs = requiredDocType
+    ? documents.filter((d) => d.type === requiredDocType)
+    : documents;
+  const linkedIds = new Set(item.evidence.map((e) => e.docId));
+
   return (
     <div className="fixed inset-y-0 right-0 z-30 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl">
       <div className="flex items-start justify-between border-b border-slate-200 p-5">
@@ -204,11 +265,51 @@ function TimelineDetail({
           <div className="text-sm text-slate-900">
             {item.dueDate.toDate().toLocaleDateString('ko-KR')}
           </div>
+          {anchor && (
+            <div className="mt-0.5 text-xs text-slate-400">
+              기준: {ANCHOR_LABEL[anchor]}
+              {typeof item.dueDateRule?.offsetDays === 'number' &&
+                ` (${item.dueDateRule.offsetDays >= 0 ? '+' : ''}${item.dueDateRule.offsetDays}일)`}
+            </div>
+          )}
         </div>
+
+        {canRecordAnchor && (
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-700">
+              <CalendarPlus size={14} />
+              이 단계 기준일 기록
+            </div>
+            <p className="mb-2 text-xs text-slate-500">
+              {ANCHOR_LABEL[anchor!]}을 기록하면 연관 항목의 기한이 자동 재계산됩니다.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={anchorDate}
+                onChange={(e) => setAnchorDate(e.target.value)}
+                className="flex-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
+              />
+              <button
+                onClick={handleMarkAnchor}
+                disabled={saving}
+                className="rounded-md bg-slate-900 px-3 py-1 text-xs text-white hover:bg-slate-800 disabled:opacity-50"
+              >
+                기록
+              </button>
+            </div>
+          </div>
+        )}
 
         {item.blockedReason && (
           <div className="rounded-md bg-slate-100 p-3 text-xs text-slate-600">
             {item.blockedReason}
+          </div>
+        )}
+
+        {item.warningReason && (
+          <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+            {item.warningReason}
           </div>
         )}
 
@@ -251,15 +352,50 @@ function TimelineDetail({
         </div>
 
         <div>
-          <div className="mb-1 text-xs font-medium text-slate-500">증빙 서류</div>
-          <div className="text-xs text-slate-600">
-            {item.evidence.length > 0
-              ? `${item.evidence.length}건 연결됨`
-              : '연결된 서류 없음'}
+          <div className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500">
+            <Link2 size={14} />
+            증빙 서류 연결
+            {requiredDocType && (
+              <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-normal text-slate-600">
+                필요: {DOC_TYPE_LABEL[requiredDocType as keyof typeof DOC_TYPE_LABEL] ?? requiredDocType}
+              </span>
+            )}
           </div>
-          <p className="mt-1 text-xs text-slate-400">
-            서류는 오른쪽 서류 섹션에서 업로드 후 연결 가능합니다. (연결 UI는 후속)
-          </p>
+          {linkableDocs.length === 0 ? (
+            <p className="text-xs text-slate-400">
+              {requiredDocType
+                ? '해당 유형의 업로드된 서류가 없습니다. 오른쪽 서류 섹션에서 업로드하세요.'
+                : '업로드된 서류가 없습니다.'}
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {linkableDocs.map((d) => {
+                const checked = linkedIds.has(d.id);
+                return (
+                  <li key={d.id} className="flex items-center gap-2 rounded-md border border-slate-200 px-2 py-1.5">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={saving}
+                      onChange={(e) => toggleEvidence(d.id, e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs text-slate-900">{d.fileName}</div>
+                      <div className="text-[10px] text-slate-500">
+                        {DOC_TYPE_LABEL[d.type]} · {d.uploadedAt?.toDate?.().toLocaleDateString('ko-KR') ?? ''}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {requiredDocType && (
+            <p className="mt-1 text-[11px] text-slate-400">
+              필요 유형 서류를 연결하면 해당 항목이 자동으로 완료 처리됩니다.
+            </p>
+          )}
         </div>
 
         <div className="mt-4 rounded-md bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
