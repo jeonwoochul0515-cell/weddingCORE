@@ -95,7 +95,7 @@ export const translateBackgroundInfo = onCall(
 
     const client = new Anthropic({ apiKey });
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-5',
       max_tokens: 2000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
