@@ -17,11 +17,14 @@ export type LawTarget =
   | 'expc' // 법령해석례
   | 'detc' // 헌재결정례
   | 'lstrm' // 법령용어
-  | 'aiSearch'; // 지능형 법령검색 (조문 원문 포함)
+  | 'aiSearch' // 지능형 법령검색 (조문 원문 포함)
+  | 'lawBody'; // 법령 조문 전체 (lawService.do 중계)
 
 export type LawQuery = {
   query: string;
   target: LawTarget;
+  /** 법령 일련번호. target=lawBody에서 법령명 대신 쓸 수 있다. */
+  mst?: string;
   count?: number;
   /** 참조조문 기준으로 판례를 거를 때 쓰는 법률명 */
   jo?: string;
@@ -47,14 +50,16 @@ export async function queryLawCaddy<T = unknown>(params: LawQuery): Promise<T> {
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json; charset=utf-8',
+      // law-caddy 미들웨어가 검사하는 서비스 간 호출 헤더
+      'X-Internal-Token': token,
     },
     body: JSON.stringify({
       query: params.query,
       target: params.target,
       count: params.count ?? 10,
       ...(params.jo ? { jo: params.jo } : {}),
+      ...(params.mst ? { mst: params.mst } : {}),
     }),
   });
 

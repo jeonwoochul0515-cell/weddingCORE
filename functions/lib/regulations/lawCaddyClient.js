@@ -24,14 +24,16 @@ export async function queryLawCaddy(params) {
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json; charset=utf-8',
+            // law-caddy 미들웨어가 검사하는 서비스 간 호출 헤더
+            'X-Internal-Token': token,
         },
         body: JSON.stringify({
             query: params.query,
             target: params.target,
             count: params.count ?? 10,
             ...(params.jo ? { jo: params.jo } : {}),
+            ...(params.mst ? { mst: params.mst } : {}),
         }),
     });
     if (!response.ok) {

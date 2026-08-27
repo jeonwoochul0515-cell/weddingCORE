@@ -1,17 +1,14 @@
 /**
- * law.go.kr Open API 클라이언트.
+ * 법령 조문 수집 클라이언트.
  *
- * 사전 준비:
- *   1. https://open.law.go.kr 에서 사용자 등록 후 OC(조회용 계정 ID) 발급
- *   2. Firebase Functions 환경변수에 `LAW_GO_KR_OC` 설정:
- *        firebase functions:config:set law.oc="YOUR_OC"
- *      또는 v2 방식 (.env):
- *        functions/.env 파일에 LAW_GO_KR_OC=xxx
+ * 법제처 Open API는 호출 서버의 IP·도메인을 사전 등록해야 응답하므로 Cloud Functions에서
+ * 직접 부를 수 없다. 등록이 끝난 law-caddy를 유일한 창구로 거친다. (전역 규칙 CLAUDE.md §20)
+ *
+ * 사전 준비: Secret Manager에 LAW_CADDY_TOKEN 등록 후 함수에 연결.
  */
 
 import { createHash } from 'node:crypto';
 import { queryLawCaddy } from './lawCaddyClient.js';
-import { LAW_GO_KR_BASE } from './config.js';
 
 export type ParsedArticle = {
   articleNumber: string;
@@ -20,29 +17,35 @@ export type ParsedArticle = {
   contentHash: string;
 };
 
+/** law-caddy가 돌려주는 법령 본문 응답 */
+type LawBodyResponse = {
+  lawName: string | null;
+  mst: string | null;
+  enforcedAt: string | null;
+  ministry: string | null;
+  articles: Array<{ articleNumber: string; articleTitle: string; articleContent: string }>;
+};
+
 /**
- * 법령 전문을 law.go.kr에서 가져와 조항 단위로 파싱.
- * API: lawService.do?OC=xxx&target=law&type=JSON&LM=<lawName> 또는 MST=<mst>
+ * 법령 전문을 조문 단위로 가져온다.
+ * law-caddy의 target=lawBody가 법제처 lawService.do를 중계해 조문 전체를 준다.
+ * (target=law는 법령 목록 검색이라 조문 본문이 없다)
  */
 export async function fetchStatuteArticles(
   lawName: string,
   mst?: string,
 ): Promise<ParsedArticle[]> {
-  // 법제처는 호출 서버의 IP·도메인을 사전 등록해야 응답한다. Cloud Functions는 IP가
-  // 고정되지 않으므로 등록이 끝난 law-caddy를 거친다. (전역 규칙 CLAUDE.md §20)
-  const json = await queryLawCaddy<LawServiceResponse>({
-    target: 'law',
-    query: mst ?? lawName,
-    count: 1,
+  const res = await queryLawCaddy<LawBodyResponse>({
+    target: 'lawBody',
+    query: lawName,
+    ...(mst ? { mst } : {}),
   });
 
-  // 실제 응답 구조는 ?{조문단위: [ {조문번호, 조문제목, 조문내용}, ... ]}
-  const articles = json?.법령?.조문?.조문단위 ?? [];
-  return articles.map((a) => {
-    const content = normalizeContent(a.조문내용 ?? '');
+  return (res.articles ?? []).map((a) => {
+    const content = normalizeContent(a.articleContent ?? '');
     return {
-      articleNumber: String(a.조문번호 ?? '').trim(),
-      title: String(a.조문제목 ?? '').trim(),
+      articleNumber: String(a.articleNumber ?? '').trim(),
+      title: String(a.articleTitle ?? '').trim(),
       content,
       contentHash: sha256(content),
     };
