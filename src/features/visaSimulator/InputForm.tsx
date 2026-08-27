@@ -33,17 +33,17 @@ export default function InputForm({ lang, onSubmit }: Props) {
           <div
             key={s}
             className={`h-1 flex-1 rounded-full transition-colors ${
-              i <= step ? 'bg-slate-900' : 'bg-slate-200'
+              i <= step ? 'bg-emerald-500' : 'bg-slate-200'
             }`}
           />
         ))}
       </div>
 
-      <div className="mb-6 rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="mb-1 text-xs font-medium text-slate-500">
+      <div className="app-surface mb-6 rounded-[26px] p-5 sm:p-7">
+        <h2 className="mb-1 text-[10px] font-bold tracking-widest text-emerald-700 uppercase">
           {step + 1}/{STEPS.length}
         </h2>
-        <h3 className="mb-4 text-xl font-semibold text-slate-900">
+        <h3 className="mb-5 text-xl font-bold tracking-[-0.025em] text-slate-900">
           {t('step', stepKey, lang)}
         </h3>
 
@@ -59,21 +59,21 @@ export default function InputForm({ lang, onSubmit }: Props) {
         <button
           onClick={prev}
           disabled={step === 0}
-          className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm disabled:opacity-30"
+          className="secondary-button"
         >
           <ChevronLeft size={16} />{t('button', 'prev', lang)}
         </button>
         {isLast ? (
           <button
             onClick={() => onSubmit(values)}
-            className="rounded-md bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            className="primary-button !px-5"
           >
             {t('button', 'submit', lang)}
           </button>
         ) : (
           <button
             onClick={next}
-            className="flex items-center gap-1 rounded-md bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800"
+            className="primary-button"
           >
             {t('button', 'next', lang)}<ChevronRight size={16} />
           </button>
@@ -285,13 +285,14 @@ function Style() {
     <style>{`
       .input {
         width: 100%;
-        border: 1px solid rgb(203 213 225);
-        border-radius: 0.375rem;
-        padding: 0.5rem 0.75rem;
+        border: 1px solid rgb(226 232 240);
+        border-radius: 0.75rem;
+        padding: 0.625rem 0.875rem;
         font-size: 0.875rem;
         background: white;
+        box-shadow: 0 1px 2px rgba(16, 38, 33, 0.03);
       }
-      .input:focus { outline: none; border-color: rgb(15 23 42); }
+      .input:focus { outline: none; border-color: rgb(15 159 124); box-shadow: 0 0 0 3px rgba(15,159,124,.12); }
     `}</style>
   );
 }

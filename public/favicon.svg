@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>weddingCORE</title>
+  <rect width="64" height="64" rx="16" fill="#102621"/>
+  <path d="m32 12 3.6 12.4L48 28l-12.4 3.6L32 44l-3.6-12.4L16 28l12.4-3.6L32 12Z" fill="#a7f3d0"/>
+  <path d="m47 11 1.6 5.4L54 18l-5.4 1.6L47 25l-1.6-5.4L40 18l5.4-1.6L47 11Z" fill="#34d399"/>
+  <circle cx="49" cy="47" r="5" fill="#34d399" stroke="#102621" stroke-width="3"/>
+</svg>

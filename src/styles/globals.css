@@ -1,14 +1,117 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand: #0f172a;
-  --color-accent: #1d4ed8;
+  --color-brand: #102621;
+  --color-brand-soft: #17352e;
+  --color-accent: #0f9f7c;
+  --color-canvas: #f5f7f5;
   --font-sans: "Pretendard", "Noto Sans KR", system-ui, -apple-system, sans-serif;
 }
 
 html, body, #root {
   height: 100%;
 }
+
+html {
+  background: #f5f7f5;
+}
+
 body {
   font-family: var(--font-sans);
+  margin: 0;
+  color: #17211e;
+  background:
+    radial-gradient(circle at 80% -10%, rgba(15, 159, 124, 0.08), transparent 28rem),
+    #f5f7f5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 180ms;
+}
+
+input,
+select,
+textarea {
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #0f9f7c !important;
+  box-shadow: 0 0 0 3px rgba(15, 159, 124, 0.12);
+}
+
+::selection {
+  color: #fff;
+  background: #0f9f7c;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(71, 91, 84, 0.3);
+  background-clip: padding-box;
+}
+
+@layer components {
+  .app-surface {
+    @apply border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(16,38,33,0.03),0_12px_32px_rgba(16,38,33,0.035)];
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-bold tracking-[0.16em] text-emerald-700 uppercase;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold tracking-[-0.03em] text-slate-950 sm:text-[28px];
+  }
+
+  .field-control {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400;
+  }
+
+  .primary-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-[#102621] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(16,38,33,0.16)] hover:-translate-y-0.5 hover:bg-[#17352e] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .secondary-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-rise {
+  animation: rise-in 480ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

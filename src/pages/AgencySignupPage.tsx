@@ -28,6 +28,8 @@ export default function AgencySignupPage() {
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormValues>();
 
   if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'admin') return <Navigate to="/admin/agencies" replace />;
+  if (user.role === 'lawyer') return <Navigate to="/lawyer/reviews" replace />;
   if (user.agencyId) return <Navigate to="/agency" replace />;
 
   function handleBrokerSelect(hit: BrokerHit) {
@@ -119,7 +121,7 @@ export default function AgencySignupPage() {
         joinedAt: serverTimestamp(),
       });
 
-      // 5) 자체 프로비저닝: verified + Custom Claims 즉시 주입
+      // 5) 자체 프로비저닝: 사용 권한만 부여하며 공시 인증은 별도 검증
       const functions = getFunctions(app, 'asia-northeast3');
       await httpsCallable(functions, 'selfProvisionAgency')({ agencyId });
 
@@ -147,7 +149,7 @@ export default function AgencySignupPage() {
         <h1 className="mb-1 text-2xl font-semibold text-slate-900">업체 정보 등록</h1>
         <p className="mb-6 text-sm text-slate-600">
           결혼중개업 등록 정보와 등록증을 제출해 주세요. 공시 DB에서 업체를 찾으면 정보가
-          자동으로 채워지고, 가입 즉시 "공시 인증" 배지를 받을 수 있습니다.
+          자동으로 채워집니다. 공시 인증 배지는 제출 정보 검증 후 활성화됩니다.
         </p>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>

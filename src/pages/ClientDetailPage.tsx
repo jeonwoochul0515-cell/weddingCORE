@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Languages, Heart, Plus } from 'lucide-react';
+import { ArrowLeft, Bot, Languages, Heart, Plus } from 'lucide-react';
 import { useClient } from '@/features/agency/useAgencyClients';
 import DocumentSection from '@/features/documents/DocumentSection';
 import TimelineView from '@/features/timeline/TimelineView';
@@ -55,14 +55,14 @@ export default function ClientDetailPage() {
 
   return (
     <div>
-      <Link to="/agency/clients" className="mb-4 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900">
+      <Link to="/agency/clients" className="mb-4 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200 hover:text-emerald-700">
         <ArrowLeft size={14} />고객 목록으로
       </Link>
 
-      <div className="mb-6 rounded-lg border border-slate-200 bg-white p-5">
+      <div className="app-surface mb-6 rounded-[26px] p-5 sm:p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">{k.name}</h1>
+            <div className="eyebrow">Client profile</div><h1 className="mt-1 text-3xl font-bold tracking-[-0.04em] text-slate-900">{k.name}</h1>
             <p className="mt-1 text-sm text-slate-600">
               {k.gender === 'M' ? '남' : '여'} · {k.occupation}
               {profile?.mbti && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{profile.mbti}</span>}
@@ -87,24 +87,30 @@ export default function ClientDetailPage() {
             >
               <Languages size={14} />신상정보 교환
             </Link>
+            <Link
+              to={`/agency/automation?clientId=${client.id}`}
+              className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+            >
+              <Bot size={14} />AI 문서 자동화
+            </Link>
           </div>
         </div>
       </div>
 
       {/* 탭 */}
-      <div className="mb-4 flex gap-1 rounded-lg bg-slate-100 p-1">
+      <div className="mb-5 flex gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
         <button
           onClick={() => setTab('compliance')}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-            tab === 'compliance' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+          className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+            tab === 'compliance' ? 'bg-[#102621] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
           }`}
         >
           컴플라이언스
         </button>
         <button
           onClick={() => setTab('matching')}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-            tab === 'matching' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+          className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+            tab === 'matching' ? 'bg-[#102621] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
           }`}
         >
           <Heart size={14} className="mr-1 inline text-rose-500" />

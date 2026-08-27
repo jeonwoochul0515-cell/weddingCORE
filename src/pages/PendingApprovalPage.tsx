@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app, auth } from '@/lib/firebase';
 import { signOut } from '@/lib/auth';
@@ -15,6 +15,9 @@ export default function PendingApprovalPage() {
   useEffect(() => {
     if (user?.agencyId && user.role) navigate('/agency', { replace: true });
   }, [user, navigate]);
+
+  if (user?.role === 'admin') return <Navigate to="/admin/agencies" replace />;
+  if (user?.role === 'lawyer') return <Navigate to="/lawyer/reviews" replace />;
 
   async function startNow() {
     if (!auth.currentUser) return;

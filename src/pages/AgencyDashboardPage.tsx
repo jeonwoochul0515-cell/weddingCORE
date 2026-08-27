@@ -9,7 +9,7 @@ import {
   Timestamp,
   where,
 } from 'firebase/firestore';
-import { AlertTriangle, CalendarClock, ShieldAlert, Users } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Bot, CalendarClock, ShieldAlert, Sparkles, Users } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
@@ -96,9 +96,15 @@ export default function AgencyDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-900">대시보드</h1>
+      <section className="relative overflow-hidden rounded-[28px] bg-[#102621] px-6 py-7 text-white shadow-[0_20px_50px_rgba(16,38,33,.16)] sm:px-8 sm:py-9">
+        <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl" />
+        <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+          <div><div className="mb-3 flex items-center gap-2 text-[11px] font-bold tracking-[0.15em] text-emerald-300 uppercase"><Sparkles size={14} />Today at weddingCORE</div><h1 className="text-3xl font-bold tracking-[-0.04em] sm:text-4xl">오늘도 영업에<br className="sm:hidden" /> 집중하세요.</h1><p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">기한과 법적 위험은 CORE가 계속 확인하고 있습니다. 아래 조치가 필요한 항목부터 처리하면 됩니다.</p></div>
+          <Link to="/agency/automation" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-400 px-4 py-3 text-sm font-bold text-[#102621] shadow-lg shadow-emerald-950/20 hover:-translate-y-0.5 hover:bg-emerald-300"><Bot size={17} />AI 문서 만들기 <ArrowRight size={15} /></Link>
+        </div>
+      </section>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <StatCard
           icon={<Users size={18} />}
           label="진행 중 고객"
@@ -148,18 +154,20 @@ export default function AgencyDashboardPage() {
       </div>
 
       {overdueTotal > 0 && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+        <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 shadow-sm">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-red-100 text-red-700"><ShieldAlert size={17} /></span><div>
           <div className="font-medium">기한을 넘긴 항목이 있습니다.</div>
           <div className="mt-1 text-xs">
             법적 위반 {violated}건, 경고 {warning}건 — 해당 고객 상세 페이지에서 즉시 확인하세요.
           </div>
+          </div>
         </div>
       )}
 
-      <section className="rounded-lg border border-slate-200 bg-white">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-          <h2 className="text-sm font-semibold text-slate-900">조치 필요 항목</h2>
-          <Link to="/agency/clients" className="text-xs text-slate-500 hover:text-slate-900">
+      <section className="app-surface overflow-hidden rounded-[24px]">
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
+          <div><div className="eyebrow">Priority queue</div><h2 className="mt-1 text-base font-bold text-slate-900">조치 필요 항목</h2></div>
+          <Link to="/agency/clients" className="rounded-full bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900">
             전체 고객 보기 →
           </Link>
         </div>
@@ -171,12 +179,12 @@ export default function AgencyDashboardPage() {
           {upcoming.map((item) => (
             <li
               key={item.path}
-              className="flex items-center justify-between border-b border-slate-100 px-5 py-3 last:border-0"
+              className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4 last:border-0 hover:bg-[#fafcfb] sm:px-6"
             >
               <div className="min-w-0">
                 <Link
                   to={`/agency/clients/${item.clientId}`}
-                  className="truncate text-sm font-medium text-slate-900 hover:underline"
+                  className="truncate text-sm font-semibold text-slate-900 hover:text-emerald-700"
                 >
                   {item.title}
                 </Link>
@@ -211,22 +219,22 @@ function StatCard({
   clickable?: boolean;
 }) {
   const borderTone = danger
-    ? 'border-red-200'
+    ? 'border-red-200/80'
     : warn
       ? 'border-amber-200'
-      : 'border-slate-200';
+      : 'border-slate-200/80';
   const valueTone = danger ? 'text-red-600' : warn ? 'text-amber-700' : 'text-slate-900';
   return (
     <div
-      className={`rounded-lg border bg-white p-5 ${borderTone} ${
-        clickable ? 'transition-shadow hover:shadow-sm' : ''
+      className={`min-h-32 rounded-2xl border bg-white p-4 shadow-[0_6px_24px_rgba(16,38,33,.035)] sm:p-5 ${borderTone} ${
+        clickable ? 'hover:-translate-y-0.5 hover:shadow-[0_14px_35px_rgba(16,38,33,.08)]' : ''
       }`}
     >
-      <div className="mb-2 flex items-center gap-2 text-slate-500">
-        {icon}
+      <div className="mb-3 flex items-center gap-2 text-slate-500">
+        <span className="grid h-8 w-8 place-items-center rounded-xl bg-slate-50 text-emerald-700">{icon}</span>
         <span className="text-xs font-medium">{label}</span>
       </div>
-      <div className={`text-2xl font-semibold ${valueTone}`}>{value}</div>
+      <div className={`text-3xl font-bold tracking-[-0.04em] ${valueTone}`}>{value}</div>
       {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
     </div>
   );

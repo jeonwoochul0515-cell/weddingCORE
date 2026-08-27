@@ -21,7 +21,7 @@ export default function NotificationBell() {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="relative rounded-md p-2 hover:bg-slate-100"
+        className="relative rounded-xl p-2.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
         aria-label="알림"
       >
         <Bell size={18} />
@@ -34,8 +34,8 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-80 rounded-lg border border-slate-200 bg-white shadow-lg">
-          <div className="border-b border-slate-200 px-4 py-2 text-sm font-medium text-slate-900">
+        <div className="absolute right-0 z-20 mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_60px_rgba(16,38,33,.18)]">
+          <div className="border-b border-slate-100 px-4 py-3 text-sm font-bold text-slate-900">
             알림 {items.length > 0 && `(${items.length})`}
           </div>
           <div className="max-h-96 overflow-y-auto">
