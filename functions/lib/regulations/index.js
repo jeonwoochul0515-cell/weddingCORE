@@ -9,6 +9,19 @@ const REGION = 'asia-northeast3';
 const SCHEDULE = '0 3 * * *'; // 매일 03:00 KST
 const TZ = 'Asia/Seoul';
 /**
+ * Firestore 배치는 작업 500개가 한도다. 민법만 해도 조문이 1337개라
+ * 한 번에 담으면 반드시 실패하므로 나눠서 커밋한다. 여유를 두고 400으로 잡는다.
+ */
+const MAX_BATCH_OPS = 400;
+async function commitInChunks(db, ops) {
+    for (let i = 0; i < ops.length; i += MAX_BATCH_OPS) {
+        const batch = db.batch();
+        for (const op of ops.slice(i, i + MAX_BATCH_OPS))
+            op(batch);
+        await batch.commit();
+    }
+}
+/**
  * 매일 03시 KST에 실행되는 법령 변경 크롤러.
  */
 export const crawlRegulations = onSchedule({ region: REGION, schedule: SCHEDULE, timeZone: TZ, timeoutSeconds: 540, memory: '512MiB', secrets: ['LAW_CADDY_TOKEN'] }, async () => {
@@ -40,13 +53,15 @@ async function runCrawl() {
                 summary[statute.statuteId] = 0;
                 continue;
             }
-            // 조항 업서트 + regulatoryDelta 기록 (배치)
-            const batch = db.batch();
+            // 처음 수집하는 법령은 전 조문이 '신설'로 잡힌다. 이때 변경 알림을 보내면
+            // 업체에게 "법이 통째로 바뀌었다"는 잘못된 신호가 가므로 조문만 저장한다.
+            const isFirstCrawl = existing.size === 0;
             const now = FieldValue.serverTimestamp();
+            const ops = [];
             for (const change of changes) {
                 if (change.kind === 'new' || change.kind === 'amended') {
                     const ref = articlesCol.doc(change.article.articleNumber);
-                    batch.set(ref, {
+                    ops.push((batch) => batch.set(ref, {
                         statuteId: statute.statuteId,
                         articleNumber: change.article.articleNumber,
                         title: change.article.title,
@@ -54,26 +69,26 @@ async function runCrawl() {
                         contentHash: change.article.contentHash,
                         status: 'active',
                         lastCrawledAt: now,
-                    }, { merge: true });
+                    }, { merge: true }));
                 }
                 if (change.kind === 'repealed') {
                     const ref = articlesCol.doc(change.articleNumber);
-                    batch.update(ref, { status: 'repealed', lastCrawledAt: now });
+                    ops.push((batch) => batch.update(ref, { status: 'repealed', lastCrawledAt: now }));
                 }
-                const deltaRef = db.collection('regulatoryDelta').doc();
-                batch.set(deltaRef, buildDelta(statute.statuteId, change, statute.priority));
+                if (!isFirstCrawl) {
+                    const deltaRef = db.collection('regulatoryDelta').doc();
+                    ops.push((batch) => batch.set(deltaRef, buildDelta(statute.statuteId, change, statute.priority)));
+                }
             }
-            // 업체 in-app 알림 생성 (critical/high 만)
-            if (statute.priority !== 'medium') {
+            // 업체 in-app 알림 (critical/high, 최초 수집 제외)
+            if (!isFirstCrawl && statute.priority !== 'medium') {
                 const agenciesSnap = await db
                     .collection('agencies')
                     .where('verificationStatus', '==', 'verified')
                     .get();
                 for (const agencyDoc of agenciesSnap.docs) {
-                    const notifRef = db
-                        .collection(`agencies/${agencyDoc.id}/notifications`)
-                        .doc();
-                    batch.set(notifRef, {
+                    const notifRef = db.collection(`agencies/${agencyDoc.id}/notifications`).doc();
+                    ops.push((batch) => batch.set(notifRef, {
                         notifId: notifRef.id,
                         type: 'regulatory_change',
                         severity: statute.priority === 'critical' ? 'critical' : 'warning',
@@ -83,12 +98,12 @@ async function runCrawl() {
                         targetUids: [],
                         readBy: {},
                         createdAt: now,
-                    });
+                    }));
                 }
             }
-            await batch.commit();
+            await commitInChunks(db, ops);
             summary[statute.statuteId] = changes.length;
-            logger.info(`[${statute.statuteId}] 변경 ${changes.length}건 반영`);
+            logger.info(`[${statute.statuteId}] ${isFirstCrawl ? '최초 수집' : '변경'} ${changes.length}건 반영`);
         }
         catch (err) {
             logger.error(`[${statute.statuteId}] 크롤 실패`, err);
