@@ -1,10 +1,12 @@
+// 사업자등록증 사진을 읽어 업체정보를 자동으로 채우고 가입을 완료하는 화면
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { doc, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { db, storage, auth, app } from '@/lib/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { Camera, Loader2, ScanLine, Upload } from 'lucide-react';
+import { db, storage, auth, functions } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import BrokerAutocomplete, { type BrokerHit } from '@/features/registry/BrokerAutocomplete';
 
@@ -13,7 +15,37 @@ type FormValues = {
   registrationNumber: string;
   ownerName: string;
   phone: string;
+  address: string;
 };
+
+type Extraction = {
+  documentType: 'business_registration' | 'brokerage_registration' | 'other';
+  companyName: string | null;
+  businessNumber: string | null;
+  ownerName: string | null;
+  openedOn: string | null;
+  address: string | null;
+  businessType: string | null;
+  businessItem: string | null;
+  phone: string | null;
+  registrationNumber: string | null;
+  confidence: 'high' | 'medium' | 'low';
+};
+
+/** 판독 정확도를 유지하면서 전송량을 줄이도록 긴 변 1600px, JPEG 품질 0.85로 줄인다. */
+async function toCompressedBase64(file: File) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('이미지를 처리할 수 없습니다.');
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  return { mimeType: 'image/jpeg', dataBase64: dataUrl.split(',')[1] };
+}
 
 export default function AgencySignupPage() {
   const user = useAuthStore((s) => s.user);
@@ -25,6 +57,9 @@ export default function AgencySignupPage() {
   const [brokerName, setBrokerName] = useState('');
   const [selectedBroker, setSelectedBroker] = useState<BrokerHit | null>(null);
   const [manualMode, setManualMode] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanNote, setScanNote] = useState<string | null>(null);
+  const [autoFilled, setAutoFilled] = useState<string[]>([]);
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormValues>();
 
   if (!user) return <Navigate to="/login" replace />;
@@ -37,6 +72,70 @@ export default function AgencySignupPage() {
     setManualMode(false);
     // 대표자 이름 자동 채움 (공시 공개 정보)
     if (hit.rprsvNm) setValue('ownerName', hit.rprsvNm, { shouldValidate: true });
+  }
+
+  function applyExtraction(data: Extraction) {
+    const filled: string[] = [];
+    if (data.companyName) {
+      setBrokerName(data.companyName);
+      filled.push('상호');
+    }
+    if (data.businessNumber) {
+      setValue('businessNumber', data.businessNumber, { shouldValidate: true });
+      filled.push('사업자등록번호');
+    }
+    if (data.ownerName) {
+      setValue('ownerName', data.ownerName, { shouldValidate: true });
+      filled.push('대표자');
+    }
+    if (data.address) {
+      setValue('address', data.address);
+      filled.push('사업장 주소');
+    }
+    if (data.phone) {
+      setValue('phone', data.phone, { shouldValidate: true });
+      filled.push('연락처');
+    }
+    if (data.registrationNumber) {
+      setValue('registrationNumber', data.registrationNumber, { shouldValidate: true });
+      filled.push('결혼중개업 등록번호');
+    }
+    setAutoFilled(filled);
+
+    if (data.documentType === 'other') {
+      setScanNote('사업자등록증으로 보이지 않습니다. 사진을 다시 확인하거나 직접 입력해 주세요.');
+    } else if (filled.length === 0) {
+      setScanNote('글자를 읽지 못했습니다. 밝은 곳에서 문서 전체가 나오게 다시 촬영해 주세요.');
+    } else if (data.confidence === 'low') {
+      setScanNote(`${filled.length}개 항목을 채웠지만 인식이 불안정합니다. 값을 꼭 확인해 주세요.`);
+    } else {
+      setScanNote(`${filled.join(', ')}을(를) 자동으로 채웠습니다. 실제 문서와 같은지 확인해 주세요.`);
+    }
+  }
+
+  async function handleFile(selected: File | null) {
+    setFile(selected);
+    setAutoFilled([]);
+    setScanNote(null);
+    setError(null);
+    if (!selected) return;
+
+    if (!selected.type.startsWith('image/')) {
+      setScanNote('PDF는 자동 인식이 되지 않습니다. 아래 항목을 직접 입력해 주세요.');
+      return;
+    }
+
+    setScanning(true);
+    try {
+      const payload = await toCompressedBase64(selected);
+      const call = httpsCallable<typeof payload, Extraction>(functions, 'extractBusinessRegistration');
+      const result = await call(payload);
+      applyExtraction(result.data);
+    } catch (err) {
+      setScanNote(`자동 인식에 실패했습니다. 직접 입력해 주세요. (${(err as Error).message})`);
+    } finally {
+      setScanning(false);
+    }
   }
 
   async function onSubmit(values: FormValues) {
@@ -96,6 +195,9 @@ export default function AgencySignupPage() {
         registrationNumber: values.registrationNumber,
         name: nameToUse,
         ownerUid: uid,
+        ownerName: values.ownerName,
+        phone: values.phone,
+        address: values.address?.trim() || null,
         registrationCertUrl: certUrl,
         subscription: {
           plan: 'trial',
@@ -122,7 +224,6 @@ export default function AgencySignupPage() {
       });
 
       // 5) 자체 프로비저닝: 사용 권한만 부여하며 공시 인증은 별도 검증
-      const functions = getFunctions(app, 'asia-northeast3');
       await httpsCallable(functions, 'selfProvisionAgency')({ agencyId });
 
       // 6) 토큰 강제 리프레시 후 store 업데이트
@@ -148,9 +249,54 @@ export default function AgencySignupPage() {
       <div className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <h1 className="mb-1 text-2xl font-semibold text-slate-900">업체 정보 등록</h1>
         <p className="mb-6 text-sm text-slate-600">
-          결혼중개업 등록 정보와 등록증을 제출해 주세요. 공시 DB에서 업체를 찾으면 정보가
-          자동으로 채워집니다. 공시 인증 배지는 제출 정보 검증 후 활성화됩니다.
+          사업자등록증을 촬영하면 상호·등록번호·대표자를 자동으로 읽어 입력란을 채웁니다.
+          채워진 값은 실제 문서와 같은지 확인한 뒤 제출해 주세요.
         </p>
+
+        <div className="mb-6 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 p-5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+            <ScanLine size={17} />1단계 · 사업자등록증 올리기
+          </div>
+          <p className="mt-1 text-xs leading-5 text-emerald-800">
+            휴대폰이면 촬영, 컴퓨터면 파일 선택을 누르세요. 사진은 JPG·PNG만 자동 인식됩니다.
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700">
+              <Camera size={16} />사업자등록증 촬영
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              <Upload size={16} />파일 선택 (PDF 가능)
+              <input
+                type="file"
+                accept="application/pdf,image/*"
+                className="hidden"
+                onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          </div>
+          {file && (
+            <p className="mt-3 truncate text-xs text-emerald-900">선택한 파일: {file.name}</p>
+          )}
+          {scanning && (
+            <p className="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-800">
+              <Loader2 size={14} className="animate-spin" />사업자등록증을 읽는 중입니다.
+            </p>
+          )}
+          {!scanning && scanNote && (
+            <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs leading-5 text-slate-700 ring-1 ring-emerald-200">
+              {scanNote}
+            </p>
+          )}
+        </div>
+
+        <div className="mb-4 text-sm font-semibold text-slate-800">2단계 · 내용 확인</div>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -160,6 +306,7 @@ export default function AgencySignupPage() {
                   공시 매칭
                 </span>
               )}
+              {autoFilled.includes('상호') && !selectedBroker && <AutoBadge />}
             </label>
             <BrokerAutocomplete
               value={brokerName}
@@ -190,13 +337,13 @@ export default function AgencySignupPage() {
             )}
           </div>
 
-          <Field label="대표자 이름" error={errors.ownerName?.message}>
+          <Field label="대표자 이름" error={errors.ownerName?.message} auto={autoFilled.includes('대표자')}>
             <input
               className="input"
               {...register('ownerName', { required: '필수 입력입니다.' })}
             />
           </Field>
-          <Field label="사업자등록번호 (10자리)" error={errors.businessNumber?.message}>
+          <Field label="사업자등록번호 (10자리)" error={errors.businessNumber?.message} auto={autoFilled.includes('사업자등록번호')}>
             <input
               className="input"
               placeholder="000-00-00000"
@@ -206,33 +353,40 @@ export default function AgencySignupPage() {
               })}
             />
           </Field>
-          <Field label="결혼중개업 등록번호" error={errors.registrationNumber?.message}>
+          <Field label="결혼중개업 등록번호" error={errors.registrationNumber?.message} auto={autoFilled.includes('결혼중개업 등록번호')}>
             <input
               className="input"
               {...register('registrationNumber', { required: '필수 입력입니다.' })}
             />
           </Field>
-          <Field label="연락처" error={errors.phone?.message}>
+          <Field label="연락처 (필수)" error={errors.phone?.message} auto={autoFilled.includes('연락처')}>
             <input
               className="input"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
               placeholder="010-0000-0000"
-              {...register('phone', { required: '필수 입력입니다.' })}
+              {...register('phone', {
+                required: '연락처는 반드시 입력해야 합니다.',
+                pattern: {
+                  value: /^0\d{1,2}-?\d{3,4}-?\d{4}$/,
+                  message: '전화번호 형식이 올바르지 않습니다.',
+                },
+              })}
             />
+            <p className="mt-1 text-xs text-slate-400">
+              고객 상담 연결과 기한 알림에 사용합니다.
+            </p>
           </Field>
-          <Field label="결혼중개업 등록증 (PDF 또는 이미지)">
-            <input
-              type="file"
-              accept="application/pdf,image/*"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm"
-            />
+          <Field label="사업장 주소" error={errors.address?.message} auto={autoFilled.includes('사업장 주소')}>
+            <input className="input" placeholder="시·군·구까지 포함" {...register('address')} />
           </Field>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || scanning}
             className="w-full rounded-md bg-slate-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
             {submitting ? '제출 중…' : '등록 요청'}
@@ -257,18 +411,31 @@ export default function AgencySignupPage() {
   );
 }
 
+function AutoBadge() {
+  return (
+    <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-normal text-emerald-700">
+      자동 인식
+    </span>
+  );
+}
+
 function Field({
   label,
   error,
+  auto,
   children,
 }: {
   label: string;
   error?: string;
+  auto?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
+      <label className="mb-1 block text-sm font-medium text-slate-700">
+        {label}
+        {auto && <AutoBadge />}
+      </label>
       {children}
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>

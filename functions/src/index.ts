@@ -149,6 +149,9 @@ export { signBackgroundTranslation } from './translation/sign.js';
 // Public Registry Lookup (Phase 2 단계 1)
 export { searchBrokerRegistry } from './registry/lookup.js';
 
+// 가입 시 사업자등록증 자동 판독
+export { extractBusinessRegistration } from './agency/registrationOcr.js';
+
 // AI document automation + lawyer review
 export {
   generateLegalDocument,

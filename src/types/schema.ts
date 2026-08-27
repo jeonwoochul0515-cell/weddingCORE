@@ -122,6 +122,9 @@ export type Agency = {
   registrationNumber: string;
   name: string;
   ownerUid: string;
+  phone: string;
+  address?: string | null;
+  ownerName?: string | null;
   subscription: {
     plan: 'trial' | 'basic' | 'pro' | 'enterprise';
     status: 'active' | 'expired' | 'cancelled';

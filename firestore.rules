@@ -82,7 +82,8 @@ service cloud.firestore {
       allow update: if isAgencyOwner(aid)
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                       'name', 'businessNumber', 'registrationNumber',
-                      'registrationCertUrl', 'settings', 'updatedAt'
+                      'registrationCertUrl', 'phone', 'address', 'ownerName',
+                      'settings', 'updatedAt'
                     ]);
       allow delete: if isAdmin();
     }
