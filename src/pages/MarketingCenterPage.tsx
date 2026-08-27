@@ -24,7 +24,12 @@ import { useAuthStore } from '@/store/authStore';
 const PROMOTION = {
   label: '오픈 프로모션',
   detail: '선착순 20개 업체 한정',
-  note: '첫 계약 1회에 한해 적용되며 소진 시 정가로 전환됩니다.',
+  note: '선착순 소진 시 정가로 전환됩니다.',
+};
+
+const MEMBERSHIP = {
+  label: '회원 상시 혜택',
+  detail: '가입 업체는 기간 제한 없이 적용',
 };
 
 const SERVICES = [
@@ -37,7 +42,8 @@ const SERVICES = [
     listPrice: 2_900_000,
     promoPrice: 0,
     billing: 'once',
-    priceNote: '회원가입 후 신청하면 제작비 없음 · 도메인/호스팅 실비만 별도',
+    benefit: 'membership',
+    priceNote: '회원이면 언제든 제작비 없음 · 도메인/호스팅 실비만 별도',
   },
   {
     id: 'naver-seo',
@@ -48,6 +54,7 @@ const SERVICES = [
     listPrice: 500_000,
     promoPrice: 500_000,
     billing: 'once',
+    benefit: null,
     priceNote: '초기 세팅 1회 · 네이버에 내는 광고비는 별도 실비',
   },
   {
@@ -59,6 +66,7 @@ const SERVICES = [
     listPrice: 100_000,
     promoPrice: 100_000,
     billing: 'monthly',
+    benefit: null,
     priceNote: '네이버 블로그 게시는 업주가 직접 옮겨 적는 조건',
   },
   {
@@ -70,6 +78,7 @@ const SERVICES = [
     listPrice: 1_200_000,
     promoPrice: 500_000,
     billing: 'once',
+    benefit: 'promotion',
     priceNote: '핵심 질문 20개 구조화 · 스키마 적용 포함',
   },
 ] as const;
@@ -160,10 +169,17 @@ export default function MarketingCenterPage() {
             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
               홈페이지 제작부터 네이버 검색 기반 정비, 지역 콘텐츠, AEO·GEO까지 한곳에서 신청하고 진행상황을 관리하세요.
             </p>
-            <div className="mt-5 inline-flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-2.5 text-xs text-emerald-100">
-              <span className="rounded-full bg-emerald-300 px-2 py-0.5 text-[10px] font-bold text-[#102621]">{PROMOTION.label}</span>
-              <span className="font-semibold">{PROMOTION.detail}</span>
-              <span className="text-emerald-200/70">· 홈페이지 제작 무료 + AEO·GEO 58% 할인</span>
+            <div className="mt-5 space-y-2">
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-2.5 text-xs text-emerald-100">
+                <span className="rounded-full bg-emerald-300 px-2 py-0.5 text-[10px] font-bold text-[#102621]">{MEMBERSHIP.label}</span>
+                <span className="font-semibold">홈페이지 제작 무료</span>
+                <span className="text-emerald-200/70">· {MEMBERSHIP.detail}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-xs text-slate-300">
+                <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-white">{PROMOTION.label}</span>
+                <span className="font-semibold">AEO·GEO 설계 58% 할인</span>
+                <span className="text-slate-400">· {PROMOTION.detail}</span>
+              </div>
             </div>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-5 backdrop-blur">
@@ -180,12 +196,17 @@ export default function MarketingCenterPage() {
           <Globe2 className="text-emerald-700" size={22} />
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {SERVICES.map(({ id, title, description, icon: Icon, items, listPrice, promoPrice, billing, priceNote }) => {
+          {SERVICES.map(({ id, title, description, icon: Icon, items, listPrice, promoPrice, billing, priceNote, benefit }) => {
             const selected = selectedServices.includes(id);
             return (
               <button key={id} type="button" onClick={() => toggleService(id)} className={`app-surface rounded-[22px] p-5 text-left transition ${selected ? 'border-emerald-400 ring-2 ring-emerald-100' : 'hover:-translate-y-0.5 hover:border-slate-300'}`}>
                 <div className="flex items-start justify-between"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><Icon size={21} /></span>{selected && <CheckCircle2 className="text-emerald-600" size={20} />}</div>
-                <h3 className="mt-4 font-bold text-slate-950">{title}</h3>
+                {benefit && (
+                  <span className={`mt-4 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${benefit === 'membership' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-900 text-white'}`}>
+                    {benefit === 'membership' ? MEMBERSHIP.label : PROMOTION.label}
+                  </span>
+                )}
+                <h3 className={`font-bold text-slate-950 ${benefit ? 'mt-2' : 'mt-4'}`}>{title}</h3>
                 <p className="mt-2 text-xs leading-5 text-slate-500">{description}</p>
                 <ul className="mt-4 space-y-2">{items.map((item) => <li key={item} className="flex items-center gap-2 text-xs text-slate-600"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{item}</li>)}</ul>
                 <div className="mt-4 border-t border-slate-100 pt-3">
@@ -228,7 +249,9 @@ export default function MarketingCenterPage() {
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-700">선택 항목 예상 견적</span>
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{PROMOTION.label} 적용</span>
+                {quote.picked.some((service) => service.benefit === 'promotion') && (
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{PROMOTION.label} 적용</span>
+                )}
               </div>
               {quote.picked.length === 0 && <p className="mt-3 text-xs text-slate-500">위에서 필요한 서비스를 선택하면 견적이 계산됩니다.</p>}
               {quote.picked.length > 0 && (
@@ -248,7 +271,10 @@ export default function MarketingCenterPage() {
                   </div>
                 </>
               )}
-              <p className="mt-3 text-[11px] leading-4 text-slate-400">부가세 포함 금액입니다. {PROMOTION.note} 최종 금액은 상담 후 확정됩니다.</p>
+              <p className="mt-3 text-[11px] leading-4 text-slate-400">
+                부가세 포함 금액입니다. 홈페이지 제작은 회원 상시 혜택이라 기간 제한이 없고,
+                AEO·GEO 할인은 {PROMOTION.note} 최종 금액은 상담 후 확정됩니다.
+              </p>
             </div>
             {notice && <div className={`rounded-xl border px-3.5 py-3 text-sm ${notice.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-700'}`}>{notice.text}</div>}
             <button className="primary-button w-full !py-3" disabled={!agencyId || selectedServices.length === 0 || submitting}><Send size={16} />{submitting ? '접수 중' : '상담 요청 접수'}</button>
