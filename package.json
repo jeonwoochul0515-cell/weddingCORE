@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes,storage",
@@ -14,7 +14,8 @@
     "deploy:all": "npm run build && firebase deploy",
     "emulators": "firebase emulators:start",
     "seed:emulator": "node scripts/seedEmulator.mjs",
-    "score:saas": "node scripts/evaluateSaas.mjs"
+    "score:saas": "node scripts/evaluateSaas.mjs",
+    "prerender": "node scripts/prerender.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

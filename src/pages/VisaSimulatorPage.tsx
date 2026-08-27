@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import InputForm from '@/features/visaSimulator/InputForm';
 import ResultView from '@/features/visaSimulator/ResultView';
@@ -17,10 +17,6 @@ export default function VisaSimulatorPage() {
 
   const [lang, setLang] = useState<UiLang>('ko');
   const [result, setResult] = useState<Result | null>(null);
-
-  useEffect(() => {
-    document.title = `${t('title', '', lang)} - weddingCORE`;
-  }, [lang]);
 
   function handleSubmit(inputs: Inputs) {
     const res = runSimulation(inputs);
