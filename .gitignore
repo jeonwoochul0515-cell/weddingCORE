@@ -21,3 +21,4 @@ ui-debug.log*
 .DS_Store
 .vite
 coverage
+functions/.secret.local
