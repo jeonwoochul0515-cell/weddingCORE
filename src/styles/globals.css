@@ -115,3 +115,13 @@ textarea:focus {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* 상담 캐릭터가 살아있어 보이도록 천천히 떠 있게 한다. 움직임을 줄이는 설정에서는 멈춘다. */
+@keyframes haram-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(-2.4deg); }
+}
+.haram-float { animation: haram-float 4.5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .haram-float { animation: none; }
+}

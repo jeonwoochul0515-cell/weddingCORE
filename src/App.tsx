@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import AppRoutes from './routes';
+import HaramChat from './components/chat/HaramChat';
 import { useAuthStore } from './store/authStore';
 
 export default function App() {
@@ -20,5 +21,10 @@ export default function App() {
     };
   }, [setUser]);
 
-  return <AppRoutes />;
+  return (
+    <>
+      <AppRoutes />
+      <HaramChat />
+    </>
+  );
 }

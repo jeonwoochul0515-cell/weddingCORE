@@ -64,6 +64,11 @@ async function main() {
       const page = await browser.newPage();
       try {
         await page.setViewport({ width: 1280, height: 900 });
+        // 상담 위젯 같은 "방문자 전용" UI는 정적 HTML에 남으면 안 된다.
+        // 검색로봇이 보는 본문에 허수가 섞이고, JS 로드 전 잘못된 상태가 보인다.
+        await page.evaluateOnNewDocument(() => {
+          Object.defineProperty(window, '__PRERENDER__', { value: true });
+        });
         await page.goto(`http://localhost:${PORT}${route}`, {
           waitUntil: 'domcontentloaded',
           timeout: 45_000,
