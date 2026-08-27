@@ -117,6 +117,16 @@ export const TRACKS: Record<TrackId, VisaTrack> = {
   },
 };
 
+/**
+ * 사업별 요건·의무 규칙의 준비 상태. 화면에서 "아직 준비 중"을 정직하게 알리는 데 쓴다.
+ * 법령 조사와 변호사 검수가 끝난 것만 ready로 바꾼다.
+ */
+export const RULE_READINESS: Record<TrackId, { requirements: boolean; obligations: boolean }> = {
+  marriage: { requirements: true, obligations: true },
+  study: { requirements: false, obligations: false },
+  extension: { requirements: false, obligations: false },
+};
+
 export const TRACK_IDS = Object.keys(TRACKS) as TrackId[];
 export const TRACK_LIST = TRACK_IDS.map((id) => TRACKS[id]);
 

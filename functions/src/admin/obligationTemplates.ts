@@ -24,6 +24,8 @@
  */
 
 export type ObligationTemplateSeed = {
+  /** 이 의무가 적용되는 사업. 트랙 정의의 obligationSet과 짝을 이룬다. */
+  obligationSet?: string;
   code: string;
   stage: 1 | 2 | 3 | 4 | 5 | 6;
   category: 'pre_contract' | 'contract' | 'pre_meeting' | 'meeting' | 'visa' | 'aftercare';
@@ -46,7 +48,11 @@ export type ObligationTemplateSeed = {
   order: number;
 };
 
-export const OBLIGATION_TEMPLATES: ObligationTemplateSeed[] = [
+/**
+ * 결혼중개업 의무 세트. 다른 사업(유학·체류연장)은 각자의 근거 법령이 다르므로
+ * 여기에 섞지 않는다. 해당 업종 법령을 조사하고 변호사 검수를 거친 뒤 새 세트로 추가한다.
+ */
+const MARRIAGE_BROKERAGE_OBLIGATIONS: ObligationTemplateSeed[] = [
   // ===== Stage 1: 계약 전 (5) =====
   {
     code: 'REG_VALID_CHECK',
@@ -776,3 +782,14 @@ export const OBLIGATION_TEMPLATES: ObligationTemplateSeed[] = [
     severity: 'high', order: 606,
   },
 ];
+
+/** 사업별 의무 세트. 키는 트랙 정의(domain/visaTracks.ts)의 obligationSet과 같아야 한다. */
+export const OBLIGATION_SETS: Record<string, ObligationTemplateSeed[]> = {
+  marriage_brokerage_act: MARRIAGE_BROKERAGE_OBLIGATIONS,
+  // study_agency_act: 유학원 관련 법령 조사 후 추가
+  // extension_immigration_act: 체류 연장 관련 의무 조사 후 추가
+};
+
+/** 시드 대상 전체. 각 항목에 소속 세트를 붙여 어느 사업 의무인지 남긴다. */
+export const OBLIGATION_TEMPLATES: ObligationTemplateSeed[] = Object.entries(OBLIGATION_SETS)
+  .flatMap(([setKey, items]) => items.map((item) => ({ ...item, obligationSet: setKey })));

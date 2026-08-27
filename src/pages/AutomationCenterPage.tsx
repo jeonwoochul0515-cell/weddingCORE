@@ -8,7 +8,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
 import { useAutomationJobs } from '@/features/automation/useAutomationJobs';
 import type { AutomationJobStatus } from '@/types/schema';
-import { TRACKS, TRACK_LIST, firstDocument, won, type TrackId } from '@/domain/visaTracks';
+import { RULE_READINESS, TRACKS, TRACK_LIST, firstDocument, won, type TrackId } from '@/domain/visaTracks';
 
 const CARAT_PACKS = [
   { id: 'pack_50', carats: 50, price: 50_000, note: null },
@@ -200,6 +200,12 @@ export default function AutomationCenterPage() {
               ))}
             </div>
             <p className="mt-1.5 text-xs text-slate-500">{track.description}</p>
+            {!RULE_READINESS[trackId].obligations && (
+              <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-900">
+                이 사업의 법정의무 자동추적과 요건 판정은 아직 준비 중입니다. 문서 초안 생성은 사용할 수 있으나
+                해당 업종 법령 검토가 끝나기 전까지 기한 관리 기능은 결혼중개 기준으로만 동작합니다.
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">3. 자동화 문서</label>

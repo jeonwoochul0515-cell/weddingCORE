@@ -22,7 +22,11 @@
  * ⚠ 본 초안의 최종 법률 검수는 창희 변호사(법률사무소 청송)가 수행해야 하며,
  *   개별 사안 적용 시 각 항목의 법조문 번호·제재 수위를 재확인해야 합니다.
  */
-export const OBLIGATION_TEMPLATES = [
+/**
+ * 결혼중개업 의무 세트. 다른 사업(유학·체류연장)은 각자의 근거 법령이 다르므로
+ * 여기에 섞지 않는다. 해당 업종 법령을 조사하고 변호사 검수를 거친 뒤 새 세트로 추가한다.
+ */
+const MARRIAGE_BROKERAGE_OBLIGATIONS = [
     // ===== Stage 1: 계약 전 (5) =====
     {
         code: 'REG_VALID_CHECK',
@@ -657,3 +661,12 @@ export const OBLIGATION_TEMPLATES = [
         severity: 'high', order: 606,
     },
 ];
+/** 사업별 의무 세트. 키는 트랙 정의(domain/visaTracks.ts)의 obligationSet과 같아야 한다. */
+export const OBLIGATION_SETS = {
+    marriage_brokerage_act: MARRIAGE_BROKERAGE_OBLIGATIONS,
+    // study_agency_act: 유학원 관련 법령 조사 후 추가
+    // extension_immigration_act: 체류 연장 관련 의무 조사 후 추가
+};
+/** 시드 대상 전체. 각 항목에 소속 세트를 붙여 어느 사업 의무인지 남긴다. */
+export const OBLIGATION_TEMPLATES = Object.entries(OBLIGATION_SETS)
+    .flatMap(([setKey, items]) => items.map((item) => ({ ...item, obligationSet: setKey })));
