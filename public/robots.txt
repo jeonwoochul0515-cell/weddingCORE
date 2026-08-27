@@ -1,0 +1,39 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /signup/
+Disallow: /pending-approval
+Disallow: /agency/
+Disallow: /lawyer/
+Disallow: /admin/
+
+# 네이버 검색로봇
+User-agent: Yeti
+Allow: /
+Disallow: /login
+Disallow: /signup/
+Disallow: /pending-approval
+Disallow: /agency/
+Disallow: /lawyer/
+Disallow: /admin/
+
+# AI 검색·응답 크롤러 — 인용 대상이 되려면 열어두어야 한다
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+Sitemap: https://weddingcore.net/sitemap.xml

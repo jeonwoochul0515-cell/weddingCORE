@@ -4,8 +4,15 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app, auth } from '@/lib/firebase';
 import { signOut } from '@/lib/auth';
 import { useAuthStore } from '@/store/authStore';
+import { usePageMeta } from '@/lib/usePageMeta';
 
 export default function PendingApprovalPage() {
+  usePageMeta({
+    title: '승인 대기',
+    description: '업체 등록 검토가 진행 중입니다.',
+    path: '/pending-approval', noindex: true,
+  });
+
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const navigate = useNavigate();

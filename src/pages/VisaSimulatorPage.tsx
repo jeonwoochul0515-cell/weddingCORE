@@ -6,8 +6,15 @@ import { runSimulation, type Inputs, type Result } from '@/features/visaSimulato
 import { t, type UiLang } from '@/features/visaSimulator/i18n';
 import BrandMark from '@/components/brand/BrandMark';
 import { ShieldCheck, Sparkles } from 'lucide-react';
+import { usePageMeta } from '@/lib/usePageMeta';
 
 export default function VisaSimulatorPage() {
+  usePageMeta({
+    title: 'F-6 결혼이민 비자 준비도 점검',
+    description: '2026년 공식 소득기준으로 F-6 결혼이민 비자의 필수요건 충족 여부와 서류 준비도를 신청 전에 점검합니다.',
+    path: '/visa-simulator',
+  });
+
   const [lang, setLang] = useState<UiLang>('ko');
   const [result, setResult] = useState<Result | null>(null);
 

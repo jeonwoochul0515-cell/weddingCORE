@@ -4,8 +4,15 @@ import { useAuthStore } from '@/store/authStore';
 import { ArrowLeft, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BrandMark from '@/components/brand/BrandMark';
+import { usePageMeta } from '@/lib/usePageMeta';
 
 export default function LoginPage() {
+  usePageMeta({
+    title: '업체 로그인',
+    description: 'weddingCORE 업체 워크스페이스 로그인 화면입니다.',
+    path: '/login', noindex: true,
+  });
+
   const { user, initialized } = useAuthStore();
 
   if (!initialized) return null;

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import HomePage from './pages/HomePage';
@@ -18,6 +18,7 @@ import AutomationCenterPage from './pages/AutomationCenterPage';
 import LawyerWorkbenchPage from './pages/LawyerWorkbenchPage';
 import MarketingCenterPage from './pages/MarketingCenterPage';
 import VisaWorkCenterPage from './pages/VisaWorkCenterPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 export default function AppRoutes() {
   return (
@@ -61,7 +62,7 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

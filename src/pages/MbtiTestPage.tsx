@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, RotateCcw, Globe } from 'lucide-react';
 import { QUESTIONS, calculateMbti, type MbtiResult } from '@/features/matching/mbtiTest/questions';
 import { MBTI_DESCRIPTIONS } from '@/features/matching/mbtiTest/descriptions';
 import { mt, type MbtiLang } from '@/features/matching/mbtiTest/i18n';
+import { usePageMeta } from '@/lib/usePageMeta';
 
 const LANGS: { code: MbtiLang; label: string }[] = [
   { code: 'ko', label: '한국어' },
@@ -13,6 +14,12 @@ const LANGS: { code: MbtiLang; label: string }[] = [
 ];
 
 export default function MbtiTestPage() {
+  usePageMeta({
+    title: '국제결혼 성향 진단',
+    description: '국제결혼을 준비하는 두 사람의 생활 성향과 소통 방식을 진단해 상담에 활용할 자료로 정리합니다.',
+    path: '/mbti-test',
+  });
+
   const [lang, setLang] = useState<MbtiLang>('ko');
   const [answers, setAnswers] = useState<Record<number, 'a' | 'b'>>({});
   const [current, setCurrent] = useState(0);

@@ -9,6 +9,7 @@ import { Camera, Loader2, ScanLine, Upload } from 'lucide-react';
 import { db, storage, auth, functions } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import BrokerAutocomplete, { type BrokerHit } from '@/features/registry/BrokerAutocomplete';
+import { usePageMeta } from '@/lib/usePageMeta';
 
 type FormValues = {
   businessNumber: string;
@@ -48,6 +49,12 @@ async function toCompressedBase64(file: File) {
 }
 
 export default function AgencySignupPage() {
+  usePageMeta({
+    title: '업체 정보 등록',
+    description: '사업자등록증으로 업체 정보를 등록하는 화면입니다.',
+    path: '/signup/agency', noindex: true,
+  });
+
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const navigate = useNavigate();

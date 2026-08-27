@@ -14,6 +14,7 @@ import {
   TimerReset,
 } from 'lucide-react';
 import BrandMark from '@/components/brand/BrandMark';
+import { usePageMeta } from '@/lib/usePageMeta';
 
 const FEATURES = [
   { icon: Bot, number: '01', title: '반복 문서업무 자동화', body: '고객정보와 보유서류를 바탕으로 F-6, 계약검토, 보완답변 초안을 구조화합니다.' },
@@ -21,7 +22,36 @@ const FEATURES = [
   { icon: TimerReset, number: '03', title: '기한·의무 자동 추적', body: '결혼중개업법 의무와 서류 유효기간을 고객별 타임라인에서 놓치지 않게 관리합니다.' },
 ];
 
+/**
+ * 검색·AI 답변에서 인용되도록 질문형 제목과 두괄식 답변으로 쓴다.
+ * index.html의 FAQPage JSON-LD와 1:1로 동기화할 것. 한쪽만 고치면 스팸으로 처리된다.
+ */
+const FAQ = [
+  {
+    q: '국제결혼중개업체가 지켜야 할 법정 의무는 무엇인가요?',
+    a: '결혼중개업법상 신상정보 제공, 계약서 교부, 환불기준 명시 등 42개 의무가 계약 단계별로 발생합니다. weddingCORE는 고객을 등록하는 시점에 각 의무와 이행 기한을 고객별 타임라인으로 자동 전개하고, 기한이 임박하면 알립니다.',
+  },
+  {
+    q: 'F-6 결혼이민 비자의 소득요건은 얼마인가요?',
+    a: '2026년 기준 2인 가구 연 2,519만원, 4인 가구 연 3,896만원입니다. 전년도 1인당 국민총소득(GNI)에 연동되어 매년 바뀌며 근거는 외교부 재외공관 안내입니다. 가구원수별 충족 여부는 비자 준비도 점검에서 확인할 수 있습니다.',
+  },
+  {
+    q: 'AI가 만든 서류를 그대로 관공서에 제출해도 되나요?',
+    a: '제출할 수 없습니다. weddingCORE가 만드는 문서는 모두 초안이며, 변호사가 검토하고 승인하기 전에는 고객 교부나 관공서 제출용으로 표시되지 않습니다. 승인 전 문서에는 제출 금지 표시가 계속 남습니다.',
+  },
+  {
+    q: '중개업체가 F-6 비자 신청을 대신 접수할 수 있나요?',
+    a: '출입국 민원 대행은 등록된 대행기관과 변호사만 수행할 수 있습니다. weddingCORE에서는 제휴 법률사무소가 신청을 수임하고 중개업체는 서류 준비를 보조합니다. 대행 접수는 2026년 9월 17일부터 시작합니다.',
+  },
+];
+
 export default function HomePage() {
+  usePageMeta({
+    title: 'weddingCORE — 국제결혼중개업 AI 업무 자동화',
+    description: '국제결혼중개업체의 고객·서류·법정기한 관리와 F-6 결혼이민 비자 준비, 변호사 문서 검토를 하나로 연결합니다.',
+    path: '/',
+  });
+
   return (
     <div className="min-h-screen overflow-hidden bg-[#f6f7f3] text-[#102621]">
       <div className="relative border-b border-emerald-950/10 bg-[#f6f7f3]">
@@ -84,6 +114,21 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-7xl overflow-hidden rounded-[36px] bg-[#dff3eb] lg:grid-cols-2">
           <div className="p-8 sm:p-12 lg:p-16"><div className="eyebrow">Human in the loop</div><h2 className="mt-4 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">AI는 초안을 만들고,<br />최종 판단은 사람이 합니다.</h2><p className="mt-5 max-w-md text-sm leading-7 text-slate-600">개인정보 동의 게이트, 테넌트 분리, 감사로그, 변호사 승인까지. 편리함을 위해 안전 경계를 없애지 않았습니다.</p><ul className="mt-8 space-y-3">{['고객 동의 전 AI 처리 차단', '업체와 변호사 권한 완전 분리', '승인 전 교부·제출 금지 표시'].map((item) => <li key={item} className="flex items-center gap-3 text-sm font-semibold"><span className="grid h-6 w-6 place-items-center rounded-full bg-white text-emerald-700"><Check size={14} /></span>{item}</li>)}</ul></div>
           <div className="relative min-h-80 bg-[#17352e] p-8 sm:p-12"><div className="absolute right-10 top-10 h-40 w-40 rounded-full bg-emerald-400/20 blur-3xl" /><div className="relative space-y-3"><SecurityRow icon={LockKeyhole} title="개인정보 보호" body="동의 증빙과 최소정보 원칙" /><SecurityRow icon={ShieldCheck} title="권한 분리" body="업체·변호사·관리자 역할 격리" /><SecurityRow icon={FileCheck2} title="검토 감사기록" body="생성부터 승인까지 변경 이력" /></div></div>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 bg-white px-5 py-20 sm:px-8">
+        <div className="mx-auto max-w-3xl">
+          <div className="eyebrow">Questions</div>
+          <h2 className="mt-4 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">자주 묻는 질문</h2>
+          <dl className="mt-10 space-y-8">
+            {FAQ.map(({ q, a }) => (
+              <div key={q} className="border-b border-slate-100 pb-8 last:border-0">
+                <dt className="text-lg font-bold tracking-[-0.02em] text-slate-950">{q}</dt>
+                <dd className="mt-3 text-sm leading-7 text-slate-600">{a}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 
