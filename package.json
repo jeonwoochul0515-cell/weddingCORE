@@ -10,9 +10,11 @@
     "typecheck": "tsc --noEmit",
     "deploy:rules": "firebase deploy --only firestore:rules,storage:rules,firestore:indexes",
     "deploy:hosting": "npm run build && firebase deploy --only hosting",
+    "deploy:cloudflare": "npm run build && wrangler deploy",
     "deploy:all": "npm run build && firebase deploy",
     "emulators": "firebase emulators:start",
-    "seed:emulator": "node scripts/seedEmulator.mjs"
+    "seed:emulator": "node scripts/seedEmulator.mjs",
+    "score:saas": "node scripts/evaluateSaas.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

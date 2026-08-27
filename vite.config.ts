@@ -25,5 +25,20 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
-  build: { target: 'es2022', sourcemap: true },
+  build: {
+    target: 'es2022',
+    sourcemap: false,
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('firebase')) return 'firebase';
+          if (id.includes('lucide-react')) return 'icons';
+          if (id.includes('react') || id.includes('scheduler')) return 'react';
+          return 'vendor';
+        },
+      },
+    },
+  },
 });
