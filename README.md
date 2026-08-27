@@ -58,7 +58,10 @@ npm run deploy:cloudflare
 ## AI 캐럿 제공량 조정
 
 AI 문서 초안의 사용 단위는 **캐럿**입니다(내부 필드명은 credit 계열 유지).
-월간 기본 제공량은 `functions` 환경변수 `AI_MONTHLY_ALLOWANCE`로 정하며 미설정 시 100캐럿입니다.
+1캐럿 = 1,000원 기준입니다. 월간 무료 제공량은 `functions` 환경변수 `AI_MONTHLY_ALLOWANCE`로
+정하며 미설정 시 20캐럿입니다. 무료분은 매월 초기화되고, 업체가 구매한 충전분(`aiCredits.purchased`)은
+초기화되지 않습니다. 충전 신청은 `agencies/{id}/caratOrders`에 쌓이며 입금 확인 후 관리자가
+`grantAiCarats` 함수로 지급합니다.
 업체 문서의 `aiCredits.monthlyAllowance`가 있으면 그 값이 항상 우선하므로 업체별 차등도 가능합니다.
 무상 제공량은 보장 사항이 아니며, 변경 시 사전 고지 후 값만 조정하면 됩니다.
 

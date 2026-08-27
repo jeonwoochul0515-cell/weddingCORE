@@ -426,6 +426,17 @@ export type AgencyAiCredits = {
   monthlyAllowance: number;
   used: number;
   resetAt: Timestamp | null;
+  purchased?: number; // 충전분. 월초에 소멸하지 않는다.
+};
+
+export type CaratOrder = {
+  agencyId: string;
+  packId: 'pack_50' | 'pack_200' | 'pack_500';
+  carats: number;
+  price: number;
+  status: 'requested' | 'granted' | 'cancelled';
+  requestedBy: string;
+  createdAt: Timestamp;
 };
 
 // ===== 시스템 =====

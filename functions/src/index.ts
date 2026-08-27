@@ -155,6 +155,7 @@ export { extractBusinessRegistration } from './agency/registrationOcr.js';
 // AI document automation + lawyer review
 export {
   generateLegalDocument,
+  grantAiCarats,
   recordAutomationConsent,
   reviewLegalDocument,
 } from './automation/index.js';

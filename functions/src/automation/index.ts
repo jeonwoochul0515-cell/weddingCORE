@@ -21,37 +21,37 @@ const REGION = 'asia-northeast3';
  */
 const configuredAllowance = Number(process.env.AI_MONTHLY_ALLOWANCE);
 export const DEFAULT_MONTHLY_ALLOWANCE =
-  Number.isFinite(configuredAllowance) && configuredAllowance >= 0 ? configuredAllowance : 100;
+  Number.isFinite(configuredAllowance) && configuredAllowance >= 0 ? configuredAllowance : 20;
 const ENFORCE_APP_CHECK = process.env.FUNCTIONS_EMULATOR !== 'true';
 
 const DOCUMENT_TYPES = {
   f6_application_package: {
     label: 'F-6 신청 패키지',
-    creditCost: 8,
+    creditCost: 30,
     instruction:
       'F-6 신청용 사건 요약, 초청 경위, 소득·주거·혼인 진정성 입증 구조와 누락서류 목록을 작성한다. 발급 가능성을 보장하지 않는다.',
   },
   brokerage_contract_review: {
     label: '국제결혼중개 계약 검토',
-    creditCost: 5,
+    creditCost: 15,
     instruction:
       '국제결혼중개 총비용, 납입시기, 제휴업체, 환불, 비자·입국수속 범위를 중심으로 계약 검토표와 수정문구 초안을 작성한다.',
   },
   premarital_property_agreement: {
     label: '혼인 전 재산약정',
-    creditCost: 10,
+    creditCost: 30,
     instruction:
       '혼인 전 보유재산, 채무, 생활비, 송금, 혼인 중 취득재산을 정리한 부부재산약정 초안을 작성한다. 양 당사자 이해충돌과 혼인 전 등기 검토를 필수 경고한다.',
   },
   privacy_third_party_consent: {
     label: '개인정보 제3자 제공 동의서',
-    creditCost: 3,
+    creditCost: 5,
     instruction:
       '법률사무소·번역업체 등 제공받는 자, 이용 목적, 제공 항목, 보유기간, 동의 거부권을 분명히 구분한 동의서 초안을 작성한다.',
   },
   immigration_supplement_response: {
     label: '출입국 보완요청 대응서',
-    creditCost: 10,
+    creditCost: 40,
     instruction:
       '보완요청 내용을 사실관계와 증빙별로 구조화하고, 확인되지 않은 사실을 만들지 않은 대응서 초안을 작성한다.',
   },
@@ -90,6 +90,17 @@ function nextMonth(now: Date) {
   return Timestamp.fromDate(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)));
 }
 
+type StoredCredits = {
+  monthlyAllowance?: number;
+  used?: number;
+  resetAt?: Timestamp;
+  purchased?: number;
+};
+
+/**
+ * 월 무료분을 먼저 쓰고 모자란 만큼 충전분에서 뺀다.
+ * 충전분(purchased)은 업체가 돈을 낸 몫이라 월초에 소멸시키지 않는다.
+ */
 async function consumeCredits(agencyId: string, cost: number) {
   const db = getFirestore();
   const ref = db.doc(`agencies/${agencyId}`);
@@ -98,40 +109,45 @@ async function consumeCredits(agencyId: string, cost: number) {
     if (!snap.exists) throw new HttpsError('not-found', '업체를 찾을 수 없습니다.');
 
     const now = new Date();
-    const stored = snap.get('aiCredits') as
-      | { monthlyAllowance?: number; used?: number; resetAt?: Timestamp }
-      | undefined;
+    const stored = snap.get('aiCredits') as StoredCredits | undefined;
     const allowance = stored?.monthlyAllowance ?? DEFAULT_MONTHLY_ALLOWANCE;
     const shouldReset = !stored?.resetAt || stored.resetAt.toMillis() <= now.getTime();
     const used = shouldReset ? 0 : (stored?.used ?? 0);
-    if (used + cost > allowance) {
+    const purchased = stored?.purchased ?? 0;
+    const monthlyRemaining = Math.max(0, allowance - used);
+
+    if (monthlyRemaining + purchased < cost) {
       throw new HttpsError(
         'resource-exhausted',
-        `이번 달 AI 캐럿이 부족합니다. 잔여 ${Math.max(0, allowance - used)}캐럿`,
+        `AI 캐럿이 부족합니다. 잔여 ${monthlyRemaining + purchased}캐럿. 캐럿을 충전해 주세요.`,
       );
     }
 
+    const fromMonthly = Math.min(cost, monthlyRemaining);
     const credits = {
       monthlyAllowance: allowance,
-      used: used + cost,
+      used: used + fromMonthly,
       resetAt: shouldReset ? nextMonth(now) : stored!.resetAt,
+      purchased: purchased - (cost - fromMonthly),
     };
     tx.update(ref, { aiCredits: credits, updatedAt: FieldValue.serverTimestamp() });
-    return { ...credits, remaining: allowance - used - cost };
+    return { ...credits, remaining: monthlyRemaining + purchased - cost };
   });
 }
 
+/** 생성 실패 시 차감한 순서의 역순으로 되돌린다. 월 무료분을 먼저 회복시킨다. */
 async function restoreCredits(agencyId: string, cost: number) {
   const db = getFirestore();
   const ref = db.doc(`agencies/${agencyId}`);
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) return;
-    const stored = snap.get('aiCredits') as
-      | { monthlyAllowance?: number; used?: number }
-      | undefined;
+    const stored = snap.get('aiCredits') as StoredCredits | undefined;
+    const used = stored?.used ?? 0;
+    const toMonthly = Math.min(cost, used);
     tx.update(ref, {
-      'aiCredits.used': Math.max(0, (stored?.used ?? 0) - cost),
+      'aiCredits.used': used - toMonthly,
+      'aiCredits.purchased': (stored?.purchased ?? 0) + (cost - toMonthly),
       updatedAt: FieldValue.serverTimestamp(),
     });
   });
@@ -474,3 +490,77 @@ export const reviewLegalDocument = onCall({ region: REGION, enforceAppCheck: ENF
   await batch.commit();
   return { ok: true, status };
 });
+
+/**
+ * 캐럿 충전 패키지. 결제는 아직 계좌이체로 받고 관리자가 확인 후 지급한다.
+ * 1캐럿 = 1,000원 기준이며 대량 구매에만 할인을 준다.
+ */
+export const CARAT_PACKS = {
+  pack_50: { carats: 50, price: 50_000 },
+  pack_200: { carats: 200, price: 180_000 },
+  pack_500: { carats: 500, price: 400_000 },
+} as const;
+
+type CaratPackId = keyof typeof CARAT_PACKS;
+
+/** 관리자가 입금을 확인한 뒤 충전분을 지급한다. 충전분은 월초에 소멸하지 않는다. */
+export const grantAiCarats = onCall(
+  { region: REGION, enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    if (!request.auth?.uid) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    if (request.auth.token.role !== 'admin') {
+      throw new HttpsError('permission-denied', '관리자만 캐럿을 지급할 수 있습니다.');
+    }
+
+    const { agencyId, orderId } = request.data as { agencyId?: string; orderId?: string };
+    if (!agencyId || !orderId) {
+      throw new HttpsError('invalid-argument', '업체와 주문 정보가 필요합니다.');
+    }
+
+    const db = getFirestore();
+    const agencyRef = db.doc(`agencies/${agencyId}`);
+    const orderRef = db.doc(`agencies/${agencyId}/caratOrders/${orderId}`);
+    const uid = request.auth.uid;
+
+    const granted = await db.runTransaction(async (tx) => {
+      const [agencySnap, orderSnap] = await Promise.all([tx.get(agencyRef), tx.get(orderRef)]);
+      if (!agencySnap.exists) throw new HttpsError('not-found', '업체를 찾을 수 없습니다.');
+      if (!orderSnap.exists) throw new HttpsError('not-found', '주문을 찾을 수 없습니다.');
+      if (orderSnap.get('status') !== 'requested') {
+        throw new HttpsError('failed-precondition', '이미 처리된 주문입니다.');
+      }
+
+      const packId = orderSnap.get('packId') as CaratPackId;
+      const pack = CARAT_PACKS[packId];
+      if (!pack) throw new HttpsError('failed-precondition', '알 수 없는 충전 상품입니다.');
+
+      const stored = agencySnap.get('aiCredits') as StoredCredits | undefined;
+      tx.update(agencyRef, {
+        'aiCredits.monthlyAllowance': stored?.monthlyAllowance ?? DEFAULT_MONTHLY_ALLOWANCE,
+        'aiCredits.purchased': (stored?.purchased ?? 0) + pack.carats,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      tx.update(orderRef, {
+        status: 'granted',
+        grantedBy: uid,
+        grantedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return pack.carats;
+    });
+
+    await db.collection('auditLogs').doc().set({
+      actorUid: uid,
+      agencyId,
+      action: 'automation.carats_granted',
+      targetPath: orderRef.path,
+      before: null,
+      after: { orderId, carats: granted },
+      ip: request.rawRequest.ip ?? '',
+      userAgent: request.rawRequest.headers['user-agent'] ?? '',
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    return { ok: true, carats: granted };
+  },
+);

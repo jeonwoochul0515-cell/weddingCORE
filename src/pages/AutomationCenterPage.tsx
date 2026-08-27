@@ -1,18 +1,30 @@
 import { useMemo, useState } from 'react';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { Bot, CheckCircle2, FileText, Gem, LockKeyhole, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react';
+import { Bot, CheckCircle2, FileText, Gem, LockKeyhole, PlusCircle, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { functions } from '@/lib/firebase';
+import { db, functions } from '@/lib/firebase';
+import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
 import { useAutomationJobs } from '@/features/automation/useAutomationJobs';
 import type { AutomationDocumentType, AutomationJobStatus } from '@/types/schema';
 
+/** 1캐럿 = 1,000원. 업주가 금액을 바로 알 수 있도록 화면에는 원화를 함께 적는다. */
+const CARAT_PRICE = 1000;
+const won = (carats: number) => `${(carats * CARAT_PRICE).toLocaleString()}원`;
+
+const CARAT_PACKS = [
+  { id: 'pack_50', carats: 50, price: 50_000, note: null },
+  { id: 'pack_200', carats: 200, price: 180_000, note: '10% 할인' },
+  { id: 'pack_500', carats: 500, price: 400_000, note: '20% 할인' },
+] as const;
+
 const DOCUMENTS: Array<{ value: AutomationDocumentType; label: string; cost: number; description: string }> = [
-  { value: 'f6_application_package', label: 'F-6 신청 패키지', cost: 8, description: '요건·입증구조·누락서류 초안' },
-  { value: 'brokerage_contract_review', label: '국제결혼중개 계약 검토', cost: 5, description: '환불·제휴·업무범위 위험 점검' },
-  { value: 'premarital_property_agreement', label: '혼인 전 재산약정', cost: 10, description: '재산·채무·생활비 조항 초안' },
-  { value: 'privacy_third_party_consent', label: '개인정보 제3자 제공 동의서', cost: 3, description: '법률사무소 제공 범위 초안' },
-  { value: 'immigration_supplement_response', label: '출입국 보완요청 답변서', cost: 10, description: '사실·증빙별 대응 구조 초안' },
+  { value: 'f6_application_package', label: 'F-6 신청 패키지', cost: 30, description: '요건·입증구조·누락서류 초안' },
+  { value: 'brokerage_contract_review', label: '국제결혼중개 계약 검토', cost: 15, description: '환불·제휴·업무범위 위험 점검' },
+  { value: 'premarital_property_agreement', label: '혼인 전 재산약정', cost: 30, description: '재산·채무·생활비 조항 초안' },
+  { value: 'privacy_third_party_consent', label: '개인정보 제3자 제공 동의서', cost: 5, description: '법률사무소 제공 범위 초안' },
+  { value: 'immigration_supplement_response', label: '출입국 보완요청 답변서', cost: 40, description: '사실·증빙별 대응 구조 초안' },
 ];
 
 const STATUS: Record<AutomationJobStatus, { label: string; tone: string }> = {
@@ -36,7 +48,9 @@ export default function AutomationCenterPage() {
   const [documentType, setDocumentType] = useState<AutomationDocumentType>('f6_application_package');
   const [requestNote, setRequestNote] = useState('');
   const [evidenceReference, setEvidenceReference] = useState('');
-  const [busy, setBusy] = useState<'consent' | 'generate' | null>(null);
+  const [busy, setBusy] = useState<'consent' | 'generate' | 'order' | null>(null);
+  const agencyId = useAuthStore((state) => state.user?.agencyId);
+  const uid = useAuthStore((state) => state.user?.uid);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
 
   const selectedClient = useMemo(() => clients.find((client) => client.id === clientId), [clients, clientId]);
@@ -46,7 +60,34 @@ export default function AutomationCenterPage() {
       && selectedClient.automationConsents.legalReviewSharing,
   );
   const allowance = credits?.monthlyAllowance ?? 0;
-  const remaining = Math.max(0, allowance - (credits?.used ?? 0));
+  const monthlyRemaining = Math.max(0, allowance - (credits?.used ?? 0));
+  const purchased = credits?.purchased ?? 0;
+  const remaining = monthlyRemaining + purchased;
+
+  async function orderCarats(pack: (typeof CARAT_PACKS)[number]) {
+    if (!agencyId || !uid) return;
+    setBusy('order');
+    setNotice(null);
+    try {
+      await addDoc(collection(db, `agencies/${agencyId}/caratOrders`), {
+        agencyId,
+        packId: pack.id,
+        carats: pack.carats,
+        price: pack.price,
+        status: 'requested',
+        requestedBy: uid,
+        createdAt: serverTimestamp(),
+      });
+      setNotice({
+        ok: true,
+        text: `${pack.carats}캐럿 충전을 신청했습니다. 입금이 확인되면 캐럿이 지급됩니다.`,
+      });
+    } catch (error) {
+      setNotice({ ok: false, text: `신청하지 못했습니다: ${(error as Error).message}` });
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function saveConsent() {
     if (!clientId || !evidenceReference.trim()) return;
@@ -94,9 +135,10 @@ export default function AutomationCenterPage() {
         </div>
         <div className="min-w-48 rounded-2xl border border-white/10 bg-white/[0.08] px-5 py-4 backdrop-blur">
           <div className="flex items-center gap-2 text-xs text-emerald-100"><Gem size={15} />이번 달 AI 캐럿</div>
-          <div className="mt-1 text-3xl font-bold tracking-tight text-white">{credits ? remaining : '—'}<span className="ml-1 text-xs font-normal text-slate-400">/ {credits ? allowance : '—'}</span></div>
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${allowance > 0 ? Math.min(100, (remaining / allowance) * 100) : 0}%` }} /></div>
-          <p className="mt-2 text-[10px] leading-4 text-slate-400">제공량은 요금제와 운영 정책에 따라 사전 고지 후 변경될 수 있습니다.</p>
+          <div className="mt-1 text-3xl font-bold tracking-tight text-white">{credits ? remaining : '—'}<span className="ml-1 text-xs font-normal text-slate-400">캐럿</span></div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${allowance > 0 ? Math.min(100, (monthlyRemaining / allowance) * 100) : 0}%` }} /></div>
+          <p className="mt-2 text-[11px] leading-4 text-slate-300">월 무료 {monthlyRemaining}/{allowance} · 충전 {purchased}캐럿</p>
+          <p className="mt-1 text-[10px] leading-4 text-slate-400">1캐럿 = 1,000원. 월 무료 제공량은 사전 고지 후 변경될 수 있습니다.</p>
         </div>
       </div>
       </section>
@@ -106,6 +148,38 @@ export default function AutomationCenterPage() {
       </div>
 
       {notice && <div className={`rounded-2xl border p-4 text-sm shadow-sm ${notice.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-800'}`}>{notice.text}</div>}
+
+      <section className="app-surface rounded-[26px] p-5 sm:p-7">
+        <div className="flex items-center justify-between">
+          <div><div className="eyebrow">Top up</div><h2 className="mt-1 text-lg font-bold text-slate-950">캐럿 충전</h2></div>
+          <PlusCircle className="text-emerald-700" size={21} />
+        </div>
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          월 무료 캐럿을 다 쓰면 충전해서 계속 사용합니다. 충전분은 월이 바뀌어도 사라지지 않습니다.
+        </p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {CARAT_PACKS.map((pack) => (
+            <div key={pack.id} className="rounded-2xl border border-slate-200 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-slate-950">{pack.carats}<span className="ml-1 text-xs font-medium text-slate-400">캐럿</span></span>
+                {pack.note && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{pack.note}</span>}
+              </div>
+              <div className="mt-1 text-sm font-semibold text-slate-700">{pack.price.toLocaleString()}원</div>
+              <button
+                type="button"
+                onClick={() => orderCarats(pack)}
+                disabled={!agencyId || busy !== null}
+                className="secondary-button mt-4 w-full justify-center"
+              >
+                {busy === 'order' ? '신청 중' : '충전 신청'}
+              </button>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-[11px] leading-4 text-slate-400">
+          부가세 포함 금액입니다. 신청 후 안내되는 계좌로 입금하면 확인 즉시 캐럿이 지급됩니다.
+        </p>
+      </section>
 
       <section className="app-surface grid overflow-hidden rounded-[26px] lg:grid-cols-[1.08fr_.92fr]">
         <div className="space-y-5 p-5 sm:p-7">
@@ -120,7 +194,7 @@ export default function AutomationCenterPage() {
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">2. 자동화 문서</label>
             <select className="field-control" value={documentType} onChange={(event) => setDocumentType(event.target.value as AutomationDocumentType)}>
-              {DOCUMENTS.map((item) => <option key={item.value} value={item.value}>{item.label} · {item.cost}캐럿</option>)}
+              {DOCUMENTS.map((item) => <option key={item.value} value={item.value}>{item.label} · {item.cost}캐럿({won(item.cost)})</option>)}
             </select>
             <p className="mt-1 text-xs text-slate-500">{selectedDocument.description}</p>
           </div>
@@ -142,7 +216,7 @@ export default function AutomationCenterPage() {
             </>
           )}
           <div className="border-t border-slate-200 pt-4">
-            <button type="button" disabled={!clientId || !consentReady || remaining < selectedDocument.cost || busy !== null} onClick={generate} className="primary-button w-full !py-3.5"><FileText size={17} />{busy === 'generate' ? '초안 생성 중…' : `${selectedDocument.cost}캐럿으로 초안 생성`}</button>
+            <button type="button" disabled={!clientId || !consentReady || remaining < selectedDocument.cost || busy !== null} onClick={generate} className="primary-button w-full !py-3.5"><FileText size={17} />{busy === 'generate' ? '초안 생성 중…' : `${selectedDocument.cost}캐럿(${won(selectedDocument.cost)})으로 초안 생성`}</button>
             <p className="mt-2 text-center text-[11px] text-slate-500">AI 결과는 법률의견이 아니며, “변호사 승인” 상태가 되기 전에는 고객에게 교부하거나 제출할 수 없습니다.</p>
           </div>
         </div>

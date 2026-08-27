@@ -167,6 +167,15 @@ service cloud.firestore {
       allow read: if isAgencyMember(aid);
       allow write: if false;
     }
+    match /agencies/{aid}/caratOrders/{orderId} {
+      allow read: if isAgencyMember(aid) || isAdmin();
+      allow create: if canWriteAgency(aid)
+                    && request.resource.data.agencyId == aid
+                    && request.resource.data.status == 'requested'
+                    && request.resource.data.packId in ['pack_50', 'pack_200', 'pack_500'];
+      allow update, delete: if isAdmin();
+    }
+
     match /agencies/{aid}/automationJobs/{jobId} {
       allow read: if isAgencyMember(aid);
       allow write: if false;
