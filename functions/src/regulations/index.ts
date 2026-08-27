@@ -14,7 +14,7 @@ const TZ = 'Asia/Seoul';
  * 매일 03시 KST에 실행되는 법령 변경 크롤러.
  */
 export const crawlRegulations = onSchedule(
-  { region: REGION, schedule: SCHEDULE, timeZone: TZ, timeoutSeconds: 540, memory: '512MiB' },
+  { region: REGION, schedule: SCHEDULE, timeZone: TZ, timeoutSeconds: 540, memory: '512MiB', secrets: ['LAW_CADDY_TOKEN'] },
   async () => {
     await runCrawl();
   },
@@ -23,7 +23,7 @@ export const crawlRegulations = onSchedule(
 /**
  * 관리자가 수동으로 크롤을 강제 실행.
  */
-export const runCrawlNow = onCall({ region: REGION, timeoutSeconds: 540 }, async (request) => {
+export const runCrawlNow = onCall({ region: REGION, timeoutSeconds: 540, secrets: ['LAW_CADDY_TOKEN'] }, async (request) => {
   if (request.auth?.token?.role !== 'admin') {
     throw new HttpsError('permission-denied', '관리자만 호출 가능합니다.');
   }
