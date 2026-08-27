@@ -1,34 +1,28 @@
 /**
  * F-6 비자 룰 엔진 - 버전/상수 정의
  *
- * 2024년 기준 (2023 GNI 연동). 법무부 체류관리 지침 참조.
- * ⚠ 매년 갱신 필요. 창희 변호사 검수 후 정식 반영.
+ * 2026년 공개 기준. 매년 새 고시 확인 후 갱신해야 한다.
+ * 출처: 외교부 재외공관 2026 결혼이민사증 소득요건 안내(2026-01-05).
  */
 
-export type VisaSimYear = 2024 | 2025;
+export type VisaSimYear = 2026;
 
-export const CURRENT_RULE_YEAR: VisaSimYear = 2024;
+export const CURRENT_RULE_YEAR: VisaSimYear = 2026;
+export const RULE_SOURCE_URL =
+  'https://overseas.mofa.go.kr/jp-yokohama-ko/brd/m_909/view.do?seq=1344102';
+export const HOUSEHOLD_INCREMENT_OVER_SEVEN = 5_755_188;
 
 /**
  * 가구원수별 연소득 기준 (원). 전년도 1인당 GNI 대비 계산.
  */
 export const INCOME_THRESHOLDS: Record<VisaSimYear, Record<number, number>> = {
-  2024: {
-    2: 21_546_000,
-    3: 27_938_000,
-    4: 34_337_000,
-    5: 40_737_000,
-    6: 46_186_000,
-    7: 51_635_000,
-  },
-  2025: {
-    // TODO: 2025년 GNI 발표 후 갱신
-    2: 22_500_000,
-    3: 29_200_000,
-    4: 35_900_000,
-    5: 42_600_000,
-    6: 48_300_000,
-    7: 54_000_000,
+  2026: {
+    2: 25_195_752,
+    3: 32_154_216,
+    4: 38_968_428,
+    5: 45_340_314,
+    6: 51_335_712,
+    7: 57_090_900,
   },
 };
 

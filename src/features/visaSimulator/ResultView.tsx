@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, Info, Printer, Scale, XCircle } from 'lucide-react';
 import type { Recommendation, Result } from './engine';
 import { t, type UiLang } from './i18n';
+import { RULE_SOURCE_URL } from './rules';
 
 const SEVERITY_STYLE: Record<Recommendation['severity'], { icon: typeof Info; cls: string }> = {
   blocker:  { icon: XCircle,       cls: 'text-red-700 bg-red-50 border-red-200' },
@@ -26,7 +27,7 @@ export default function ResultView({
   return (
     <div className="space-y-6 print:space-y-4">
       {/* 최종 결과 카드 */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
+      <div className="app-surface rounded-[26px] p-6">
         <div className="flex items-start justify-between">
           <div>
             <div className="text-xs font-medium text-slate-500">
@@ -67,7 +68,7 @@ export default function ResultView({
 
       {/* 소득 상세 */}
       <Section title={t('result', 'incomeDetail', lang)} icon={Scale}>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm">
+        <div className="app-surface rounded-2xl p-4 text-sm">
           <dl className="grid grid-cols-2 gap-y-2">
             <dt className="text-slate-500">가구원수 기준 최소소득</dt>
             <dd>{result.incomeDetail.threshold.toLocaleString()}원</dd>
@@ -94,27 +95,28 @@ export default function ResultView({
       )}
 
       {/* 면책 */}
-      <div className="rounded-md bg-slate-50 p-4 text-xs text-slate-600">
-        ⚠ {t('disclaimer', 'ko', lang)}
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600">
+        ⚠ {t('disclaimer', 'ko', lang)}{' '}
+        <a href={RULE_SOURCE_URL} target="_blank" rel="noreferrer" className="font-medium underline">2026년 공식 소득기준</a>
       </div>
 
       {/* 액션 */}
       <div className="flex flex-wrap justify-center gap-2 print:hidden">
         <button
           onClick={() => window.print()}
-          className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-50"
+          className="secondary-button"
         >
           <Printer size={14} />{t('button', 'print', lang)}
         </button>
         <button
           onClick={onReset}
-          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-50"
+          className="secondary-button"
         >
           {t('button', 'reset', lang)}
         </button>
         <a
           href="/login"
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          className="primary-button"
         >
           {t('button', 'consult', lang)}
         </a>
@@ -126,7 +128,7 @@ export default function ResultView({
 function ScoreBar({ label, score }: { label: string; score: number }) {
   const color = score >= 70 ? 'bg-emerald-500' : score >= 40 ? 'bg-amber-500' : 'bg-red-500';
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
+    <div className="app-surface rounded-2xl p-3.5">
       <div className="text-xs text-slate-500">{label}</div>
       <div className="mt-1 flex items-center justify-between">
         <span className="text-2xl font-semibold text-slate-900">{score}</span>
@@ -161,7 +163,7 @@ function Section({
 function RecCard({ rec, lang }: { rec: Recommendation; lang: UiLang }) {
   const { icon: Icon, cls } = SEVERITY_STYLE[rec.severity];
   return (
-    <div className={`flex gap-3 rounded-md border p-3 ${cls}`}>
+    <div className={`flex gap-3 rounded-2xl border p-4 ${cls}`}>
       <Icon size={16} className="mt-0.5 shrink-0" />
       <div className="flex-1">
         <div className="flex items-start justify-between gap-2">

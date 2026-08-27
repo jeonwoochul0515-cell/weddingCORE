@@ -7,9 +7,9 @@ export const UI = {
     vi: 'Trình mô phỏng thị thực F-6 (Kết hôn)',
   },
   subtitle: {
-    ko: '신청 전에 승인 가능성을 확인하세요',
-    en: 'Check your approval probability before applying',
-    vi: 'Kiểm tra xác suất chấp thuận trước khi nộp đơn',
+    ko: '신청 전 필수요건과 준비도를 점검하세요',
+    en: 'Check requirements and readiness before applying',
+    vi: 'Kiểm tra yêu cầu và mức độ sẵn sàng trước khi nộp đơn',
   },
   step: {
     inviter:   { ko: '초청인 정보', en: 'Inviter info', vi: 'Thông tin người mời' },
@@ -28,7 +28,7 @@ export const UI = {
     consult: { ko: '변호사 상담', en: 'Lawyer consultation', vi: 'Tư vấn luật sư' },
   },
   result: {
-    probability:  { ko: '승인 가능성', en: 'Approval probability', vi: 'Xác suất chấp thuận' },
+    probability:  { ko: '준비도 점수', en: 'Readiness score', vi: 'Điểm sẵn sàng' },
     visaType:     { ko: '비자 유형',   en: 'Visa type', vi: 'Loại thị thực' },
     incomeScore:  { ko: '소득 점수',   en: 'Income score', vi: 'Điểm thu nhập' },
     sincerityScore: { ko: '진정성 점수', en: 'Sincerity score', vi: 'Điểm chân thực' },
@@ -38,9 +38,9 @@ export const UI = {
     incomeDetail: { ko: '소득 분석',   en: 'Income analysis', vi: 'Phân tích thu nhập' },
   },
   disclaimer: {
-    ko: '본 시뮬레이터는 2024년 기준 공개 법령·지침을 바탕으로 승인 가능성을 참고용으로 계산합니다. 실제 심사 결과는 출입국관리사무소의 재량 판단에 따라 달라질 수 있으며, 본 결과는 법률 자문을 대체하지 않습니다.',
-    en: 'This simulator is based on 2024 published regulations and is for reference only. Actual approval depends on immigration office discretion. Not legal advice.',
-    vi: 'Trình mô phỏng này dựa trên quy định công khai năm 2024, chỉ mang tính tham khảo. Kết quả thực tế phụ thuộc vào quyết định của Cục Xuất nhập cảnh. Không thay thế tư vấn pháp lý.',
+    ko: '본 점수는 2026년 공개 소득기준과 내부 체크리스트에 따른 준비도이며 승인 확률이 아닙니다. 예외·재외공관별 서류와 실제 심사 결과는 달라질 수 있고 법률 자문을 대체하지 않습니다.',
+    en: 'This is a readiness score based on the published 2026 income threshold and an internal checklist, not an approval probability or legal advice.',
+    vi: 'Đây là điểm sẵn sàng dựa trên chuẩn thu nhập công bố năm 2026 và danh sách kiểm tra nội bộ, không phải xác suất được cấp visa hay tư vấn pháp lý.',
   },
   severity: {
     blocker:  { ko: '차단', en: 'Blocker', vi: 'Chặn' },

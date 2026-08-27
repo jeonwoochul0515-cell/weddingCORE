@@ -1,10 +1,11 @@
 /**
- * F-6 비자 승인 가능성 계산 엔진.
+ * F-6 비자 준비도 점검 엔진. 실제 승인 확률을 예측하지 않는다.
  * 순수 함수 - AI 없음. 룰 기반만.
  */
 
 import {
   CURRENT_RULE_YEAR,
+  HOUSEHOLD_INCREMENT_OVER_SEVEN,
   INCOME_THRESHOLDS,
   MIN_MARRIAGE_AGE_BY_COUNTRY,
   PROPERTY_TO_INCOME_RATE,
@@ -198,7 +199,7 @@ function analyzeIncome(inputs: Inputs): Result['incomeDetail'] {
   const threshold =
     thresholds[inputs.householdSize] ??
     (inputs.householdSize > 7
-      ? thresholds[7]! + (inputs.householdSize - 7) * 5_500_000
+      ? thresholds[7]! + (inputs.householdSize - 7) * HOUSEHOLD_INCREMENT_OVER_SEVEN
       : thresholds[2]!);
 
   const propertyConverted = Math.floor(inputs.propertyNetWorth * PROPERTY_TO_INCOME_RATE);
@@ -394,10 +395,10 @@ function buildSummary(
   }
   const criticalCount = recs.filter((r) => r.severity === 'critical').length;
   if (probability >= 80) {
-    return `승인 가능성이 높은 상태입니다. 서류 유효기간을 마지막으로 점검하고 접수하세요.`;
+    return `현재 입력 기준 준비도가 높습니다. 다만 제출 전 최신 공관 안내와 원자료를 다시 확인하세요.`;
   }
   if (probability >= 60) {
-    return `승인 가능성은 있으나 ${criticalCount}개의 중대 보완 사항이 있습니다. 보완 후 접수 권장.`;
+    return `준비도 점검에서 ${criticalCount}개의 중대 보완 사항이 확인되었습니다. 보완 후 전문가 검토를 권장합니다.`;
   }
   if (probability >= 30) {
     return `현재 상태로 접수 시 불허 리스크가 큽니다. 핵심 요건(소득·진정성)을 먼저 보강하세요.`;
