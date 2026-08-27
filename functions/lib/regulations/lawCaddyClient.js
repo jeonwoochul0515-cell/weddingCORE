@@ -46,3 +46,25 @@ export async function queryLawCaddy(params) {
 export function isLawCaddyConfigured() {
     return Boolean(process.env.LAW_CADDY_TOKEN);
 }
+/**
+ * 법제처 파라미터를 그대로 넘겨 조회한다.
+ * 개정 공시처럼 목록·필터 조합이 다양한 질의에 쓴다.
+ * (law-caddy의 내부 호출 전용 통로 — 토큰이 있어야 동작)
+ */
+export async function queryLawCaddyRaw(params, endpoint = 'search') {
+    const url = process.env.LAW_CADDY_ENDPOINT ?? DEFAULT_ENDPOINT;
+    const token = process.env.LAW_CADDY_TOKEN;
+    if (!token) {
+        throw new LawCaddyUnavailableError('LAW_CADDY_TOKEN이 없습니다.');
+    }
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8', 'X-Internal-Token': token },
+        body: JSON.stringify({ raw: { endpoint, params } }),
+    });
+    if (!response.ok) {
+        const detail = await response.text();
+        throw new LawCaddyUnavailableError(`law-caddy 원시 조회 실패 (HTTP ${response.status}): ${detail.slice(0, 200)}`);
+    }
+    return (await response.json());
+}

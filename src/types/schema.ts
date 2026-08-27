@@ -15,14 +15,30 @@ export type Article = {
   lastCrawledAt: Timestamp;
 };
 
+/**
+ * 법제처 개정 공시에서 감지한 변경.
+ * 법률뿐 아니라 고시·훈령 같은 행정규칙(하위법령)도 담는다.
+ */
 export type RegulatoryDelta = {
-  statuteId: string;
-  articleNumber: string;
-  changeType: 'amended' | 'new' | 'repealed';
-  oldHash: string | null;
-  newHash: string;
-  diffSummary: string;
+  /** law = 법률·시행령·시행규칙, admrul = 고시·훈령·예규 */
+  kind: 'law' | 'admrul';
+  name: string;
+  /** 우리가 추적하는 법령이면 그 ID. 행정규칙은 null */
+  statuteId: string | null;
+  /** 어떤 감시 대상·키워드에 걸렸는지 */
+  matchedBy: string;
+  priority: 'critical' | 'high' | 'medium';
+  tracks: string[];
+  /** 공포일(법령) 또는 발령일(행정규칙). YYYYMMDD */
+  promulgatedOn: string;
+  enforcedOn: string | null;
+  /** 시행 전이면 미리 대비할 수 있다 */
+  enforcementStatus: 'upcoming' | 'in_effect' | 'unknown';
+  revisionType: string | null;
+  ministry: string | null;
   sourceUrl: string;
+  /** 조문 대조 결과 요약. 행정규칙은 null */
+  articleSummary: string | null;
   detectedAt: Timestamp;
   notifiedAgencies: string[];
 };

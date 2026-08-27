@@ -11,11 +11,24 @@ const STATUTES = [
   { id: 'international-private-law', label: '국제사법' },
 ];
 
-const CHANGE_LABEL: Record<DeltaItem['changeType'], string> = {
-  new: '신설',
-  amended: '개정',
-  repealed: '폐지',
+/** 법률인지 하위법령(고시·훈령)인지 구분해 보여준다 */
+const KIND_LABEL: Record<string, string> = {
+  law: '법령',
+  admrul: '행정규칙',
 };
+
+/** 시행 전 예고를 눈에 띄게 구분한다. 미리 대비할 수 있는 정보다. */
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  upcoming: { label: '시행 예정', cls: 'bg-amber-100 text-amber-800' },
+  in_effect: { label: '시행 중', cls: 'bg-emerald-100 text-emerald-700' },
+  unknown: { label: '시행일 미상', cls: 'bg-slate-100 text-slate-600' },
+};
+
+/** YYYYMMDD → 2026. 8. 28. */
+function ymdLabel(value: string | null | undefined): string | null {
+  if (!value || value.length !== 8) return null;
+  return `${value.slice(0, 4)}. ${Number(value.slice(4, 6))}. ${Number(value.slice(6))}.`;
+}
 
 const PRIORITY_ICON = {
   critical: AlertTriangle,
@@ -42,8 +55,10 @@ export default function RegulatoryRadarPage() {
   const byStatute = useMemo(() => {
     const map = new Map<string, DeltaItem[]>();
     for (const item of items) {
-      if (!map.has(item.statuteId)) map.set(item.statuteId, []);
-      map.get(item.statuteId)!.push(item);
+      // 행정규칙은 특정 법령에 속하지 않으므로 별도 묶음으로 모은다.
+      const key = item.statuteId ?? 'admin-rules';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(item);
     }
     return map;
   }, [items]);
@@ -105,24 +120,23 @@ export default function RegulatoryRadarPage() {
                 <Icon size={18} />
               </div>
               <div className="flex-1">
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <span className="font-medium">{statuteLabel(item.statuteId)}</span>
-                  <span>·</span>
-                  <span>{CHANGE_LABEL[item.changeType]}</span>
-                  {item.articleNumber && (
-                    <>
-                      <span>·</span>
-                      <span>제{item.articleNumber}조</span>
-                    </>
-                  )}
-                  {item.detectedAt && (
-                    <>
-                      <span>·</span>
-                      <span>{item.detectedAt.toDate().toLocaleString('ko-KR')}</span>
-                    </>
-                  )}
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600">
+                    {KIND_LABEL[item.kind] ?? '법령'}
+                  </span>
+                  {(() => {
+                    const badge = STATUS_BADGE[item.enforcementStatus ?? 'unknown'] ?? STATUS_BADGE.unknown!;
+                    return <span className={`rounded px-1.5 py-0.5 font-semibold ${badge.cls}`}>{badge.label}</span>;
+                  })()}
+                  {item.ministry && <span>{item.ministry}</span>}
+                  {item.revisionType && (<><span>·</span><span>{item.revisionType}</span></>)}
                 </div>
-                <div className="mt-2 text-sm font-medium leading-6 text-slate-900">{item.diffSummary}</div>
+                <div className="mt-2 text-sm font-medium leading-6 text-slate-900">{item.name}</div>
+                <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-slate-500">
+                  {ymdLabel(item.promulgatedOn) && <span>공포 {ymdLabel(item.promulgatedOn)}</span>}
+                  {ymdLabel(item.enforcedOn) && <span>시행 {ymdLabel(item.enforcedOn)}</span>}
+                  {item.articleSummary && <span>{item.articleSummary}</span>}
+                </div>
                 <a
                   href={item.sourceUrl}
                   target="_blank"
