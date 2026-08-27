@@ -14,6 +14,10 @@ import RegulatoryRadarPage from './pages/RegulatoryRadarPage';
 import BackgroundInfoPage from './pages/BackgroundInfoPage';
 import MatchingPage from './pages/MatchingPage';
 import MbtiTestPage from './pages/MbtiTestPage';
+import AutomationCenterPage from './pages/AutomationCenterPage';
+import LawyerWorkbenchPage from './pages/LawyerWorkbenchPage';
+import MarketingCenterPage from './pages/MarketingCenterPage';
+import VisaWorkCenterPage from './pages/VisaWorkCenterPage';
 
 export default function AppRoutes() {
   return (
@@ -37,6 +41,16 @@ export default function AppRoutes() {
           <Route path="/agency/clients/:clientId/background-info" element={<BackgroundInfoPage />} />
           <Route path="/agency/regulatory" element={<RegulatoryRadarPage />} />
           <Route path="/agency/matching" element={<MatchingPage />} />
+          <Route path="/agency/automation" element={<AutomationCenterPage />} />
+          <Route path="/agency/marketing" element={<MarketingCenterPage />} />
+          <Route path="/agency/visa" element={<VisaWorkCenterPage />} />
+        </Route>
+      </Route>
+
+      {/* 변호사 검토 백엔드 */}
+      <Route element={<ProtectedRoute allowedRoles={['lawyer', 'admin']} />}>
+        <Route element={<AppLayout />}>
+          <Route path="/lawyer/reviews" element={<LawyerWorkbenchPage />} />
         </Route>
       </Route>
 

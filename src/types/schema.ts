@@ -205,6 +205,14 @@ export type Client = {
   overallProgress: number;
   status: 'active' | 'completed' | 'cancelled';
   anchors?: Partial<Record<AnchorKey, Timestamp>>;
+  automationConsents?: {
+    aiProcessing: boolean;
+    legalReviewSharing: boolean;
+    evidenceReference: string;
+    policyVersion: string;
+    recordedAt: Timestamp;
+    recordedBy: string;
+  };
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
@@ -369,6 +377,52 @@ export type VisaSimulation = {
   year: number;
   createdAt: Timestamp;
   expiresAt: Timestamp;
+};
+
+// ===== AI 업무 자동화 / 변호사 검토 =====
+
+export type AutomationDocumentType =
+  | 'f6_application_package'
+  | 'brokerage_contract_review'
+  | 'premarital_property_agreement'
+  | 'privacy_third_party_consent'
+  | 'immigration_supplement_response';
+
+export type AutomationJobStatus =
+  | 'generating'
+  | 'awaiting_review'
+  | 'changes_requested'
+  | 'approved'
+  | 'failed';
+
+export type AutomationJob = {
+  jobId: string;
+  agencyId: string;
+  clientId: string;
+  clientName: string;
+  documentType: AutomationDocumentType;
+  status: AutomationJobStatus;
+  title: string;
+  generatedContent: string;
+  riskFlags: string[];
+  missingInformation: string[];
+  lawyerChecklist: string[];
+  requestNote: string;
+  creditCost: number;
+  modelTokenUsage: { input: number; output: number } | null;
+  version: number;
+  generatedBy: string;
+  reviewedBy: string | null;
+  reviewNote: string | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  approvedAt: Timestamp | null;
+};
+
+export type AgencyAiCredits = {
+  monthlyAllowance: number;
+  used: number;
+  resetAt: Timestamp | null;
 };
 
 // ===== 시스템 =====
