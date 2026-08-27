@@ -36,6 +36,8 @@ const STAGES: Array<{ id: VisaStage; label: string; description: string }> = [
 const VISA_FEE = {
   memberPrice: 1_000_000,
   nonMemberPrice: 1_300_000,
+  // 제휴 변호사의 출입국민원 대행기관 등록 교육 이수일. 이 날짜 전에는 접수를 받지 않는다.
+  serviceOpenDate: '2026-09-17',
   included: [
     '신청 전 요건 진단과 불허 위험 점검',
     '필수서류 목록 작성과 수집 가이드',
@@ -192,10 +194,16 @@ export default function VisaWorkCenterPage() {
             <ul className="mt-2.5 space-y-2">{VISA_FEE.excluded.map((item) => <li key={item} className="flex items-start gap-2 text-xs leading-5 text-slate-500"><span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-300" />{item}</li>)}</ul>
           </div>
         </div>
-        <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-[11px] leading-5 text-amber-900">
-          출입국 민원 대행은 등록된 대행기관과 변호사만 수행할 수 있습니다. 신청 대행은 제휴 법률사무소가 수임하며
-          중개업체는 서류 준비를 보조합니다. 수임료는 사건 난이도에 따라 상담 후 조정될 수 있고, 발급을 보장하지 않습니다.
-        </p>
+        <div className="mt-5 space-y-2">
+          <p className="rounded-xl border border-blue-200 bg-blue-50 p-3.5 text-[11px] leading-5 text-blue-900">
+            <strong>대행 접수 시작일 {VISA_FEE.serviceOpenDate}.</strong> 제휴 변호사의 출입국민원 대행기관
+            등록 교육 이수 후 접수를 시작합니다. 그전까지는 사건 등록과 서류 준비 단계만 이용할 수 있습니다.
+          </p>
+          <p className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-[11px] leading-5 text-amber-900">
+            출입국 민원 대행은 등록된 대행기관과 변호사만 수행할 수 있습니다. 신청 대행은 제휴 법률사무소가 수임하며
+            중개업체는 서류 준비를 보조합니다. 수임료는 사건 난이도에 따라 상담 후 조정될 수 있고, 발급을 보장하지 않습니다.
+          </p>
+        </div>
       </section>
 
       <section className="app-surface overflow-hidden rounded-[24px]">
