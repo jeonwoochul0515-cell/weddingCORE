@@ -10,6 +10,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { queryLawCaddy } from './lawCaddyClient.js';
 import { LAW_GO_KR_BASE } from './config.js';
 
 export type ParsedArticle = {
@@ -27,25 +28,13 @@ export async function fetchStatuteArticles(
   lawName: string,
   mst?: string,
 ): Promise<ParsedArticle[]> {
-  const oc = process.env.LAW_GO_KR_OC;
-  if (!oc) {
-    throw new Error('LAW_GO_KR_OC 환경변수가 설정되지 않았습니다.');
-  }
-
-  const params = new URLSearchParams({
-    OC: oc,
+  // 법제처는 호출 서버의 IP·도메인을 사전 등록해야 응답한다. Cloud Functions는 IP가
+  // 고정되지 않으므로 등록이 끝난 law-caddy를 거친다. (전역 규칙 CLAUDE.md §20)
+  const json = await queryLawCaddy<LawServiceResponse>({
     target: 'law',
-    type: 'JSON',
+    query: mst ?? lawName,
+    count: 1,
   });
-  if (mst) params.set('MST', mst);
-  else params.set('LM', lawName);
-
-  const url = `${LAW_GO_KR_BASE}/lawService.do?${params.toString()}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`law.go.kr 조회 실패 (${res.status}): ${lawName}`);
-  }
-  const json = (await res.json()) as LawServiceResponse;
 
   // 실제 응답 구조는 ?{조문단위: [ {조문번호, 조문제목, 조문내용}, ... ]}
   const articles = json?.법령?.조문?.조문단위 ?? [];
