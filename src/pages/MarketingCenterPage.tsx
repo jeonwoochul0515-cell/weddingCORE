@@ -7,7 +7,7 @@ import {
   Compass,
   Globe2,
   LayoutTemplate,
-  MapPinned,
+  PenLine,
   Megaphone,
   Search,
   Send,
@@ -35,31 +35,31 @@ const SERVICES = [
     icon: LayoutTemplate,
     items: ['업체 신뢰정보 설계', '상담 전환 동선', '모바일·속도 최적화'],
     listPrice: 2_900_000,
-    promoPrice: 1_900_000,
+    promoPrice: 0,
     billing: 'once',
-    priceNote: '5~8페이지 반응형 · 도메인/호스팅 별도',
+    priceNote: '회원가입 후 신청하면 제작비 없음 · 도메인/호스팅 실비만 별도',
   },
   {
     id: 'naver-seo',
-    title: '네이버 검색 노출 최적화',
-    description: '검색로봇이 사이트를 정확히 이해하도록 기술·콘텐츠 기반을 정비합니다.',
+    title: '네이버 검색노출·플레이스 광고 최적화',
+    description: '검색결과에 사이트가 잡히게 하고, 지도·플레이스에서 업체가 노출되도록 정비합니다.',
     icon: Search,
-    items: ['서치어드바이저 등록', '키워드·메타데이터', '사이트맵·색인 점검'],
-    listPrice: 900_000,
-    promoPrice: 590_000,
+    items: ['서치어드바이저 등록·색인 점검', '스마트플레이스 업체정보 정비', '플레이스 광고 세팅·입찰 관리'],
+    listPrice: 500_000,
+    promoPrice: 500_000,
     billing: 'once',
-    priceNote: '초기 세팅 1회 · 색인 리포트 1개월 포함',
+    priceNote: '초기 세팅 1회 · 네이버에 내는 광고비는 별도 실비',
   },
   {
     id: 'local-content',
-    title: '지역·콘텐츠 마케팅',
-    description: '지역 고객이 실제로 검색하는 질문을 중심으로 콘텐츠를 운영합니다.',
-    icon: MapPinned,
-    items: ['지역 키워드 전략', '블로그 콘텐츠 캘린더', '업체 정보 일관성 점검'],
-    listPrice: 660_000,
-    promoPrice: 440_000,
+    title: '블로그 글 자동 발행',
+    description: '업체 홈페이지에 지역·업종 검색용 글이 매달 자동으로 올라갑니다.',
+    icon: PenLine,
+    items: ['지역·업종 키워드 자동 선정', '홈페이지에 글 자동 발행', '네이버 블로그용 원고 함께 제공'],
+    listPrice: 100_000,
+    promoPrice: 100_000,
     billing: 'monthly',
-    priceNote: '월 8편 발행 기준 · 3개월 이상 진행 시',
+    priceNote: '네이버 블로그 게시는 업주가 직접 옮겨 적는 조건',
   },
   {
     id: 'aeo-geo',
@@ -68,7 +68,7 @@ const SERVICES = [
     icon: Sparkles,
     items: ['질문형 FAQ', '구조화된 답변', '전문성·출처 강화'],
     listPrice: 1_200_000,
-    promoPrice: 790_000,
+    promoPrice: 500_000,
     billing: 'once',
     priceNote: '핵심 질문 20개 구조화 · 스키마 적용 포함',
   },
@@ -163,7 +163,7 @@ export default function MarketingCenterPage() {
             <div className="mt-5 inline-flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-2.5 text-xs text-emerald-100">
               <span className="rounded-full bg-emerald-300 px-2 py-0.5 text-[10px] font-bold text-[#102621]">{PROMOTION.label}</span>
               <span className="font-semibold">{PROMOTION.detail}</span>
-              <span className="text-emerald-200/70">· 정가 대비 최대 34% 할인</span>
+              <span className="text-emerald-200/70">· 홈페이지 제작 무료 + AEO·GEO 58% 할인</span>
             </div>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-5 backdrop-blur">
@@ -190,9 +190,9 @@ export default function MarketingCenterPage() {
                 <ul className="mt-4 space-y-2">{items.map((item) => <li key={item} className="flex items-center gap-2 text-xs text-slate-600"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{item}</li>)}</ul>
                 <div className="mt-4 border-t border-slate-100 pt-3">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-bold text-slate-950">{won(promoPrice)}</span>
-                    <span className="text-xs text-slate-400 line-through">{won(listPrice)}</span>
-                    <span className="text-[10px] font-bold text-emerald-700">{billing === 'monthly' ? '월' : '1회'}</span>
+                    <span className={`text-lg font-bold ${promoPrice === 0 ? 'text-emerald-600' : 'text-slate-950'}`}>{promoPrice === 0 ? '무료' : won(promoPrice)}</span>
+                    {promoPrice < listPrice && <span className="text-xs text-slate-400 line-through">{won(listPrice)}</span>}
+                    {promoPrice > 0 && <span className="text-[10px] font-bold text-emerald-700">{billing === 'monthly' ? '월' : '1회'}</span>}
                   </div>
                   <p className="mt-1 text-[11px] leading-4 text-slate-400">{priceNote}</p>
                 </div>
@@ -237,7 +237,7 @@ export default function MarketingCenterPage() {
                     {quote.picked.map((service) => (
                       <li key={service.id} className="flex items-center justify-between text-xs text-slate-600">
                         <span>{service.title}</span>
-                        <span className="font-semibold text-slate-800">{won(service.promoPrice)}{service.billing === 'monthly' ? ' / 월' : ''}</span>
+                        <span className="font-semibold text-slate-800">{service.promoPrice === 0 ? '무료' : `${won(service.promoPrice)}${service.billing === 'monthly' ? ' / 월' : ''}`}</span>
                       </li>
                     ))}
                   </ul>
