@@ -7,6 +7,8 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 const REGION = 'asia-northeast3';
+const ENFORCE_APP_CHECK = process.env.FUNCTIONS_EMULATOR !== 'true';
+const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 const REQUIRED_FIELDS = [
     'maritalHistory',
     'hasChildren',
@@ -18,7 +20,7 @@ const REQUIRED_FIELDS = [
     'residence',
     'familySituation',
 ];
-export const signBackgroundTranslation = onCall({ region: REGION }, async (request) => {
+export const signBackgroundTranslation = onCall({ region: REGION, enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const role = request.auth?.token?.role;
     if (!['owner', 'manager', 'staff', 'admin'].includes(role)) {
         throw new HttpsError('permission-denied', '권한 없음');
@@ -27,6 +29,12 @@ export const signBackgroundTranslation = onCall({ region: REGION }, async (reque
     const { agencyId, clientId, infoId, lang, signerName } = request.data;
     if (!agencyId || !clientId || !infoId || !lang || !signerName?.trim()) {
         throw new HttpsError('invalid-argument', '필수 파라미터 누락');
+    }
+    if (![agencyId, clientId, infoId, lang].every((value) => SAFE_ID.test(value))) {
+        throw new HttpsError('invalid-argument', '문서 식별자 형식이 올바르지 않습니다.');
+    }
+    if (signerName.trim().length > 100) {
+        throw new HttpsError('invalid-argument', '서명자 이름이 너무 깁니다.');
     }
     if (role !== 'admin' && callerAgencyId !== agencyId) {
         throw new HttpsError('permission-denied', '다른 업체의 자료 접근 불가');
@@ -96,8 +104,8 @@ export const signBackgroundTranslation = onCall({ region: REGION }, async (reque
             targetLang: lang,
             translationQuality: translation.translationQuality,
             translatedBy: translation.translatedBy,
-            sourceFields: info.fields,
-            translatedFields: translation.fields,
+            sourceFieldKeys: Object.keys(info.fields),
+            translatedFieldKeys: Object.keys(translation.fields),
         },
         ip: request.rawRequest.ip ?? '',
         userAgent: request.rawRequest.headers['user-agent'] ?? '',

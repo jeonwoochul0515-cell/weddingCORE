@@ -20,7 +20,9 @@ export type AuthUser = {
 export function subscribeToAuth(callback: (user: AuthUser) => void) {
   return onAuthStateChanged(auth, async (fbUser: User | null) => {
     if (!fbUser) return callback(null);
-    const token = await fbUser.getIdTokenResult();
+    // 관리자/변호사 권한 변경 직후에도 오래된 세션 클레임을 사용하지 않도록
+    // 인증 상태가 잡힐 때마다 최신 토큰을 확인합니다.
+    const token = await fbUser.getIdTokenResult(true);
     callback({
       uid: fbUser.uid,
       email: fbUser.email,
