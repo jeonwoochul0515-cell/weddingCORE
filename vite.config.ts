@@ -28,6 +28,12 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: false,
+    modulePreload: {
+      // Firebase는 로그인 이후 화면에서만 쓴다. 동적 import로 분리해도 Vite가
+      // 미리 받도록 preload 목록에 넣어, 홈만 보러 온 방문자까지 530KB를 받게 된다.
+      resolveDependencies: (_url, deps) =>
+        deps.filter((dep) => !/firebase|\/auth-/.test(dep)),
+    },
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
