@@ -9,6 +9,7 @@ import HomePage from './pages/HomePage';
 import VisaSimulatorPage from './pages/VisaSimulatorPage';
 import MbtiTestPage from './pages/MbtiTestPage';
 import NotFoundPage from './pages/NotFoundPage';
+import PrivacyPage from './pages/PrivacyPage';
 
 const AppLayout = lazy(() => import('./components/layout/AppLayout'));
 const ProtectedRoute = lazy(() => import('./components/auth/ProtectedRoute'));
@@ -42,6 +43,7 @@ export default function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/visa-simulator" element={<VisaSimulatorPage />} />
         <Route path="/mbti-test" element={<MbtiTestPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
 
         {/* 로그인 후: 가입/대기 분기 */}
         <Route path="/signup/agency" element={<AgencySignupPage />} />

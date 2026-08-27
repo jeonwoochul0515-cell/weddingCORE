@@ -128,3 +128,5 @@ export { searchBrokerRegistry } from './registry/lookup.js';
 export { extractBusinessRegistration } from './agency/registrationOcr.js';
 // AI document automation + lawyer review
 export { generateLegalDocument, grantAiCarats, recordAutomationConsent, reviewLegalDocument, } from './automation/index.js';
+// 상담 접수와 중앙 접수함 연동
+export { submitConsult, weddingcoreAdmin } from './consult/index.js';

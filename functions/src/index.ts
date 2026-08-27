@@ -159,3 +159,6 @@ export {
   recordAutomationConsent,
   reviewLegalDocument,
 } from './automation/index.js';
+
+// 상담 접수와 중앙 접수함 연동
+export { submitConsult, weddingcoreAdmin } from './consult/index.js';

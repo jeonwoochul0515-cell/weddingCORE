@@ -18,7 +18,7 @@ const DIST = path.join(ROOT, 'dist');
 const PORT = 4178;
 
 /** 색인 대상 공개 라우트. 로그인·업체 화면은 noindex라 제외한다. */
-const ROUTES = ['/', '/visa-simulator', '/mbti-test'];
+const ROUTES = ['/', '/visa-simulator', '/mbti-test', '/privacy'];
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

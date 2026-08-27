@@ -28,6 +28,11 @@ const STORAGE_KEY = 'haram.history';
 const OPEN_KEY = 'haram.open';
 const SEEN_PREFIX = 'haram.seen.';
 const COOLDOWN_MS = 2 * 60 * 1000;
+const LEAD_DONE_KEY = 'haram.lead';
+const CONSULT_URL = 'https://asia-northeast3-sungpan2026.cloudfunctions.net/submitConsult';
+
+/** 대화창에 적힌 번호는 접수가 아니다. 감지되면 폼을 열어 바로잡는다. */
+const PHONE_IN_TEXT = /0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}/;
 
 /** 화면마다 먼저 건네는 안내. 손님이 무엇을 보고 있는지 알고 말을 건다. */
 const PAGE_INTRO: Record<string, string> = {
@@ -59,6 +64,14 @@ export default function HaramChat() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [face, setFace] = useState('기본');
+  const [leadOpen, setLeadOpen] = useState(false);
+  const [leadDone, setLeadDone] = useState(false);
+  const [leadName, setLeadName] = useState('');
+  const [leadPhone, setLeadPhone] = useState('');
+  const [agreeRequired, setAgreeRequired] = useState(false);
+  const [agreeChat, setAgreeChat] = useState(false);
+  const [leadBusy, setLeadBusy] = useState(false);
+  const [leadError, setLeadError] = useState<string | null>(null);
   const location = useLocation();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -67,6 +80,7 @@ export default function HaramChat() {
     setMessages(loadHistory());
     try {
       setOpen(sessionStorage.getItem(OPEN_KEY) === '1');
+      setLeadDone(sessionStorage.getItem(LEAD_DONE_KEY) === '1');
     } catch {
       /* 저장소를 못 쓰는 환경 */
     }
@@ -144,6 +158,11 @@ export default function HaramChat() {
     const next: Msg[] = [...messages, { role: 'user', content: text }];
     setMessages(next);
     setInput('');
+    const found = text.match(PHONE_IN_TEXT);
+    if (found && !leadDone) {
+      setLeadPhone(found[0]);
+      setLeadOpen(true);
+    }
     setBusy(true);
     try {
       const res = await fetch('/api/chat', {
@@ -168,6 +187,59 @@ export default function HaramChat() {
   }
 
   // 프리렌더 중에는 그리지 않는다. 정적 HTML에 위젯이 박히면 안 된다.
+  async function submitLead() {
+    if (leadBusy) return;
+    if (!leadName.trim() || !leadPhone.trim()) {
+      setLeadError('성함과 연락처를 입력해 주세요.');
+      return;
+    }
+    if (!agreeRequired) {
+      setLeadError('개인정보 수집·이용에 동의해 주세요.');
+      return;
+    }
+    setLeadBusy(true);
+    setLeadError(null);
+    try {
+      const transcript = messages
+        .map((m) => `${m.role === 'user' ? '손님' : '하람'}: ${m.content}`)
+        .join('\n');
+      const res = await fetch(CONSULT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: leadName.trim(),
+          phone: leadPhone.trim(),
+          shareChat: agreeChat,
+          chat: agreeChat ? transcript : '',
+          page: location.pathname,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!data.ok) {
+        setLeadError(data.error ?? '지금 접수가 되지 않았어요. 잠시 후 다시 시도해 주세요.');
+        return;
+      }
+      setLeadDone(true);
+      setLeadOpen(false);
+      try {
+        sessionStorage.setItem(LEAD_DONE_KEY, '1');
+      } catch {
+        /* 무시 */
+      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: '접수됐어요. 확인하는 대로 남겨 주신 번호로 연락드릴게요. 그동안 궁금한 건 계속 물어보셔도 돼요.',
+        },
+      ]);
+    } catch {
+      setLeadError('연결이 끊겼어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setLeadBusy(false);
+    }
+  }
+
   if (!mounted || (window as unknown as { __PRERENDER__?: boolean }).__PRERENDER__) return null;
 
   return (
@@ -238,6 +310,84 @@ export default function HaramChat() {
               </div>
             )}
           </div>
+
+          {leadOpen && !leadDone && (
+            <div className="border-t border-slate-100 bg-emerald-50/60 p-3">
+              <div className="text-xs font-bold text-slate-800">상담 접수</div>
+              <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                대화창에 적은 번호는 접수되지 않아요. 여기에 남겨 주셔야 연락드릴 수 있어요.
+              </p>
+              <div className="mt-2.5 grid grid-cols-2 gap-2">
+                <input
+                  value={leadName}
+                  onChange={(e) => setLeadName(e.target.value)}
+                  placeholder="성함"
+                  className="rounded-lg border border-slate-200 px-2.5 py-2 text-sm outline-none focus:border-emerald-400"
+                />
+                <input
+                  value={leadPhone}
+                  onChange={(e) => setLeadPhone(e.target.value)}
+                  inputMode="tel"
+                  placeholder="010-0000-0000"
+                  className="rounded-lg border border-slate-200 px-2.5 py-2 text-sm outline-none focus:border-emerald-400"
+                />
+              </div>
+              <label className="mt-2.5 flex items-start gap-2 text-[11px] leading-4 text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={agreeRequired}
+                  onChange={(e) => setAgreeRequired(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  (필수) 상담 회신을 위한 성함·연락처 수집·이용에 동의합니다.{' '}
+                  <a href="/privacy" target="_blank" rel="noreferrer" className="underline">
+                    개인정보처리방침
+                  </a>
+                </span>
+              </label>
+              <label className="mt-1.5 flex items-start gap-2 text-[11px] leading-4 text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={agreeChat}
+                  onChange={(e) => setAgreeChat(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  (선택) 지금까지의 대화와 이후 대화를 함께 전달합니다. 담당자가 미리 읽고 연락드려
+                  같은 설명을 다시 하지 않으셔도 돼요.
+                </span>
+              </label>
+              {leadError && <p className="mt-2 text-[11px] text-red-600">{leadError}</p>}
+              <div className="mt-2.5 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void submitLead()}
+                  disabled={leadBusy}
+                  className="flex-1 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white disabled:opacity-50"
+                >
+                  {leadBusy ? '접수 중' : '상담 접수하기'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeadOpen(false)}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500"
+                >
+                  접기
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!leadOpen && !leadDone && messages.length >= 2 && (
+            <button
+              type="button"
+              onClick={() => setLeadOpen(true)}
+              className="border-t border-slate-100 bg-white py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+            >
+              상담 접수하고 연락받기
+            </button>
+          )}
 
           <div className="flex items-end gap-2 border-t border-slate-100 bg-white p-2.5">
             <textarea

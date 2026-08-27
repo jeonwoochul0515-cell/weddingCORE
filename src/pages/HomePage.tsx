@@ -134,7 +134,7 @@ export default function HomePage() {
 
       <section className="border-t border-slate-200 bg-white px-5 py-20 text-center sm:px-8"><div className="mx-auto max-w-2xl"><Scale className="mx-auto text-emerald-600" /><h2 className="mt-5 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">회사는 영업에 집중하고,<br />CORE는 업무를 지킵니다.</h2><p className="mt-4 text-sm leading-6 text-slate-500">무료 워크스페이스에서 실제 고객 흐름을 시작해 보세요.</p><Link to="/login" className="primary-button mt-8 !rounded-full !px-7 !py-3.5">지금 무료로 시작하기 <ArrowRight size={17} /></Link></div></section>
 
-      <footer className="border-t border-slate-200 bg-white px-5 py-8 sm:px-8"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row"><BrandMark /><p className="text-xs text-slate-400">© 2026 weddingCORE · 법률사무소 청송 협업 워크플로</p></div></footer>
+      <footer className="border-t border-slate-200 bg-white px-5 py-8 sm:px-8"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row"><BrandMark /><p className="text-xs text-slate-400">© 2026 weddingCORE · 법률사무소 청송 협업 워크플로 · <Link to="/privacy" className="underline">개인정보처리방침</Link></p></div></footer>
     </div>
   );
 }

@@ -17,6 +17,7 @@ const ROUTE_PREFIXES = [
   '/pending-approval',
   '/visa-simulator',
   '/mbti-test',
+  '/privacy',
   '/agency',
   '/lawyer',
   '/admin',
