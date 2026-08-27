@@ -12,6 +12,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
+import { findDocument } from '../domain/visaTracks.js';
 
 const REGION = 'asia-northeast3';
 /**
@@ -24,40 +25,8 @@ export const DEFAULT_MONTHLY_ALLOWANCE =
   Number.isFinite(configuredAllowance) && configuredAllowance >= 0 ? configuredAllowance : 20;
 const ENFORCE_APP_CHECK = process.env.FUNCTIONS_EMULATOR !== 'true';
 
-const DOCUMENT_TYPES = {
-  f6_application_package: {
-    label: 'F-6 신청 패키지',
-    creditCost: 30,
-    instruction:
-      'F-6 신청용 사건 요약, 초청 경위, 소득·주거·혼인 진정성 입증 구조와 누락서류 목록을 작성한다. 발급 가능성을 보장하지 않는다.',
-  },
-  brokerage_contract_review: {
-    label: '국제결혼중개 계약 검토',
-    creditCost: 15,
-    instruction:
-      '국제결혼중개 총비용, 납입시기, 제휴업체, 환불, 비자·입국수속 범위를 중심으로 계약 검토표와 수정문구 초안을 작성한다.',
-  },
-  premarital_property_agreement: {
-    label: '혼인 전 재산약정',
-    creditCost: 30,
-    instruction:
-      '혼인 전 보유재산, 채무, 생활비, 송금, 혼인 중 취득재산을 정리한 부부재산약정 초안을 작성한다. 양 당사자 이해충돌과 혼인 전 등기 검토를 필수 경고한다.',
-  },
-  privacy_third_party_consent: {
-    label: '개인정보 제3자 제공 동의서',
-    creditCost: 5,
-    instruction:
-      '법률사무소·번역업체 등 제공받는 자, 이용 목적, 제공 항목, 보유기간, 동의 거부권을 분명히 구분한 동의서 초안을 작성한다.',
-  },
-  immigration_supplement_response: {
-    label: '출입국 보완요청 대응서',
-    creditCost: 40,
-    instruction:
-      '보완요청 내용을 사실관계와 증빙별로 구조화하고, 확인되지 않은 사실을 만들지 않은 대응서 초안을 작성한다.',
-  },
-} as const;
-
-type DocumentType = keyof typeof DOCUMENT_TYPES;
+// 문서 정의는 트랙(사업 종류)별 규칙 파일이 단일 출처다. 여기서 다시 적지 않는다.
+type DocumentType = string;
 
 type GeneratedDraft = {
   title: string;
@@ -228,7 +197,8 @@ async function generateWithAi(args: {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new HttpsError('failed-precondition', 'AI 문서 생성 키가 설정되지 않았습니다.');
 
-  const meta = DOCUMENT_TYPES[args.documentType];
+  const meta = findDocument(args.documentType);
+  if (!meta) throw new HttpsError('invalid-argument', '알 수 없는 문서 유형입니다.');
   const client = new Anthropic({ apiKey });
   const response = await client.messages.create({
     model: process.env.AI_DOCUMENT_MODEL ?? 'claude-sonnet-5',
@@ -268,7 +238,7 @@ export const generateLegalDocument = onCall(
       documentType?: DocumentType;
       requestNote?: string;
     };
-    if (!clientId || !documentType || !(documentType in DOCUMENT_TYPES)) {
+    if (!clientId || !documentType || !findDocument(documentType)) {
       throw new HttpsError('invalid-argument', '고객과 문서 유형을 확인해 주세요.');
     }
     requireSafeId(clientId, '고객 식별자');
@@ -283,7 +253,9 @@ export const generateLegalDocument = onCall(
     const clientData = clientSnap.data()!;
     requireAutomationConsent(clientData);
 
-    const cost = DOCUMENT_TYPES[documentType].creditCost;
+    const spec = findDocument(documentType);
+    if (!spec) throw new HttpsError('invalid-argument', '알 수 없는 문서 유형입니다.');
+    const cost = spec.creditCost;
     const credits = await consumeCredits(agencyId, cost);
     const jobRef = db.collection(`agencies/${agencyId}/automationJobs`).doc();
     const reviewRef = db.doc(`legalReviews/${jobRef.id}`);
@@ -295,7 +267,7 @@ export const generateLegalDocument = onCall(
       clientName: clientData.koreanClient?.name ?? '',
       documentType,
       status: 'generating',
-      title: DOCUMENT_TYPES[documentType].label,
+      title: spec.label,
       generatedContent: '',
       riskFlags: [],
       missingInformation: [],

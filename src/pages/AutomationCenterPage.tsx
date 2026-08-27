@@ -7,11 +7,8 @@ import { db, functions } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
 import { useAutomationJobs } from '@/features/automation/useAutomationJobs';
-import type { AutomationDocumentType, AutomationJobStatus } from '@/types/schema';
-
-/** 1캐럿 = 1,000원. 업주가 금액을 바로 알 수 있도록 화면에는 원화를 함께 적는다. */
-const CARAT_PRICE = 1000;
-const won = (carats: number) => `${(carats * CARAT_PRICE).toLocaleString()}원`;
+import type { AutomationJobStatus } from '@/types/schema';
+import { TRACKS, TRACK_LIST, firstDocument, won, type TrackId } from '@/domain/visaTracks';
 
 const CARAT_PACKS = [
   { id: 'pack_50', carats: 50, price: 50_000, note: null },
@@ -19,13 +16,7 @@ const CARAT_PACKS = [
   { id: 'pack_500', carats: 500, price: 400_000, note: '20% 할인' },
 ] as const;
 
-const DOCUMENTS: Array<{ value: AutomationDocumentType; label: string; cost: number; description: string }> = [
-  { value: 'f6_application_package', label: 'F-6 신청 패키지', cost: 30, description: '요건·입증구조·누락서류 초안' },
-  { value: 'brokerage_contract_review', label: '국제결혼중개 계약 검토', cost: 15, description: '환불·제휴·업무범위 위험 점검' },
-  { value: 'premarital_property_agreement', label: '혼인 전 재산약정', cost: 30, description: '재산·채무·생활비 조항 초안' },
-  { value: 'privacy_third_party_consent', label: '개인정보 제3자 제공 동의서', cost: 5, description: '법률사무소 제공 범위 초안' },
-  { value: 'immigration_supplement_response', label: '출입국 보완요청 답변서', cost: 40, description: '사실·증빙별 대응 구조 초안' },
-];
+
 
 const STATUS: Record<AutomationJobStatus, { label: string; tone: string }> = {
   generating: { label: '생성 중', tone: 'border-blue-100 bg-blue-50 text-blue-700' },
@@ -45,7 +36,8 @@ export default function AutomationCenterPage() {
   const { items: clients } = useAgencyClients();
   const { items: jobs, credits, loading } = useAutomationJobs();
   const [clientId, setClientId] = useState(params.get('clientId') ?? '');
-  const [documentType, setDocumentType] = useState<AutomationDocumentType>('f6_application_package');
+  const [trackId, setTrackId] = useState<TrackId>('marriage');
+  const [documentType, setDocumentType] = useState<string>(firstDocument(TRACKS.marriage).key);
   const [requestNote, setRequestNote] = useState('');
   const [evidenceReference, setEvidenceReference] = useState('');
   const [busy, setBusy] = useState<'consent' | 'generate' | 'order' | null>(null);
@@ -54,7 +46,8 @@ export default function AutomationCenterPage() {
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
 
   const selectedClient = useMemo(() => clients.find((client) => client.id === clientId), [clients, clientId]);
-  const selectedDocument = DOCUMENTS.find((item) => item.value === documentType)!;
+  const track = TRACKS[trackId];
+  const selectedDocument = track.documents.find((item) => item.key === documentType) ?? firstDocument(track);
   const consentReady = Boolean(
     selectedClient?.automationConsents?.aiProcessing
       && selectedClient.automationConsents.legalReviewSharing,
@@ -192,14 +185,31 @@ export default function AutomationCenterPage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">2. 자동화 문서</label>
-            <select className="field-control" value={documentType} onChange={(event) => setDocumentType(event.target.value as AutomationDocumentType)}>
-              {DOCUMENTS.map((item) => <option key={item.value} value={item.value}>{item.label} · {item.cost}캐럿({won(item.cost)})</option>)}
+            <label className="mb-1 block text-sm font-medium text-slate-700">2. 사업 종류</label>
+            <div className="grid grid-cols-3 gap-2">
+              {TRACK_LIST.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => { setTrackId(item.id); setDocumentType(firstDocument(item).key); }}
+                  className={`rounded-xl border px-3 py-2.5 text-left transition ${item.id === trackId ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                >
+                  <div className={`text-xs font-bold ${item.id === trackId ? 'text-emerald-800' : 'text-slate-700'}`}>{item.label}</div>
+                  <div className="mt-0.5 text-[10px] leading-3 text-slate-400">{item.documents.length}종 문서</div>
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-slate-500">{track.description}</p>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">3. 자동화 문서</label>
+            <select className="field-control" value={selectedDocument.key} onChange={(event) => setDocumentType(event.target.value)}>
+              {track.documents.map((item) => <option key={item.key} value={item.key}>{item.label} · {item.creditCost}캐럿({won(item.creditCost)})</option>)}
             </select>
             <p className="mt-1 text-xs text-slate-500">{selectedDocument.description}</p>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">담당자 추가 요청</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">4. 담당자 추가 요청</label>
             <textarea className="field-control min-h-32 resize-y" maxLength={3000} value={requestNote} onChange={(event) => setRequestNote(event.target.value)} placeholder="사실관계와 특별히 확인할 부분만 입력하세요." />
           </div>
         </div>
@@ -216,7 +226,7 @@ export default function AutomationCenterPage() {
             </>
           )}
           <div className="border-t border-slate-200 pt-4">
-            <button type="button" disabled={!clientId || !consentReady || remaining < selectedDocument.cost || busy !== null} onClick={generate} className="primary-button w-full !py-3.5"><FileText size={17} />{busy === 'generate' ? '초안 생성 중…' : `${selectedDocument.cost}캐럿(${won(selectedDocument.cost)})으로 초안 생성`}</button>
+            <button type="button" disabled={!clientId || !consentReady || remaining < selectedDocument.creditCost || busy !== null} onClick={generate} className="primary-button w-full !py-3.5"><FileText size={17} />{busy === 'generate' ? '초안 생성 중…' : `${selectedDocument.creditCost}캐럿(${won(selectedDocument.creditCost)})으로 초안 생성`}</button>
             <p className="mt-2 text-center text-[11px] text-slate-500">AI 결과는 법률의견이 아니며, “변호사 승인” 상태가 되기 전에는 고객에게 교부하거나 제출할 수 없습니다.</p>
           </div>
         </div>

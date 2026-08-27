@@ -5,13 +5,15 @@ import { CalendarClock, CheckCircle2, ClipboardCheck, FileWarning, Landmark, Plu
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
+import { TRACKS, TRACK_LIST, STAGE_BY_ID, type TrackId } from '@/domain/visaTracks';
 
-type VisaStage = 'intake' | 'documents' | 'legal_review' | 'submitted' | 'supplement' | 'approved';
+type VisaStage = string;
 type VisaCase = {
   id: string;
   agencyId: string;
   clientId: string;
   clientName: string;
+  trackId: TrackId;
   visaType: string;
   nationality: string;
   stage: VisaStage;
@@ -19,20 +21,9 @@ type VisaCase = {
   note: string;
 };
 
-const STAGES: Array<{ id: VisaStage; label: string; description: string }> = [
-  { id: 'intake', label: '상담 접수', description: '신청인·초청인 기본정보 확인' },
-  { id: 'documents', label: '서류 준비', description: '필수서류 수집과 누락 점검' },
-  { id: 'legal_review', label: '전문가 검토', description: '진술·계약·위험요소 검토' },
-  { id: 'submitted', label: '접수 완료', description: '공관·출입국 접수번호 관리' },
-  { id: 'supplement', label: '보완 대응', description: '보완요청 기한과 답변 관리' },
-  { id: 'approved', label: '허가 완료', description: '발급·입국 후속 절차 안내' },
-];
 
-/**
- * F-6 신청 대행 수임료. 단순 서류대행(행정사 기준 30만원대)이 아니라 요건 진단부터
- * 혼인 진정성 소명, 보완 대응까지 포함한 종합 수임 기준이다. 실제 수임 주체는
- * 제휴 법률사무소이며 금액은 부가세 포함이다.
- */
+
+// 아래 수임료는 결혼중개(F-6) 기준이다. 트랙별 수임료 분리는 후속 작업.
 const VISA_FEE = {
   memberPrice: 1_000_000,
   nonMemberPrice: 1_300_000,
@@ -54,15 +45,6 @@ const VISA_FEE = {
 
 const fee = (value: number) => `${(value / 10_000).toLocaleString()}만원`;
 
-const STAGE_STYLE: Record<VisaStage, string> = {
-  intake: 'bg-slate-100 text-slate-700',
-  documents: 'bg-blue-50 text-blue-700',
-  legal_review: 'bg-violet-50 text-violet-700',
-  submitted: 'bg-amber-50 text-amber-800',
-  supplement: 'bg-rose-50 text-rose-700',
-  approved: 'bg-emerald-50 text-emerald-700',
-};
-
 export default function VisaWorkCenterPage() {
   const agencyId = useAuthStore((state) => state.user?.agencyId);
   const { items: clients } = useAgencyClients();
@@ -70,7 +52,9 @@ export default function VisaWorkCenterPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [clientId, setClientId] = useState('');
+  const [trackId, setTrackId] = useState<TrackId>('marriage');
   const [visaType, setVisaType] = useState('F-6-1');
+  const track = TRACKS[trackId];
   const [nationality, setNationality] = useState('베트남');
   const [dueDate, setDueDate] = useState('');
   const [note, setNote] = useState('');
@@ -107,9 +91,10 @@ export default function VisaWorkCenterPage() {
         agencyId,
         clientId,
         clientName: client.koreanClient.name,
+        trackId,
         visaType,
         nationality: nationality.trim(),
-        stage: 'intake',
+        stage: track.stages[0]?.id ?? 'intake',
         dueDate,
         note: note.trim(),
         checklist: {
@@ -154,8 +139,9 @@ export default function VisaWorkCenterPage() {
 
       {showForm && <section className="app-surface rounded-[24px] p-5 sm:p-6"><div className="eyebrow">New case</div><h2 className="mt-1 text-lg font-bold text-slate-950">비자 사건 등록</h2><form onSubmit={createCase} className="mt-5 grid gap-4 md:grid-cols-2">
         <label className="text-xs font-semibold text-slate-700">고객<select className="field-control mt-1.5" value={clientId} onChange={(event) => setClientId(event.target.value)} required><option value="">고객 선택</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.koreanClient.name}</option>)}</select></label>
-        <label className="text-xs font-semibold text-slate-700">비자 유형<select className="field-control mt-1.5" value={visaType} onChange={(event) => setVisaType(event.target.value)}><option>F-6-1</option><option>F-6-2</option><option>기타</option></select></label>
-        <label className="text-xs font-semibold text-slate-700">배우자 국적<input className="field-control mt-1.5" value={nationality} onChange={(event) => setNationality(event.target.value)} required /></label>
+        <label className="text-xs font-semibold text-slate-700">사업 종류<select className="field-control mt-1.5" value={trackId} onChange={(event) => { const next = event.target.value as TrackId; setTrackId(next); setVisaType(TRACKS[next].visaTypes[0] ?? ''); }}>{TRACK_LIST.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        <label className="text-xs font-semibold text-slate-700">비자 유형<select className="field-control mt-1.5" value={visaType} onChange={(event) => setVisaType(event.target.value)}>{track.visaTypes.map((v) => <option key={v} value={v}>{v}</option>)}<option value="기타">기타</option></select></label>
+        <label className="text-xs font-semibold text-slate-700">국적<input className="field-control mt-1.5" value={nationality} onChange={(event) => setNationality(event.target.value)} required /></label>
         <label className="text-xs font-semibold text-slate-700">목표 접수일<input type="date" className="field-control mt-1.5" value={dueDate} onChange={(event) => setDueDate(event.target.value)} required /></label>
         <label className="text-xs font-semibold text-slate-700 md:col-span-2">담당자 메모<textarea className="field-control mt-1.5 min-h-24 resize-y" value={note} onChange={(event) => setNote(event.target.value)} placeholder="현재 준비된 서류와 특이사항을 적어주세요." /></label>
         <div className="flex justify-end gap-2 md:col-span-2"><button type="button" onClick={() => setShowForm(false)} className="secondary-button">취소</button><button disabled={submitting || !clientId || !dueDate} className="primary-button">{submitting ? '등록 중' : '사건 등록'}</button></div>
@@ -165,10 +151,10 @@ export default function VisaWorkCenterPage() {
 
       <section className="app-surface rounded-[24px] p-5 sm:p-6">
         <div className="flex items-center justify-between"><div><div className="eyebrow">Workflow</div><h2 className="mt-1 text-lg font-bold text-slate-950">표준 진행 단계</h2></div><ClipboardCheck className="text-emerald-700" size={21} /></div>
-        <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">{STAGES.map((stage, index) => <div key={stage.id} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4"><div className="text-[10px] font-bold text-emerald-700">STEP {index + 1}</div><div className="mt-2 text-sm font-bold text-slate-900">{stage.label}</div><p className="mt-1 text-[11px] leading-5 text-slate-500">{stage.description}</p></div>)}</div>
+        <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">{track.stages.map((stage, index) => <div key={stage.id} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4"><div className="text-[10px] font-bold text-emerald-700">STEP {index + 1}</div><div className="mt-2 text-sm font-bold text-slate-900">{stage.label}</div><p className="mt-1 text-[11px] leading-5 text-slate-500">{stage.description}</p></div>)}</div>
       </section>
 
-      <section className="app-surface rounded-[24px] p-5 sm:p-6">
+      {trackId === 'marriage' && <section className="app-surface rounded-[24px] p-5 sm:p-6">
         <div className="flex items-center justify-between"><div><div className="eyebrow">Service fee</div><h2 className="mt-1 text-lg font-bold text-slate-950">F-6 신청 대행 수임료</h2></div><Wallet className="text-emerald-700" size={21} /></div>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <div className="relative rounded-[22px] border-2 border-emerald-500 bg-emerald-50/50 p-5">
@@ -204,13 +190,13 @@ export default function VisaWorkCenterPage() {
             중개업체는 서류 준비를 보조합니다. 수임료는 사건 난이도에 따라 상담 후 조정될 수 있고, 발급을 보장하지 않습니다.
           </p>
         </div>
-      </section>
+      </section>}
 
       <section className="app-surface overflow-hidden rounded-[24px]">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6"><div><div className="eyebrow">Cases</div><h2 className="mt-1 text-lg font-bold text-slate-950">비자 사건 목록</h2></div><ShieldCheck className="text-emerald-700" size={21} /></div>
         {loading && <p className="p-6 text-sm text-slate-500">불러오는 중입니다.</p>}
         {!loading && cases.length === 0 && <div className="p-8 text-center"><p className="text-sm font-semibold text-slate-700">등록된 비자 사건이 없습니다.</p><p className="mt-1 text-xs text-slate-500">첫 사건을 등록하면 진행 단계와 기한을 관리할 수 있습니다.</p></div>}
-        <div className="divide-y divide-slate-100">{cases.map((item) => <div key={item.id} className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:px-6"><div><div className="flex items-center gap-2"><span className="font-bold text-slate-900">{item.clientName}</span><span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{item.visaType}</span></div><p className="mt-1 text-xs text-slate-500">배우자 국적 {item.nationality} · {item.note || '메모 없음'}</p></div><div className="text-xs text-slate-500">목표일 {item.dueDate}</div><span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${STAGE_STYLE[item.stage]}`}>{STAGES.find((stage) => stage.id === item.stage)?.label}</span></div>)}</div>
+        <div className="divide-y divide-slate-100">{cases.map((item) => <div key={item.id} className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:px-6"><div><div className="flex items-center gap-2"><span className="font-bold text-slate-900">{item.clientName}</span><span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">{TRACKS[item.trackId]?.label ?? '기타'}</span><span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{item.visaType}</span></div><p className="mt-1 text-xs text-slate-500">국적 {item.nationality} · {item.note || '메모 없음'}</p></div><div className="text-xs text-slate-500">목표일 {item.dueDate}</div><span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${STAGE_BY_ID[item.stage]?.tone ?? 'bg-slate-100 text-slate-700'}`}>{STAGE_BY_ID[item.stage]?.label ?? item.stage}</span></div>)}</div>
       </section>
 
       <p className="text-center text-[11px] leading-5 text-slate-400">자동화 결과는 신청 가능성을 보장하지 않습니다. 제출 전 사실관계와 최신 출입국 기준을 담당 전문가가 확인해야 합니다.</p>

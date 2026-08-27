@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node scripts/checkTracks.mjs && tsc --noEmit",
     "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes,storage",
     "deploy:hosting": "npm run build && firebase deploy --only hosting",
     "deploy:cloudflare": "npm run build && wrangler deploy && npm run indexnow && npm run score:seo",
@@ -17,7 +17,8 @@
     "score:saas": "node scripts/evaluateSaas.mjs",
     "prerender": "node scripts/prerender.mjs",
     "indexnow": "node scripts/indexnow.mjs",
-    "score:seo": "node scripts/seoScore.mjs"
+    "score:seo": "node scripts/seoScore.mjs",
+    "check:tracks": "node scripts/checkTracks.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

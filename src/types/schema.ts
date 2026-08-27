@@ -384,12 +384,11 @@ export type VisaSimulation = {
 
 // ===== AI 업무 자동화 / 변호사 검토 =====
 
-export type AutomationDocumentType =
-  | 'f6_application_package'
-  | 'brokerage_contract_review'
-  | 'premarital_property_agreement'
-  | 'privacy_third_party_consent'
-  | 'immigration_supplement_response';
+/**
+ * 문서 종류 키. 실제 목록은 트랙 정의(src/domain/visaTracks.ts)가 단일 출처다.
+ * 사업(결혼중개·유학·체류연장)마다 문서가 달라 유니온으로 고정하지 않는다.
+ */
+export type AutomationDocumentType = string;
 
 export type AutomationJobStatus =
   | 'generating'
