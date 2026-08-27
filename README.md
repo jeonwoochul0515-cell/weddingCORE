@@ -55,9 +55,10 @@ npm run deploy:cloudflare
 `wrangler.jsonc`의 Workers Assets SPA 설정이 `dist`를 배포하며, `public/_headers`의
 보안 헤더와 해시 자산 장기 캐시 정책이 함께 적용됩니다.
 
-## AI 크레딧 제공량 조정
+## AI 캐럿 제공량 조정
 
-월간 기본 제공량은 `functions` 환경변수 `AI_MONTHLY_ALLOWANCE`로 정하며 미설정 시 100입니다.
+AI 문서 초안의 사용 단위는 **캐럿**입니다(내부 필드명은 credit 계열 유지).
+월간 기본 제공량은 `functions` 환경변수 `AI_MONTHLY_ALLOWANCE`로 정하며 미설정 시 100캐럿입니다.
 업체 문서의 `aiCredits.monthlyAllowance`가 있으면 그 값이 항상 우선하므로 업체별 차등도 가능합니다.
 무상 제공량은 보장 사항이 아니며, 변경 시 사전 고지 후 값만 조정하면 됩니다.
 

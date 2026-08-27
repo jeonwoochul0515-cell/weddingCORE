@@ -28,7 +28,7 @@ export default function LoginPage() {
           <h1 className="text-5xl font-bold leading-[1.14] tracking-[-0.045em]">반복업무는 줄이고,<br /><span className="text-emerald-300">고객에게 집중하세요.</span></h1>
           <p className="mt-6 max-w-lg text-base leading-7 text-slate-300">서류·기한·법정의무·변호사 검토를 하나의 안전한 워크스페이스에서 관리합니다.</p>
           <div className="mt-10 grid gap-3 sm:grid-cols-2">
-            {['AI 문서 초안 크레딧', '변호사 승인 워크플로', '개인정보 동의 게이트', '업체별 데이터 완전 분리'].map((item) => <div key={item} className="flex items-center gap-2 text-sm text-slate-300"><CheckCircle2 size={16} className="text-emerald-300" />{item}</div>)}
+            {['AI 문서 초안 캐럿', '변호사 승인 워크플로', '개인정보 동의 게이트', '업체별 데이터 완전 분리'].map((item) => <div key={item} className="flex items-center gap-2 text-sm text-slate-300"><CheckCircle2 size={16} className="text-emerald-300" />{item}</div>)}
           </div>
         </div>
         <div className="relative flex items-center gap-2 text-xs text-slate-500"><ShieldCheck size={15} className="text-emerald-400" />Firebase App Check · 역할 기반 접근제어 적용</div>

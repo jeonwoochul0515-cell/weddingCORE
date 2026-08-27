@@ -4,7 +4,7 @@
  * 원칙:
  * - AI 결과는 언제나 초안이며 업체가 최종본으로 표시할 수 없다.
  * - 승인/수정요청은 lawyer/admin 역할만 가능하다.
- * - 월간 AI 크레딧을 서버 트랜잭션으로 차감한다.
+ * - 월간 AI 캐럿(크레딧)을 서버 트랜잭션으로 차감한다.
  * - 기본 제공량은 무상 보장이 아니라 운영 정책값이며 언제든 조정될 수 있다.
  */
 
@@ -15,7 +15,7 @@ import { logger } from 'firebase-functions/v2';
 
 const REGION = 'asia-northeast3';
 /**
- * 월간 기본 제공 크레딧. 무상 제공량은 운영 정책에 따라 조정하므로
+ * 월간 기본 제공 캐럿. 무상 제공량은 운영 정책에 따라 조정하므로
  * 코드 상수가 아니라 환경변수(AI_MONTHLY_ALLOWANCE)로 먼저 읽는다.
  * 업체 문서에 monthlyAllowance가 있으면 그 값이 항상 우선한다.
  */
@@ -107,7 +107,7 @@ async function consumeCredits(agencyId: string, cost: number) {
     if (used + cost > allowance) {
       throw new HttpsError(
         'resource-exhausted',
-        `이번 달 AI 크레딧이 부족합니다. 잔여 ${Math.max(0, allowance - used)}점`,
+        `이번 달 AI 캐럿이 부족합니다. 잔여 ${Math.max(0, allowance - used)}캐럿`,
       );
     }
 
@@ -358,7 +358,7 @@ export const generateLegalDocument = onCall(
       logger.error('AI 문서 생성 실패', { agencyId, clientId, documentType, error });
       await jobRef.update({
         status: 'failed',
-        reviewNote: 'AI 문서 생성에 실패했습니다. 크레딧 복구는 관리자에게 문의해 주세요.',
+        reviewNote: 'AI 문서 생성에 실패했습니다. 캐럿 복구는 관리자에게 문의해 주세요.',
         updatedAt: FieldValue.serverTimestamp(),
       });
       await restoreCredits(agencyId, cost);

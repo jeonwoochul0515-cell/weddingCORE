@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { Bot, CheckCircle2, Coins, FileText, LockKeyhole, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react';
+import { Bot, CheckCircle2, FileText, Gem, LockKeyhole, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { functions } from '@/lib/firebase';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
@@ -93,7 +93,7 @@ export default function AutomationCenterPage() {
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">고객을 선택하면 동의 확인부터 초안 생성, 변호사 승인까지 하나의 안전한 흐름으로 이어집니다.</p>
         </div>
         <div className="min-w-48 rounded-2xl border border-white/10 bg-white/[0.08] px-5 py-4 backdrop-blur">
-          <div className="flex items-center gap-2 text-xs text-emerald-100"><Coins size={15} />이번 달 AI 크레딧</div>
+          <div className="flex items-center gap-2 text-xs text-emerald-100"><Gem size={15} />이번 달 AI 캐럿</div>
           <div className="mt-1 text-3xl font-bold tracking-tight text-white">{credits ? remaining : '—'}<span className="ml-1 text-xs font-normal text-slate-400">/ {credits ? allowance : '—'}</span></div>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${allowance > 0 ? Math.min(100, (remaining / allowance) * 100) : 0}%` }} /></div>
           <p className="mt-2 text-[10px] leading-4 text-slate-400">제공량은 요금제와 운영 정책에 따라 사전 고지 후 변경될 수 있습니다.</p>
@@ -120,7 +120,7 @@ export default function AutomationCenterPage() {
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">2. 자동화 문서</label>
             <select className="field-control" value={documentType} onChange={(event) => setDocumentType(event.target.value as AutomationDocumentType)}>
-              {DOCUMENTS.map((item) => <option key={item.value} value={item.value}>{item.label} · {item.cost}점</option>)}
+              {DOCUMENTS.map((item) => <option key={item.value} value={item.value}>{item.label} · {item.cost}캐럿</option>)}
             </select>
             <p className="mt-1 text-xs text-slate-500">{selectedDocument.description}</p>
           </div>
@@ -142,7 +142,7 @@ export default function AutomationCenterPage() {
             </>
           )}
           <div className="border-t border-slate-200 pt-4">
-            <button type="button" disabled={!clientId || !consentReady || remaining < selectedDocument.cost || busy !== null} onClick={generate} className="primary-button w-full !py-3.5"><FileText size={17} />{busy === 'generate' ? '초안 생성 중…' : `${selectedDocument.cost}점으로 초안 생성`}</button>
+            <button type="button" disabled={!clientId || !consentReady || remaining < selectedDocument.cost || busy !== null} onClick={generate} className="primary-button w-full !py-3.5"><FileText size={17} />{busy === 'generate' ? '초안 생성 중…' : `${selectedDocument.cost}캐럿으로 초안 생성`}</button>
             <p className="mt-2 text-center text-[11px] text-slate-500">AI 결과는 법률의견이 아니며, “변호사 승인” 상태가 되기 전에는 고객에게 교부하거나 제출할 수 없습니다.</p>
           </div>
         </div>
@@ -156,7 +156,7 @@ export default function AutomationCenterPage() {
           const state = STATUS[job.status];
           return <details key={job.id} className="group border-b border-slate-100 last:border-0">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 hover:bg-[#fafcfb] sm:px-6">
-              <div><div className="text-sm font-medium text-slate-900">{job.title}</div><div className="mt-0.5 text-xs text-slate-500">{job.clientName} · {job.creditCost}점 · v{job.version}</div></div>
+              <div><div className="text-sm font-medium text-slate-900">{job.title}</div><div className="mt-0.5 text-xs text-slate-500">{job.clientName} · {job.creditCost}캐럿 · v{job.version}</div></div>
               <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${state.tone}`}>{state.label}</span>
             </summary>
             <div className="space-y-3 border-t border-slate-100 bg-[#f8faf9] px-5 py-5 text-sm sm:px-6">
