@@ -1,3 +1,4 @@
+// 홈페이지·검색노출·콘텐츠 마케팅 상품을 고르고 견적과 함께 상담을 접수하는 화면
 import { useMemo, useState } from 'react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import {
@@ -15,6 +16,17 @@ import {
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 
+/**
+ * 초기 프로모션. 정가는 2026년 국내 시세(홈페이지 제작 150만~800만원, 블로그·콘텐츠
+ * 대행 월 30만~150만원)를 참고해 중하단 구간으로 잡고, 도입 초기 업체에는
+ * 아래 할인가를 적용한다. 종료 조건과 금액은 운영 정책에 따라 변경한다.
+ */
+const PROMOTION = {
+  label: '오픈 프로모션',
+  detail: '선착순 20개 업체 한정',
+  note: '첫 계약 1회에 한해 적용되며 소진 시 정가로 전환됩니다.',
+};
+
 const SERVICES = [
   {
     id: 'website',
@@ -22,6 +34,10 @@ const SERVICES = [
     description: '상담 신청까지 이어지는 모바일 중심 홈페이지를 기획·제작합니다.',
     icon: LayoutTemplate,
     items: ['업체 신뢰정보 설계', '상담 전환 동선', '모바일·속도 최적화'],
+    listPrice: 2_900_000,
+    promoPrice: 1_900_000,
+    billing: 'once',
+    priceNote: '5~8페이지 반응형 · 도메인/호스팅 별도',
   },
   {
     id: 'naver-seo',
@@ -29,6 +45,10 @@ const SERVICES = [
     description: '검색로봇이 사이트를 정확히 이해하도록 기술·콘텐츠 기반을 정비합니다.',
     icon: Search,
     items: ['서치어드바이저 등록', '키워드·메타데이터', '사이트맵·색인 점검'],
+    listPrice: 900_000,
+    promoPrice: 590_000,
+    billing: 'once',
+    priceNote: '초기 세팅 1회 · 색인 리포트 1개월 포함',
   },
   {
     id: 'local-content',
@@ -36,6 +56,10 @@ const SERVICES = [
     description: '지역 고객이 실제로 검색하는 질문을 중심으로 콘텐츠를 운영합니다.',
     icon: MapPinned,
     items: ['지역 키워드 전략', '블로그 콘텐츠 캘린더', '업체 정보 일관성 점검'],
+    listPrice: 660_000,
+    promoPrice: 440_000,
+    billing: 'monthly',
+    priceNote: '월 8편 발행 기준 · 3개월 이상 진행 시',
   },
   {
     id: 'aeo-geo',
@@ -43,8 +67,14 @@ const SERVICES = [
     description: '검색 답변과 AI 검색에서 인용되기 쉬운 전문 콘텐츠 구조를 만듭니다.',
     icon: Sparkles,
     items: ['질문형 FAQ', '구조화된 답변', '전문성·출처 강화'],
+    listPrice: 1_200_000,
+    promoPrice: 790_000,
+    billing: 'once',
+    priceNote: '핵심 질문 20개 구조화 · 스키마 적용 포함',
   },
 ] as const;
+
+const won = (value: number) => `${value.toLocaleString()}원`;
 
 const CHECKLIST = [
   { label: '회사 기본정보와 등록번호 공개', done: true },
@@ -63,6 +93,19 @@ export default function MarketingCenterPage() {
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const completed = useMemo(() => CHECKLIST.filter((item) => item.done).length, []);
   const score = Math.round((completed / CHECKLIST.length) * 100);
+  const quote = useMemo(() => {
+    const picked = SERVICES.filter((service) => selectedServices.includes(service.id));
+    const sum = (billing: string, key: 'promoPrice' | 'listPrice') =>
+      picked.filter((service) => service.billing === billing).reduce((total, service) => total + service[key], 0);
+    return {
+      picked,
+      onceTotal: sum('once', 'promoPrice'),
+      monthlyTotal: sum('monthly', 'promoPrice'),
+      onceList: sum('once', 'listPrice'),
+      monthlyList: sum('monthly', 'listPrice'),
+    };
+  }, [selectedServices]);
+  const discount = quote.onceList - quote.onceTotal + (quote.monthlyList - quote.monthlyTotal);
 
   function toggleService(id: string) {
     setSelectedServices((current) => current.includes(id)
@@ -79,6 +122,13 @@ export default function MarketingCenterPage() {
       await addDoc(collection(db, `agencies/${agencyId}/marketingRequests`), {
         agencyId,
         services: selectedServices,
+        quote: {
+          promotion: PROMOTION.label,
+          onceTotal: quote.onceTotal,
+          monthlyTotal: quote.monthlyTotal,
+          currency: 'KRW',
+          vatIncluded: true,
+        },
         keywords: keywords.split(',').map((item) => item.trim()).filter(Boolean),
         note: note.trim(),
         status: 'requested',
@@ -110,6 +160,11 @@ export default function MarketingCenterPage() {
             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
               홈페이지 제작부터 네이버 검색 기반 정비, 지역 콘텐츠, AEO·GEO까지 한곳에서 신청하고 진행상황을 관리하세요.
             </p>
+            <div className="mt-5 inline-flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-2.5 text-xs text-emerald-100">
+              <span className="rounded-full bg-emerald-300 px-2 py-0.5 text-[10px] font-bold text-[#102621]">{PROMOTION.label}</span>
+              <span className="font-semibold">{PROMOTION.detail}</span>
+              <span className="text-emerald-200/70">· 정가 대비 최대 34% 할인</span>
+            </div>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-5 backdrop-blur">
             <div className="flex items-center justify-between text-xs text-slate-300"><span>검색 준비도</span><span>{score}점</span></div>
@@ -125,7 +180,7 @@ export default function MarketingCenterPage() {
           <Globe2 className="text-emerald-700" size={22} />
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {SERVICES.map(({ id, title, description, icon: Icon, items }) => {
+          {SERVICES.map(({ id, title, description, icon: Icon, items, listPrice, promoPrice, billing, priceNote }) => {
             const selected = selectedServices.includes(id);
             return (
               <button key={id} type="button" onClick={() => toggleService(id)} className={`app-surface rounded-[22px] p-5 text-left transition ${selected ? 'border-emerald-400 ring-2 ring-emerald-100' : 'hover:-translate-y-0.5 hover:border-slate-300'}`}>
@@ -133,6 +188,14 @@ export default function MarketingCenterPage() {
                 <h3 className="mt-4 font-bold text-slate-950">{title}</h3>
                 <p className="mt-2 text-xs leading-5 text-slate-500">{description}</p>
                 <ul className="mt-4 space-y-2">{items.map((item) => <li key={item} className="flex items-center gap-2 text-xs text-slate-600"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{item}</li>)}</ul>
+                <div className="mt-4 border-t border-slate-100 pt-3">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-lg font-bold text-slate-950">{won(promoPrice)}</span>
+                    <span className="text-xs text-slate-400 line-through">{won(listPrice)}</span>
+                    <span className="text-[10px] font-bold text-emerald-700">{billing === 'monthly' ? '월' : '1회'}</span>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-4 text-slate-400">{priceNote}</p>
+                </div>
               </button>
             );
           })}
@@ -161,6 +224,31 @@ export default function MarketingCenterPage() {
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">현재 상황과 목표</label>
               <textarea className="field-control min-h-32 resize-y" value={note} onChange={(event) => setNote(event.target.value)} placeholder="현재 홈페이지 주소, 주요 지역, 원하는 상담 건수 등을 적어주세요." />
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700">선택 항목 예상 견적</span>
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{PROMOTION.label} 적용</span>
+              </div>
+              {quote.picked.length === 0 && <p className="mt-3 text-xs text-slate-500">위에서 필요한 서비스를 선택하면 견적이 계산됩니다.</p>}
+              {quote.picked.length > 0 && (
+                <>
+                  <ul className="mt-3 space-y-1.5">
+                    {quote.picked.map((service) => (
+                      <li key={service.id} className="flex items-center justify-between text-xs text-slate-600">
+                        <span>{service.title}</span>
+                        <span className="font-semibold text-slate-800">{won(service.promoPrice)}{service.billing === 'monthly' ? ' / 월' : ''}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 space-y-1 border-t border-slate-200 pt-3">
+                    {quote.onceTotal > 0 && <div className="flex items-center justify-between text-sm"><span className="text-slate-600">초기 비용</span><span className="font-bold text-slate-950">{won(quote.onceTotal)}</span></div>}
+                    {quote.monthlyTotal > 0 && <div className="flex items-center justify-between text-sm"><span className="text-slate-600">월 운영비</span><span className="font-bold text-slate-950">{won(quote.monthlyTotal)}</span></div>}
+                    {discount > 0 && <div className="flex items-center justify-between text-xs text-emerald-700"><span>프로모션 할인</span><span className="font-semibold">-{won(discount)}</span></div>}
+                  </div>
+                </>
+              )}
+              <p className="mt-3 text-[11px] leading-4 text-slate-400">부가세 포함 금액입니다. {PROMOTION.note} 최종 금액은 상담 후 확정됩니다.</p>
             </div>
             {notice && <div className={`rounded-xl border px-3.5 py-3 text-sm ${notice.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-700'}`}>{notice.text}</div>}
             <button className="primary-button w-full !py-3" disabled={!agencyId || selectedServices.length === 0 || submitting}><Send size={16} />{submitting ? '접수 중' : '상담 요청 접수'}</button>

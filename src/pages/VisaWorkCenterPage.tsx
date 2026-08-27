@@ -1,6 +1,7 @@
+// 고객별 F-6 비자 사건의 단계·기한을 관리하고 신청 대행 수임료를 안내하는 화면
 import { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
-import { CalendarClock, CheckCircle2, ClipboardCheck, FileWarning, Landmark, Plus, ShieldCheck } from 'lucide-react';
+import { CalendarClock, CheckCircle2, ClipboardCheck, FileWarning, Landmark, Plus, ShieldCheck, Wallet } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
@@ -26,6 +27,30 @@ const STAGES: Array<{ id: VisaStage; label: string; description: string }> = [
   { id: 'supplement', label: '보완 대응', description: '보완요청 기한과 답변 관리' },
   { id: 'approved', label: '허가 완료', description: '발급·입국 후속 절차 안내' },
 ];
+
+/**
+ * F-6 신청 대행 수임료. 단순 서류대행(행정사 기준 30만원대)이 아니라 요건 진단부터
+ * 혼인 진정성 소명, 보완 대응까지 포함한 종합 수임 기준이다. 실제 수임 주체는
+ * 제휴 법률사무소이며 금액은 부가세 포함이다.
+ */
+const VISA_FEE = {
+  memberPrice: 1_000_000,
+  nonMemberPrice: 1_300_000,
+  included: [
+    '신청 전 요건 진단과 불허 위험 점검',
+    '필수서류 목록 작성과 수집 가이드',
+    '혼인 진정성 소명자료 구성과 작성',
+    '제출서류 최종 검토와 접수 지원',
+    '보완요청 1회 대응 문서 작성',
+  ],
+  excluded: [
+    '인지대 등 관공서 납부 실비',
+    '번역·공증·아포스티유 비용',
+    '현지 통역과 출장 비용',
+  ],
+};
+
+const fee = (value: number) => `${(value / 10_000).toLocaleString()}만원`;
 
 const STAGE_STYLE: Record<VisaStage, string> = {
   intake: 'bg-slate-100 text-slate-700',
@@ -139,6 +164,38 @@ export default function VisaWorkCenterPage() {
       <section className="app-surface rounded-[24px] p-5 sm:p-6">
         <div className="flex items-center justify-between"><div><div className="eyebrow">Workflow</div><h2 className="mt-1 text-lg font-bold text-slate-950">표준 진행 단계</h2></div><ClipboardCheck className="text-emerald-700" size={21} /></div>
         <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">{STAGES.map((stage, index) => <div key={stage.id} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4"><div className="text-[10px] font-bold text-emerald-700">STEP {index + 1}</div><div className="mt-2 text-sm font-bold text-slate-900">{stage.label}</div><p className="mt-1 text-[11px] leading-5 text-slate-500">{stage.description}</p></div>)}</div>
+      </section>
+
+      <section className="app-surface rounded-[24px] p-5 sm:p-6">
+        <div className="flex items-center justify-between"><div><div className="eyebrow">Service fee</div><h2 className="mt-1 text-lg font-bold text-slate-950">F-6 신청 대행 수임료</h2></div><Wallet className="text-emerald-700" size={21} /></div>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="relative rounded-[22px] border-2 border-emerald-500 bg-emerald-50/50 p-5">
+            <span className="absolute -top-3 left-5 rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-bold text-white">회원 업체</span>
+            <div className="mt-2 text-3xl font-bold tracking-tight text-slate-950">{fee(VISA_FEE.memberPrice)}</div>
+            <p className="mt-1 text-xs text-slate-500">건당 · 부가세 포함</p>
+            <p className="mt-3 text-xs font-semibold text-emerald-700">비회원 대비 {fee(VISA_FEE.nonMemberPrice - VISA_FEE.memberPrice)} 절약</p>
+          </div>
+          <div className="rounded-[22px] border border-slate-200 bg-white p-5">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-slate-600">비회원</span>
+            <div className="mt-3 text-3xl font-bold tracking-tight text-slate-500">{fee(VISA_FEE.nonMemberPrice)}</div>
+            <p className="mt-1 text-xs text-slate-400">건당 · 부가세 포함</p>
+            <p className="mt-3 text-xs text-slate-400">플랫폼에 업체 등록 후 신청하면 회원가가 적용됩니다.</p>
+          </div>
+        </div>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div>
+            <div className="text-xs font-bold text-slate-700">포함 범위</div>
+            <ul className="mt-2.5 space-y-2">{VISA_FEE.included.map((item) => <li key={item} className="flex items-start gap-2 text-xs leading-5 text-slate-600"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-emerald-600" />{item}</li>)}</ul>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-slate-700">별도 비용</div>
+            <ul className="mt-2.5 space-y-2">{VISA_FEE.excluded.map((item) => <li key={item} className="flex items-start gap-2 text-xs leading-5 text-slate-500"><span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-300" />{item}</li>)}</ul>
+          </div>
+        </div>
+        <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-[11px] leading-5 text-amber-900">
+          출입국 민원 대행은 등록된 대행기관과 변호사만 수행할 수 있습니다. 신청 대행은 제휴 법률사무소가 수임하며
+          중개업체는 서류 준비를 보조합니다. 수임료는 사건 난이도에 따라 상담 후 조정될 수 있고, 발급을 보장하지 않습니다.
+        </p>
       </section>
 
       <section className="app-surface overflow-hidden rounded-[24px]">
