@@ -10,13 +10,14 @@
     "typecheck": "tsc --noEmit",
     "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes,storage",
     "deploy:hosting": "npm run build && firebase deploy --only hosting",
-    "deploy:cloudflare": "npm run build && wrangler deploy && npm run indexnow",
+    "deploy:cloudflare": "npm run build && wrangler deploy && npm run indexnow && npm run score:seo",
     "deploy:all": "npm run build && firebase deploy",
     "emulators": "firebase emulators:start",
     "seed:emulator": "node scripts/seedEmulator.mjs",
     "score:saas": "node scripts/evaluateSaas.mjs",
     "prerender": "node scripts/prerender.mjs",
-    "indexnow": "node scripts/indexnow.mjs"
+    "indexnow": "node scripts/indexnow.mjs",
+    "score:seo": "node scripts/seoScore.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
