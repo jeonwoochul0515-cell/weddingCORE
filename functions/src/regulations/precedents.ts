@@ -22,24 +22,45 @@ type TrackId = 'marriage' | 'study' | 'extension';
  * 처분 이름 그대로 한 덩어리씩 던진다.
  */
 const CASE_QUERIES: Array<{ q: string; tracks: TrackId[]; kind: 'prec' | 'decc' }> = [
+  // 처분 이름 그대로 던진다. 두 단어를 붙이면 법제처가 0건을 준다.
   { q: '사증발급거부', tracks: ['marriage', 'study', 'extension'], kind: 'prec' },
+  { q: '사증발급', tracks: ['marriage', 'study', 'extension'], kind: 'prec' },
+  { q: '체류자격', tracks: ['marriage', 'study', 'extension'], kind: 'prec' },
   { q: '체류기간연장불허가', tracks: ['extension'], kind: 'prec' },
   { q: '체류자격변경불허가', tracks: ['extension', 'study'], kind: 'prec' },
+  { q: '외국인등록', tracks: ['marriage', 'study', 'extension'], kind: 'prec' },
   { q: '출국명령', tracks: ['marriage', 'study', 'extension'], kind: 'prec' },
   { q: '강제퇴거', tracks: ['marriage', 'study', 'extension'], kind: 'prec' },
+  { q: '불법체류', tracks: ['marriage', 'study', 'extension'], kind: 'prec' },
+  { q: '출입국관리법위반', tracks: ['marriage', 'study', 'extension'], kind: 'prec' },
+  { q: '통보의무', tracks: ['marriage', 'study', 'extension'], kind: 'prec' },
   { q: '결혼이민', tracks: ['marriage'], kind: 'prec' },
+  { q: '국제결혼', tracks: ['marriage'], kind: 'prec' },
   { q: '혼인무효', tracks: ['marriage'], kind: 'prec' },
+  { q: '귀화', tracks: ['marriage'], kind: 'prec' },
+  { q: '국적취득', tracks: ['marriage'], kind: 'prec' },
   { q: '국적신청불허', tracks: ['marriage'], kind: 'prec' },
   { q: '결혼중개업', tracks: ['marriage'], kind: 'prec' },
+  { q: '유학', tracks: ['study'], kind: 'prec' },
+  { q: '난민인정', tracks: ['extension'], kind: 'prec' },
   { q: '난민불인정', tracks: ['extension'], kind: 'prec' },
+
   // 행정심판 재결례(국민권익위원회). '사증' 한 단어로 던지면 "항공신체검사증명" 같은
-  // 부분 문자열 오탐이 섞인다. 처분 이름으로 좁힌다.
+  // 부분 문자열 오탐이 섞이므로 처분 이름으로 좁힌다.
   { q: '사증발급거부', tracks: ['marriage', 'study', 'extension'], kind: 'decc' },
+  { q: '사증발급', tracks: ['marriage', 'study', 'extension'], kind: 'decc' },
   { q: '사증발급인정서', tracks: ['marriage', 'study'], kind: 'decc' },
+  { q: '체류자격', tracks: ['marriage', 'study', 'extension'], kind: 'decc' },
   { q: '체류기간연장', tracks: ['extension'], kind: 'decc' },
   { q: '체류자격변경', tracks: ['extension', 'study'], kind: 'decc' },
+  { q: '근무처변경', tracks: ['extension'], kind: 'decc' },
   { q: '출국명령', tracks: ['marriage', 'study', 'extension'], kind: 'decc' },
+  { q: '국제결혼', tracks: ['marriage'], kind: 'decc' },
   { q: '결혼중개업', tracks: ['marriage'], kind: 'decc' },
+  { q: '귀화', tracks: ['marriage'], kind: 'decc' },
+  { q: '유학', tracks: ['study'], kind: 'decc' },
+  { q: '외국인근로자', tracks: ['extension'], kind: 'decc' },
+  { q: '난민인정', tracks: ['extension'], kind: 'decc' },
 ];
 
 type ListItem = Record<string, string>;
@@ -81,7 +102,7 @@ async function fetchDetail(kind: 'prec' | 'decc', id: string) {
   return root ?? {};
 }
 
-async function runCollect(limitPerQuery = 30) {
+async function runCollect(limitPerQuery = 60) {
   const db = getFirestore();
   let seen = 0;
   let saved = 0;
