@@ -84,6 +84,21 @@ const CASE_QUERIES: Array<{ q: string; tracks: TrackId[]; kind: 'prec' | 'decc' 
   // 관련성 검사에 걸러지도록 두되 조회는 한다 — 출입국사범 사건이 실무에 직결된다.
   { q: '통고처분', tracks: ['extension'], kind: 'decc' },
   { q: '출입국사범', tracks: ['extension'], kind: 'prec' },
+
+  // 유학 트랙 보강 시도. 결과는 신규 0건이었다(2026-08-28 실측).
+  // 후보 검색어를 전부 재도 17건뿐이었고, 그 17건이 모두 관련성 검사에 걸러졌다
+  // — 학사 징계·학위 다툼이지 비자 사건이 아니었다.
+  // ⇒ 유학 비자 거부는 재신청이 빨라 다투지 않는다는 것이 실증됐다.
+  //   유학 요건의 기준은 판례가 아니라 시행규칙 별표와 교육부 교육국제화역량
+  //   인증제(인증 여부가 재정 증빙 요구 수준을 좌우한다)에서 와야 한다.
+  // 질의는 남겨 둔다 — "이미 다 뒤졌다"는 기록이자, 나중에 사건이 생기면 잡힌다.
+  // '제적'(246건)은 학생 징계·군 제적이 대부분이라 넣지 않는다.
+  { q: '유학생', tracks: ['study'], kind: 'decc' },
+  { q: '입학허가', tracks: ['study'], kind: 'prec' },
+  { q: '입학허가', tracks: ['study'], kind: 'decc' },
+  { q: '대학원', tracks: ['study'], kind: 'prec' },
+  { q: '대학원', tracks: ['study'], kind: 'decc' },
+  { q: '휴학', tracks: ['study'], kind: 'decc' },
 ];
 
 /**
