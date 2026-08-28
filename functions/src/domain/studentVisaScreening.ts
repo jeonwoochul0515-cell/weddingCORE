@@ -1,4 +1,4 @@
-// 유학 비자 심사의 첫 관문 — 대학이 몇 등급인가
+// 유학 비자 심사 — 대학 등급과 국적, 둘의 조합이 결과를 정한다
 //
 // 유학(D-2/D-4) 비자에는 "학생이 얼마를 갖고 있어야 하는가" 같은 학생 단위 기준이 없다.
 // 기준이 학생이 아니라 **대학에 붙는다.** 같은 재정 상태라도 인증대학이면 재정 증빙 없이
@@ -6,6 +6,14 @@
 //
 // 그래서 유학 상담에서 가장 먼저 확인할 것은 학생의 서류가 아니라 학교의 등급이다.
 // 등급을 모르면 어떤 서류를 준비해야 하는지도 정할 수 없다.
+//
+// 여기에 국적이 겹친다. 인증대학이면 표준입학허가서만으로 심사받지만, 법무부장관
+// 고시 21개국 출신이면 인증대학이어도 재정능력 서류를 내야 한다. 몽골·베트남·중국
+// 같은 주요 유학생 송출국이 대부분 여기 들어 있어서, 실제로는 "인증대학이라 서류가
+// 필요 없다"가 적용되는 경우가 많지 않다.
+//
+// 이 조합을 한눈에 못 보는 것이 유학 시장에 브로커가 끼는 자리다. 363개 대학 ×
+// 과정 2종 × 국적을 사람이 외울 수 없기 때문이다.
 //
 // 출처: 교육부·법무부 「2025년 교육국제화역량 인증 심사 및 유학생 유치·관리 실태조사 결과」
 //       (2026-02-12 발표). 인증 기간 2026-03 ~ 2030-02, 매년 모니터링으로 취소 가능.
@@ -168,5 +176,132 @@ export function lookupUniversityTier(name: string, course: Course = 'degree'): T
     advice:
       '일반대학과 컨설팅대학은 명단이 공개되지 않아 구분할 수 없습니다. 재정능력 서류를 갖춘다는 전제로 준비하고, 학교에 심사 이력을 확인하십시오.',
     certain: false,
+  };
+}
+
+// ───────────────────────────────────────────────────────────────
+// 국적 — 같은 대학이라도 어느 나라에서 오느냐로 서류가 달라진다
+
+/**
+ * 법무부장관 고시 21개국. 불법체류가 많이 발생한 나라로, 인증대학에 가더라도
+ * 재정능력 입증서류를 내야 한다. 주요 유학생 송출국이 대부분 여기 들어 있다.
+ */
+export const DESIGNATED_COUNTRIES: string[] = [
+  '중국', '필리핀', '인도네시아', '방글라데시', '베트남', '몽골', '태국',
+  '파키스탄', '스리랑카', '인도', '미얀마', '네팔', '이란', '우즈베키스탄',
+  '카자흐스탄', '키르기스스탄', '우크라이나', '나이지리아', '가나', '페루', '이집트',
+];
+
+/** 유학생 중점관리 대상 5개국. 고시국가보다 관리가 더 강하다. */
+export const FOCUS_COUNTRIES: string[] = [
+  '기니', '말리', '에티오피아', '우간다', '카메룬',
+];
+
+/** 표기 흔들림(키르기스스탄/키르기즈스탄 등)을 흡수한다. */
+const COUNTRY_ALIAS: Record<string, string> = {
+  키르기즈스탄: '키르기스스탄',
+  버마: '미얀마',
+  우즈벡: '우즈베키스탄',
+  카작스탄: '카자흐스탄',
+};
+
+function canonCountry(name: string): string {
+  const n = name.replace(/\s+/g, '').trim();
+  return COUNTRY_ALIAS[n] ?? n;
+}
+
+export type CountryGroup = 'designated' | 'focus' | 'general';
+
+export function lookupCountryGroup(nationality: string): CountryGroup {
+  const n = canonCountry(nationality);
+  if (FOCUS_COUNTRIES.includes(n)) return 'focus';
+  if (DESIGNATED_COUNTRIES.includes(n)) return 'designated';
+  return 'general';
+}
+
+// ───────────────────────────────────────────────────────────────
+// 조합 판정 — 브로커가 파는 정보가 바로 이것이다
+
+export type ScreeningInput = {
+  university: string;
+  course?: Course;
+  nationality: string;
+};
+
+export type ScreeningResult = {
+  tier: TierResult;
+  countryGroup: CountryGroup;
+  /** 발급 전망. 확정이 아니라 안내다 */
+  outlook: 'blocked' | 'heavier' | 'standard';
+  headline: string;
+  /** 준비해야 할 서류 */
+  documents: string[];
+  /** 먼저 짚어야 할 점 */
+  cautions: string[];
+};
+
+/**
+ * 대학과 국적을 함께 보고 무엇을 준비해야 하는지 돌려준다.
+ *
+ * 이 결과는 안내이지 심사 결과가 아니다. 실제 발급 여부는 공관과 출입국이
+ * 개별 사안을 보고 정하므로, 화면에서 "발급됩니다/안 됩니다"로 단정하면 안 된다.
+ */
+export function screenStudentVisa(input: ScreeningInput): ScreeningResult {
+  const course: Course = input.course ?? 'degree';
+  const tier = lookupUniversityTier(input.university, course);
+  const countryGroup = lookupCountryGroup(input.nationality);
+
+  const documents: string[] = ['표준입학허가서', '여권', '최종학력 증명(아포스티유 또는 영사확인)'];
+  const cautions: string[] = [];
+
+  // 1) 대학이 막혀 있으면 국적을 볼 것도 없다
+  if (tier.tier === 'restricted') {
+    return {
+      tier,
+      countryGroup,
+      outlook: 'blocked',
+      headline: '이 학교로는 사증 발급이 원칙적으로 금지되어 있습니다.',
+      documents: [],
+      cautions: [
+        '서류를 준비하기 전에 학교를 다시 정하는 것이 먼저입니다.',
+        `${course === 'degree' ? '학위과정' : '어학연수과정'} 기준입니다. 같은 학교라도 다른 과정은 등급이 다를 수 있습니다.`,
+      ],
+    };
+  }
+
+  // 2) 인증 여부와 국적의 조합으로 재정능력 서류가 갈린다
+  const certified = tier.tier === 'premium' || tier.tier === 'certified';
+  const needsFinance = !certified || countryGroup !== 'general';
+
+  if (needsFinance) {
+    documents.push('재정능력 입증서류(잔고증명 등)');
+    if (certified) {
+      cautions.push(
+        '인증대학이지만 법무부장관 고시국가·중점관리국가 출신은 재정능력 서류를 제출해야 합니다.',
+      );
+    }
+  }
+  if (!certified) {
+    documents.push('학력 요건 증빙', '어학능력 증빙');
+    cautions.push(
+      '인증대학 명단에 없어 대학의 관리능력·학력 요건·재정능력을 함께 심사받게 됩니다.',
+    );
+    cautions.push(
+      '명단에 없다는 것이 곧 제재 대상이라는 뜻은 아닙니다. 일반대학과 컨설팅대학은 명단이 공개되지 않습니다.',
+    );
+  }
+  if (countryGroup === 'focus') {
+    cautions.push('중점관리 대상 국가로 분류되어 심사가 더 엄격합니다.');
+  }
+
+  return {
+    tier,
+    countryGroup,
+    outlook: needsFinance ? 'heavier' : 'standard',
+    headline: certified
+      ? `${tier.label}입니다. ${needsFinance ? '다만 국적 때문에 재정능력 서류가 필요합니다.' : '표준입학허가서만으로 심사받을 수 있습니다.'}`
+      : '인증대학 명단에 없어 재정능력을 포함한 심사를 받게 됩니다.',
+    documents,
+    cautions,
   };
 }
