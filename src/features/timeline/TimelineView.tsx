@@ -24,6 +24,7 @@ const ANCHOR_LABEL: Record<AnchorKey, string> = {
   meeting_scheduled: '맞선 예정일',
   marriage_registered: '혼인신고일',
   entry_date: '입국일',
+  stay_expiry: '체류만료일',
 };
 
 const STATUS_META: Record<

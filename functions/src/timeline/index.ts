@@ -8,7 +8,9 @@ const REGION = 'asia-northeast3';
 
 type DueDateRule = {
   type: 'relative' | 'absolute';
-  anchor: 'client_created' | 'contract_signed' | 'meeting_scheduled' | 'marriage_registered' | 'entry_date';
+  anchor: 'client_created' | 'contract_signed' | 'meeting_scheduled' | 'marriage_registered' | 'entry_date'
+    // 체류만료일. 연장 때마다 새 만료일로 갱신하면 다음 기한이 자동으로 다시 계산된다.
+    | 'stay_expiry';
   offsetDays: number;
 };
 

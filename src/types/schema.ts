@@ -201,7 +201,12 @@ export type AnchorKey =
   | 'contract_signed'
   | 'meeting_scheduled'
   | 'marriage_registered'
-  | 'entry_date';
+  | 'entry_date'
+  /**
+   * 체류만료일. 다른 앵커와 달리 한 번 찍고 끝나는 시점이 아니라
+   * 연장할 때마다 새 만료일로 갱신하는 값이다. 갱신하면 연장 기한이 다시 계산된다.
+   */
+  | 'stay_expiry';
 
 export type Client = {
   clientId: string;

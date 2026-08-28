@@ -36,7 +36,9 @@ export type ObligationTemplateSeed = {
   disputeRisk: string; // 분쟁 시나리오 (변호사 관점)
   dueDateRule: {
     type: 'relative' | 'absolute';
-    anchor: 'client_created' | 'contract_signed' | 'meeting_scheduled' | 'marriage_registered' | 'entry_date';
+    anchor: 'client_created' | 'contract_signed' | 'meeting_scheduled' | 'marriage_registered' | 'entry_date'
+    // 체류만료일. 연장 때마다 새 만료일로 갱신하면 다음 기한이 자동으로 다시 계산된다.
+    | 'stay_expiry';
     offsetDays: number;
   };
   requiredEvidence: string[];
@@ -780,6 +782,51 @@ const MARRIAGE_BROKERAGE_OBLIGATIONS: ObligationTemplateSeed[] = [
     requiredEvidence: ['전체 서류 아카이브 완료 확인'],
     checkRule: { type: 'manual', params: {} },
     severity: 'high', order: 606,
+  },
+
+  // ── 사후관리 · 체류 이어가기
+  //
+  // 여기서부터는 결혼중개업법이 아니라 출입국 절차다. 다만 고객이 우리를 다시 찾는
+  // 지점이라 같은 세트에 둔다. F-6는 최초 1년, 조기적응프로그램을 이수하면 2년까지
+  // 부여되므로 한 고객이 연장을 한두 번 하고 영주·귀화로 넘어간다.
+  {
+    code: 'STAY_EXTENSION',
+    stage: 6, category: 'aftercare',
+    title: '체류기간 연장 신청 (F-6)',
+    description:
+      '체류기간이 끝나기 전에 연장 허가를 받아야 한다. 만료일이 지나면 불법체류가 되어 ' +
+      '연장 자체가 어려워진다. 허가가 나면 새 만료일로 이 항목의 체류만료일을 갱신한다. ' +
+      '그래야 다음 연장 기한이 다시 계산된다.',
+    legalBasis: '출입국관리법 제25조, 같은 법 시행령 제31조',
+    penaltyRange:
+      '기간 내 미신청 시 불법체류로 범칙금·출국명령 대상이 될 수 있다. 연장 심사에서는 ' +
+      '혼인관계 유지와 생계 유지 여부를 함께 본다.',
+    disputeRisk:
+      '연장 불허는 체류 실태(혼인관계 단절, 별거, 소득)가 쟁점이 되는 경우가 많다. ' +
+      '거부 사례는 「거부 사례」 화면의 체류 실태 유지 요건에서 볼 수 있다.',
+    dueDateRule: { type: 'relative', anchor: 'stay_expiry', offsetDays: -60 },
+    requiredEvidence: ['외국인등록증 사본', '혼인관계증명서', '체류지 입증', '소득·재산 증빙'],
+    checkRule: { type: 'manual', params: {} },
+    severity: 'critical', order: 607,
+  },
+  {
+    code: 'PR_NATURALIZATION_ELIGIBLE',
+    stage: 6, category: 'aftercare',
+    title: '영주(F-5)·간이귀화 자격 도달 안내',
+    description:
+      '혼인 상태로 2년 이상 국내에 체류하면 영주 자격 변경이나 간이귀화를 신청할 수 있는 ' +
+      '시점에 이른다(혼인 후 3년이 지났으면 1년 체류로도 간이귀화 요건을 볼 수 있다). ' +
+      '요건 충족 여부는 개별 사정에 따라 다르므로 확인 후 안내한다.',
+    legalBasis: '국적법 제6조 제2항, 출입국관리법 제46조',
+    penaltyRange:
+      '해당 없음. 다만 시점을 놓치면 고객이 연장을 반복하며 불필요한 비용을 계속 낸다.',
+    disputeRisk:
+      '귀화·영주 불허는 생계유지 능력과 품행 요건에서 다투어진다. 거부 사례는 ' +
+      '「거부 사례」 화면의 간이귀화·영주 요건에서 볼 수 있다.',
+    dueDateRule: { type: 'relative', anchor: 'marriage_registered', offsetDays: 730 },
+    requiredEvidence: ['혼인관계증명서', '국내 거주 기간 입증', '소득·재산 증빙'],
+    checkRule: { type: 'manual', params: {} },
+    severity: 'medium', order: 608,
   },
 ];
 
