@@ -165,3 +165,4 @@ export { submitConsult, weddingcoreAdmin } from './consult/index.js';
 
 // 비자 거부·불허 판례·결정례 수집
 export { collectPrecedents, runPrecedentCollectNow } from './regulations/precedents.js';
+export { tagPrecedentRequirements, runRequirementTaggingNow } from './regulations/tagRequirements.js';

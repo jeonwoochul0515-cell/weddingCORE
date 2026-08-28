@@ -61,7 +61,63 @@ const CASE_QUERIES: Array<{ q: string; tracks: TrackId[]; kind: 'prec' | 'decc' 
   { q: '유학', tracks: ['study'], kind: 'decc' },
   { q: '외국인근로자', tracks: ['extension'], kind: 'decc' },
   { q: '난민인정', tracks: ['extension'], kind: 'decc' },
+
+  // 2차 확장. 실효성을 미리 재서 결과가 있는 것만 남겼다.
+  // '이혼'(674건)·'보호명령'(107건)은 일반 가사·가정폭력 사건이 대부분이라 넣지 않는다.
+  // 관련성 검사(isRelevant)가 걸러내긴 하지만, 조회 자체가 낭비다.
+  { q: '체류허가', tracks: ['extension'], kind: 'decc' }, // 재결례 120건. 이번 확장의 핵심
+  { q: '체류허가', tracks: ['extension'], kind: 'prec' },
+  { q: '영주', tracks: ['marriage', 'extension'], kind: 'prec' },
+  { q: '영주', tracks: ['marriage', 'extension'], kind: 'decc' },
+  { q: '신원보증', tracks: ['marriage', 'study'], kind: 'prec' },
+  { q: '초청', tracks: ['marriage'], kind: 'prec' },
+  { q: '입국불허', tracks: ['marriage', 'study', 'extension'], kind: 'decc' },
+  { q: '재입국허가', tracks: ['extension'], kind: 'decc' },
+  { q: '등록외국인', tracks: ['extension'], kind: 'prec' },
+  { q: '외국인보호', tracks: ['extension'], kind: 'prec' },
+  { q: '보호일시해제', tracks: ['extension'], kind: 'decc' },
+  { q: '간이귀화', tracks: ['marriage'], kind: 'decc' },
+  { q: '국적판정', tracks: ['marriage'], kind: 'prec' },
+  { q: '혼인파탄', tracks: ['marriage'], kind: 'prec' },
+  { q: '난민신청', tracks: ['extension'], kind: 'prec' },
+  // 통고처분·범칙금은 출입국사범 사건이 섞여 있으나 관세·도로교통이 더 많다.
+  // 관련성 검사에 걸러지도록 두되 조회는 한다 — 출입국사범 사건이 실무에 직결된다.
+  { q: '통고처분', tracks: ['extension'], kind: 'decc' },
+  { q: '출입국사범', tracks: ['extension'], kind: 'prec' },
 ];
+
+/**
+ * 우리 영역의 사건인지 본다.
+ *
+ * 법제처 검색은 낱말만 맞으면 돌려주므로 '통고처분'에 관세 사건이, '영주'에
+ * 지명이 섞인다. 무관한 사건이 쌓이면 나중에 근거로 인용할 때 걸러낼 수 없다.
+ * 저장 전에 한 번 거른다.
+ */
+const DOMAIN_TERMS = [
+  '출입국관리법',
+  '체류자격',
+  '체류기간',
+  '사증',
+  '외국인등록',
+  '강제퇴거',
+  '출국명령',
+  '입국금지',
+  '귀화',
+  '국적법',
+  '난민',
+  '결혼중개',
+  '재외동포',
+  '영주자격',
+  '외국인근로자',
+  '고용허가',
+  '출입국·외국인',
+  '출입국관리사무소',
+];
+
+function isRelevant(...parts: string[]): boolean {
+  const text = parts.join(' ');
+  return DOMAIN_TERMS.some((t) => text.includes(t));
+}
 
 type ListItem = Record<string, string>;
 
@@ -102,10 +158,11 @@ async function fetchDetail(kind: 'prec' | 'decc', id: string) {
   return root ?? {};
 }
 
-async function runCollect(limitPerQuery = 60) {
+async function runCollect(limitPerQuery = 100) {
   const db = getFirestore();
   let seen = 0;
   let saved = 0;
+  let offTopic = 0;
   const skipped: string[] = [];
 
   for (const { q, tracks, kind } of CASE_QUERIES) {
@@ -148,10 +205,21 @@ async function runCollect(limitPerQuery = 60) {
       // 판례와 행정심판 재결례는 필드 이름이 다르다. 재결례에는 "왜 거부했고
       // 왜 유지·취소됐는지"가 이유·재결요지에 들어 있어 실무에서 가장 값지다.
       const isRuling = kind === 'decc';
+      const caseName = clean(item['사건명'] ?? detail['사건명']);
+      const holding = clean(isRuling ? detail['재결요지'] : detail['판결요지']);
+      const references = clean(detail['참조조문']);
+      const body = clean(isRuling ? detail['이유'] : detail['판례내용']);
+
+      // 낱말만 맞은 무관한 사건은 저장하지 않는다. 한 번 섞이면 나중에 걸러낼 수 없다.
+      if (!isRelevant(caseName, holding, references, body.slice(0, 5000))) {
+        offTopic += 1;
+        continue;
+      }
+
       await ref.set({
         kind,
         caseNumber: caseNumber || clean(detail['사건번호']),
-        caseName: clean(item['사건명'] ?? detail['사건명']),
+        caseName,
         courtName: clean(item['법원명'] ?? item['재결청'] ?? detail['재결청']),
         // 재결례는 처분청(거부한 기관)이 누구인지가 중요하다
         agency: clean(item['처분청'] ?? detail['처분청']),
@@ -159,10 +227,10 @@ async function runCollect(limitPerQuery = 60) {
         disposedOn: clean(item['처분일자'] ?? detail['처분일자']),
         caseType: clean(item['사건종류명'] ?? item['재결구분명'] ?? detail['재결례유형명']),
         summary: clean(isRuling ? detail['청구취지'] : detail['판시사항']).slice(0, 4000),
-        holding: clean(isRuling ? detail['재결요지'] : detail['판결요지']).slice(0, 8000),
+        holding: holding.slice(0, 8000),
         disposition: clean(detail['주문']).slice(0, 2000),
-        references: clean(detail['참조조문']).slice(0, 2000),
-        body: clean(isRuling ? detail['이유'] : detail['판례내용']).slice(0, 40000),
+        references: references.slice(0, 2000),
+        body: body.slice(0, 40000),
         tracks,
         matchedBy: [q],
         sourceUrl: 'https://www.law.go.kr',
@@ -172,8 +240,10 @@ async function runCollect(limitPerQuery = 60) {
     }
   }
 
-  logger.info(`판례 수집 — 조회 ${seen}건 · 신규 ${saved}건 · 실패 질의 ${skipped.length}`);
-  return { ok: true, seen, saved, skippedQueries: skipped };
+  logger.info(
+    `판례 수집 — 조회 ${seen}건 · 신규 ${saved}건 · 무관 제외 ${offTopic}건 · 실패 질의 ${skipped.length}`,
+  );
+  return { ok: true, seen, saved, offTopic, skippedQueries: skipped };
 }
 
 /** 판례는 자주 늘지 않는다. 주 1회면 충분하다. */
