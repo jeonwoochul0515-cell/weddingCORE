@@ -130,3 +130,5 @@ export { extractBusinessRegistration } from './agency/registrationOcr.js';
 export { generateLegalDocument, grantAiCarats, recordAutomationConsent, reviewLegalDocument, } from './automation/index.js';
 // 상담 접수와 중앙 접수함 연동
 export { submitConsult, weddingcoreAdmin } from './consult/index.js';
+// 비자 거부·불허 판례·결정례 수집
+export { collectPrecedents, runPrecedentCollectNow } from './regulations/precedents.js';
