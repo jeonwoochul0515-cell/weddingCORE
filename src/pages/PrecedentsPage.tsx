@@ -63,16 +63,21 @@ function KindBadge({ kind }: { kind: 'prec' | 'decc' }) {
 
 function RequirementBadges({
   keys,
+  weakKeys,
   confidence,
 }: {
   keys: string[];
+  weakKeys: string[];
   confidence: 'auto' | 'reviewed' | 'none';
 }) {
-  const shown = keys.filter((k) => REQUIREMENT_LABEL[k]);
-  if (shown.length === 0) return null;
+  const strong = keys.filter((k) => REQUIREMENT_LABEL[k]);
+  // 강하게 걸린 요건은 약한 쪽에서 뺀다. 같은 요건이 두 번 보이면 헷갈린다.
+  const weak = weakKeys.filter((k) => REQUIREMENT_LABEL[k] && !keys.includes(k));
+  if (strong.length === 0 && weak.length === 0) return null;
+
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {shown.map((k) => (
+      {strong.map((k) => (
         <span
           key={k}
           className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700"
@@ -80,8 +85,18 @@ function RequirementBadges({
           {REQUIREMENT_LABEL[k]}
         </span>
       ))}
+      {/* 본문에서만 낱말이 걸린 것이라 쟁점이 아닐 수 있다. 색을 달리해 구분한다. */}
+      {weak.map((k) => (
+        <span
+          key={k}
+          className="rounded-md border border-dashed border-slate-300 px-1.5 py-0.5 text-[11px] text-slate-500"
+          title="본문에서 관련 표현이 발견됐지만 이 사건의 쟁점이 아닐 수 있습니다"
+        >
+          {REQUIREMENT_LABEL[k]}?
+        </span>
+      ))}
       {/* 낱말 매칭으로 붙인 분류다. 사람이 검수한 것과 구분해 보여준다. */}
-      {confidence === 'auto' && (
+      {confidence === 'auto' && strong.length > 0 && (
         <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500">
           자동 분류
         </span>
@@ -139,6 +154,7 @@ function DetailModal({ id, onClose }: { id: string; onClose: () => void }) {
 
             <RequirementBadges
               keys={detail.requirements}
+              weakKeys={detail.requirementsWeak}
               confidence={detail.requirementConfidence}
             />
 
@@ -222,7 +238,11 @@ function PrecedentCard({ item, onOpen }: { item: PrecedentSummary; onOpen: () =>
       {item.summary && (
         <p className="mb-3 line-clamp-3 text-sm leading-relaxed text-slate-600">{item.summary}</p>
       )}
-      <RequirementBadges keys={item.requirements} confidence={item.requirementConfidence} />
+      <RequirementBadges
+        keys={item.requirements}
+        weakKeys={item.requirementsWeak}
+        confidence={item.requirementConfidence}
+      />
     </button>
   );
 }
@@ -232,6 +252,7 @@ export default function PrecedentsPage() {
   const requirement = params.get('requirement') ?? '';
   const kind = params.get('kind') ?? '';
   const [keyword, setKeyword] = useState('');
+  const [includeWeak, setIncludeWeak] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
 
   const counts = usePrecedentCounts();
@@ -240,6 +261,7 @@ export default function PrecedentsPage() {
     kind: kind || undefined,
     keyword: keyword.trim() || undefined,
     limit: 50,
+    includeWeak,
   });
 
   const setParam = (key: string, value: string) => {
@@ -268,7 +290,8 @@ export default function PrecedentsPage() {
       <section className="mb-6 space-y-3">
         <div className="flex flex-wrap gap-2">
           {REQUIREMENTS.map((r) => {
-            const n = r.key ? counts?.byRequirement?.[r.key] : counts?.total;
+            const table = includeWeak ? counts?.byRequirementWithWeak : counts?.byRequirement;
+            const n = r.key ? table?.[r.key] : counts?.total;
             const active = requirement === r.key;
             return (
               <button
@@ -307,6 +330,16 @@ export default function PrecedentsPage() {
               </button>
             ))}
           </div>
+
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={includeWeak}
+              onChange={(e) => setIncludeWeak(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-slate-300 accent-emerald-600"
+            />
+            본문에서만 언급된 사건도 포함
+          </label>
 
           <label className="relative flex-1 sm:max-w-xs">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -354,7 +387,16 @@ export default function PrecedentsPage() {
         </>
       )}
 
-      <p className="mt-8 rounded-xl bg-slate-50 p-4 text-xs leading-relaxed text-slate-500">
+      {counts && counts.unlinked > 0 && (
+        <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-800">
+          전체 {counts.total.toLocaleString()}건 가운데 {counts.unlinked.toLocaleString()}건은 아직
+          어느 요건에도 연결되지 않았습니다. 요건으로 좁히면 그만큼은 걸러지지 않으니,
+          찾는 사건이 없으면 요건을 '전체'로 두고 검색어로 찾아보세요.
+        </p>
+      )}
+
+      <p className="mt-6 rounded-xl bg-slate-50 p-4 text-xs leading-relaxed text-slate-500">
+        요건 옆의 물음표 표시는 본문에서 관련 표현만 발견된 것으로, 그 사건의 쟁점이 아닐 수 있습니다.
         요건 분류는 사건 본문의 낱말을 기준으로 자동으로 붙인 것이라 실제 쟁점과 다를 수 있습니다.
         각 사건의 원문은 국가법령정보센터에서 확인할 수 있으며, 개별 사건의 판단은
         변호사 검토를 거쳐야 합니다.

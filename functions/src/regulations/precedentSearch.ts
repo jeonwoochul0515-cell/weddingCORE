@@ -43,6 +43,11 @@ export type PrecedentSummary = {
   /** 목록에서는 잘라 보낸다 */
   summary: string;
   requirements: string[];
+  /**
+   * 약하게 연결된 요건. 본문에서만 낱말이 걸린 것이라 쟁점이 아닐 수 있다.
+   * 강한 연결만 쓰면 574건 중 146건만 걸러져 필터가 사실상 비어 보인다.
+   */
+  requirementsWeak: string[];
   requirementConfidence: 'auto' | 'reviewed' | 'none';
 };
 
@@ -78,6 +83,7 @@ async function loadRows(): Promise<CachedRow[]> {
       caseType: str(v.caseType),
       summary,
       requirements: arr(v.requirements),
+      requirementsWeak: arr(v.requirementsWeak),
       requirementConfidence:
         v.requirementConfidence === 'reviewed'
           ? 'reviewed'
@@ -114,6 +120,7 @@ export const searchPrecedents = onCall(
       kind?: string;
       keyword?: string;
       limit?: number;
+      includeWeak?: boolean;
     };
 
     const requirement = str(data.requirement).trim();
@@ -127,7 +134,16 @@ export const searchPrecedents = onCall(
 
     let rows = await loadRows();
 
-    if (requirement) rows = rows.filter((r) => r.requirements.includes(requirement));
+    // 약한 연결까지 포함하면 걸리는 사건이 크게 늘지만 쟁점이 아닐 수 있다.
+    // 켜고 끄는 것은 화면에서 정하고, 결과에는 어느 쪽으로 걸렸는지 남긴다.
+    const includeWeak = data.includeWeak === true;
+    if (requirement) {
+      rows = rows.filter(
+        (r) =>
+          r.requirements.includes(requirement) ||
+          (includeWeak && r.requirementsWeak.includes(requirement)),
+      );
+    }
     if (kind === 'prec' || kind === 'decc') rows = rows.filter((r) => r.kind === kind);
     if (keyword) {
       const needle = keyword.toLowerCase();
@@ -159,18 +175,27 @@ export const precedentCounts = onCall(
 
     const rows = await loadRows();
     const byRequirement: Record<string, number> = {};
+    // 약한 연결까지 합친 건수. 화면에서 "포함" 토글을 켰을 때 보여줄 값이다.
+    const byRequirementWithWeak: Record<string, number> = {};
     let prec = 0;
     let decc = 0;
+    let unlinked = 0;
 
     for (const r of rows) {
       if (r.kind === 'decc') decc += 1;
       else prec += 1;
+      if (r.requirements.length === 0 && r.requirementsWeak.length === 0) unlinked += 1;
+
       for (const k of r.requirements) {
         byRequirement[k] = (byRequirement[k] ?? 0) + 1;
       }
+      // 같은 사건이 강·약 양쪽에 잡히는 일은 없지만, 중복 계산을 막아 둔다.
+      for (const k of new Set([...r.requirements, ...r.requirementsWeak])) {
+        byRequirementWithWeak[k] = (byRequirementWithWeak[k] ?? 0) + 1;
+      }
     }
 
-    return { total: rows.length, prec, decc, byRequirement };
+    return { total: rows.length, prec, decc, unlinked, byRequirement, byRequirementWithWeak };
   },
 );
 

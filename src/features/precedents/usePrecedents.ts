@@ -19,6 +19,8 @@ export type PrecedentSummary = {
   caseType: string;
   summary: string;
   requirements: string[];
+  /** 본문에서만 낱말이 걸린 요건. 쟁점이 아닐 수 있어 화면에서 구분해 보여준다. */
+  requirementsWeak: string[];
   requirementConfidence: 'auto' | 'reviewed' | 'none';
 };
 
@@ -28,7 +30,6 @@ export type PrecedentDetail = PrecedentSummary & {
   disposition: string;
   references: string;
   body: string;
-  requirementsWeak: string[];
   sourceUrl: string;
 };
 
@@ -36,7 +37,11 @@ export type PrecedentCounts = {
   total: number;
   prec: number;
   decc: number;
+  /** 강·약 어느 요건에도 걸리지 않은 사건 수 */
+  unlinked: number;
   byRequirement: Record<string, number>;
+  /** 약한 연결까지 합친 건수 */
+  byRequirementWithWeak: Record<string, number>;
 };
 
 type SearchArgs = {
@@ -44,6 +49,8 @@ type SearchArgs = {
   kind?: string;
   keyword?: string;
   limit?: number;
+  /** 본문에서만 걸린 사건까지 포함할지 */
+  includeWeak?: boolean;
 };
 
 export function usePrecedentSearch(args: SearchArgs) {
@@ -52,7 +59,7 @@ export function usePrecedentSearch(args: SearchArgs) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { requirement, kind, keyword, limit } = args;
+  const { requirement, kind, keyword, limit, includeWeak } = args;
   // 검색어는 타자를 칠 때마다 부르지 않는다.
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -65,7 +72,7 @@ export function usePrecedentSearch(args: SearchArgs) {
           SearchArgs,
           { items: PrecedentSummary[]; total: number; returned: number }
         >(functions, 'searchPrecedents');
-        const res = await fn({ requirement, kind, keyword, limit });
+        const res = await fn({ requirement, kind, keyword, limit, includeWeak });
         setItems(res.data.items ?? []);
         setTotal(res.data.total ?? 0);
       } catch (err) {
@@ -82,7 +89,7 @@ export function usePrecedentSearch(args: SearchArgs) {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [requirement, kind, keyword, limit]);
+  }, [requirement, kind, keyword, limit, includeWeak]);
 
   return { items, total, loading, error };
 }
