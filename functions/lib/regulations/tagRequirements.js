@@ -43,7 +43,7 @@ function scoreRequirements(doc) {
     }
     return out.sort((a, b) => b.score - a.score);
 }
-async function runTagging() {
+export async function runTagging() {
     const db = getFirestore();
     const snap = await db.collection('precedents').get();
     let tagged = 0;

@@ -28,6 +28,9 @@ const REQUIREMENTS = [
   { key: 'f6_guidance_program', label: '국제결혼 안내프로그램' },
   { key: 'extension_status_maintained', label: '체류 실태 유지' },
   { key: 'extension_change_eligibility', label: '자격변경 적격' },
+  // 결혼이민자가 F-6를 졸업하는 두 갈래. 우리 사업의 마지막 단계이기도 하다.
+  { key: 'naturalization', label: '간이귀화' },
+  { key: 'permanent_residency', label: '영주(F-5)' },
 ];
 
 const REQUIREMENT_LABEL: Record<string, string> = Object.fromEntries(
