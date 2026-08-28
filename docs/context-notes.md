@@ -45,6 +45,38 @@ Admin SDK에는 `select()`가 있다. 그래서 서버에서 요약 필드만 �
 
 ---
 
+### 함수 배포가 "Cannot determine backend specification"으로 실패하면
+
+`firebase deploy --only functions`가 아래 오류로 죽는 경우가 있다.
+
+```
+Error: User code failed to load. Cannot determine backend specification. Timeout after 10000.
+```
+
+**코드 문제가 아니다.** CLI가 함수 목록을 뽑으려고 코드를 로드하는 데 주는 시간이
+10초인데, 이 프로젝트는 함수가 28개라 그 안에 못 끝낸다(로컬 로딩 자체는 0.5초다).
+
+해결 — 탐지 시간을 늘려서 배포한다.
+
+```bash
+FUNCTIONS_DISCOVERY_TIMEOUT=120 npx firebase deploy --only functions:이름
+```
+
+에러 문구가 "User code failed to load"라 코드를 의심하게 되는데, 먼저
+`node -e "import('./lib/index.js')"`로 로컬 로딩을 재보고 정상이면 이 문제다.
+
+### 배포 대상이 두 군데로 나뉘어 있다
+
+- **웹** — Cloudflare Worker `weddingcore` → weddingcore.net / www.weddingcore.net
+  (`npm run deploy:cloudflare`. wrangler OAuth는 죽어 있으니 전역 §15-2 토큰을
+  `CLOUDFLARE_API_TOKEN`으로 물려야 한다)
+- **함수·Firestore·Storage** — Firebase 프로젝트 `sungpan2026`
+
+`firebase.json`에 hosting 설정이 남아 있지만 실서비스 도메인은 Cloudflare가 받는다.
+`npm run deploy:all`은 Firebase Hosting으로 올리므로 실제 사이트에는 반영되지 않는다.
+
+---
+
 ## 2026-08-28 · 유학 도메인을 KoAdmit으로 이관하며
 
 ### weddingCORE에서 유학 수치를 전부 걷어낸 이유
