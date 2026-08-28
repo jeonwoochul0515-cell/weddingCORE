@@ -27,6 +27,7 @@ const AutomationCenterPage = lazy(() => import('./pages/AutomationCenterPage'));
 const LawyerWorkbenchPage = lazy(() => import('./pages/LawyerWorkbenchPage'));
 const MarketingCenterPage = lazy(() => import('./pages/MarketingCenterPage'));
 const VisaWorkCenterPage = lazy(() => import('./pages/VisaWorkCenterPage'));
+const PrecedentsPage = lazy(() => import('./pages/PrecedentsPage'));
 
 function RouteFallback() {
   return (
@@ -61,6 +62,7 @@ export default function AppRoutes() {
             <Route path="/agency/automation" element={<AutomationCenterPage />} />
             <Route path="/agency/marketing" element={<MarketingCenterPage />} />
             <Route path="/agency/visa" element={<VisaWorkCenterPage />} />
+            <Route path="/agency/precedents" element={<PrecedentsPage />} />
           </Route>
         </Route>
 

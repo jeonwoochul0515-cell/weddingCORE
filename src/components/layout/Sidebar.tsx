@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Bot, Building2, Gavel, Heart, Landmark, LayoutDashboard, Megaphone, Radio, Users } from 'lucide-react';
+import { Bot, Building2, Gavel, Heart, Landmark, LayoutDashboard, Megaphone, Radio, Scale, Users } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import BrandMark from '@/components/brand/BrandMark';
 
@@ -10,6 +10,7 @@ const agencyLinks = [
   { to: '/agency/visa', label: '비자업무 센터', shortLabel: '비자', icon: Landmark },
   { to: '/agency/marketing', label: '마케팅 센터', shortLabel: '마케팅', icon: Megaphone },
   { to: '/agency/automation', label: 'AI 업무 자동화', shortLabel: 'AI', icon: Bot },
+  { to: '/agency/precedents', label: '거부 사례', shortLabel: '사례', icon: Scale },
   { to: '/agency/regulatory', label: '규제 레이더', shortLabel: '규제', icon: Radio },
 ];
 
