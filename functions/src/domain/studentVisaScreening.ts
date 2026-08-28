@@ -270,8 +270,14 @@ export function screenStudentVisa(input: ScreeningInput): ScreeningResult {
   }
 
   // 2) 인증 여부와 국적의 조합으로 재정능력 서류가 갈린다
+  //
+  // 우수 인증대학에는 고시국가 단서가 붙지 않는다. 2026-02-12 발표표에서 인증대학
+  // 행에만 "(법무부장관 고시국가 및 중점관리국가는 재정능력 입증서류 제출)"이 달려
+  // 있고, 2016년 지침 원문도 "불법체류율 1% 미만 인증대학 … 모든 국가 국민"으로
+  // 같은 구조를 명시한다. 우수 인증(요건: 불법체류율 1~1.5% 미만)이 그 후신이다.
   const certified = tier.tier === 'premium' || tier.tier === 'certified';
-  const needsFinance = !certified || countryGroup !== 'general';
+  const needsFinance =
+    tier.tier === 'premium' ? false : !certified || countryGroup !== 'general';
 
   if (needsFinance) {
     documents.push('재정능력 입증서류(잔고증명 등)');
@@ -280,6 +286,11 @@ export function screenStudentVisa(input: ScreeningInput): ScreeningResult {
         '인증대학이지만 법무부장관 고시국가·중점관리국가 출신은 재정능력 서류를 제출해야 합니다.',
       );
     }
+  } else if (tier.tier === 'premium' && countryGroup !== 'general') {
+    // 면제로 보이지만 공관 운영이 다를 수 있어 확인을 권한다
+    cautions.push(
+      '우수 인증대학은 발표 자료상 고시국가 단서가 없어 재정능력 서류가 면제되는 것으로 보입니다. 다만 공관별 운영이 다를 수 있어 접수 전 확인이 필요합니다.',
+    );
   }
   if (!certified) {
     documents.push('학력 요건 증빙', '어학능력 증빙');
@@ -293,6 +304,12 @@ export function screenStudentVisa(input: ScreeningInput): ScreeningResult {
   if (countryGroup === 'focus') {
     cautions.push('중점관리 대상 국가로 분류되어 심사가 더 엄격합니다.');
   }
+  cautions.push(
+    '표준입학허가서의 유효기간은 발급일로부터 3개월이며, 사증발급(자격변경) 1회에 한해 유효합니다.',
+  );
+  cautions.push(
+    '결핵고위험국가 국민은 지정병원에서 흉부 X선 검사 결과가 포함된 결핵진단서를 받아야 합니다.',
+  );
 
   return {
     tier,
