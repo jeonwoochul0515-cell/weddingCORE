@@ -121,20 +121,47 @@ export const VISA_REQUIREMENTS: VisaRequirement[] = [
   },
 
   // ── 유학 (D-2 / D-4)
+  //
+  // 유학 요건에는 학생 단위의 수치 기준이 없다. 기준이 대학에 붙기 때문이다.
+  // 그래서 아래 요건들보다 'study_university_tier'를 먼저 확인해야 한다.
+  {
+    key: 'study_university_tier',
+    label: '대학의 비자 심사 등급',
+    tracks: ['study'],
+    visaTypes: ['D-2', 'D-4'],
+    basis: [
+      '교육부·법무부 「2025년 교육국제화역량 인증 심사 및 유학생 유치·관리 실태조사 결과」(2026-02-12)',
+    ],
+    whatIsChecked:
+      '지원 대학이 인증대학인지, 미인증인지, 비자정밀 심사대학인지 — 이에 따라 요구 서류와 발급 가능성 자체가 달라진다',
+    threshold:
+      '우수 인증(39교)·인증(학위 181교/어학 123교) = 표준입학허가서만으로 심사 / 명단 외 = 재정능력 등 심사 / 비자정밀 심사대학(학위 16교·어학 4교) = 사증 발급 원칙적 금지',
+    denialPatterns: [
+      '비자정밀 심사대학이어서 사증 발급이 원칙적으로 금지됨',
+      '컨설팅대학이어서 불법취업 가능성에 대한 면담·실태조사 등 정밀 심사를 받음',
+    ],
+    evidence: ['표준입학허가서', '대학 등급 확인(교육부·법무부 발표 명단)'],
+    status: 'confirmed',
+  },
   {
     key: 'study_finance',
     label: '재정능력',
     tracks: ['study'],
     visaTypes: ['D-2', 'D-4'],
-    basis: ['출입국관리법 시행규칙 별표'],
-    whatIsChecked: '학비와 체재비를 감당할 재정이 본인 또는 재정보증인 명의로 확인되는지',
-    threshold: null,
+    basis: [
+      '출입국관리법 시행규칙 별표',
+      '교육부·법무부 「2025년 교육국제화역량 인증 심사 결과」(2026-02-12)',
+    ],
+    whatIsChecked:
+      '재정능력 심사를 받는 대상인지 먼저 가리고, 대상이면 학비와 체재비를 감당할 재정이 본인 또는 재정보증인 명의로 확인되는지',
+    threshold:
+      '인증대학이면 원칙적으로 제출 불요(단 법무부장관 고시국가·중점관리국가 출신은 제출). 명단 외 대학이면 심사 대상. 금액 기준은 공관·국가별로 달라 공개된 단일 기준이 없다.',
     denialPatterns: [
       '잔고 형성 시점이 신청 직전이어서 실제 보유로 보기 어려움',
       '명의자와 신청인의 관계가 소명되지 않음',
     ],
     evidence: ['잔고증명', '학비 납입증명', '재정보증서', '가족관계 증빙'],
-    status: 'draft',
+    status: 'discretionary',
   },
   {
     key: 'study_admission',
@@ -210,6 +237,7 @@ export const REQUIREMENT_HINTS: Record<string, string[]> = {
   f6_housing: ['주거', '거주요건', '임대차'],
   f6_invitation_limit: ['초청', '재초청', '초청 제한'],
   f6_guidance_program: ['국제결혼 안내프로그램', '안내프로그램'],
+  study_university_tier: ['인증대학', '비자정밀', '교육국제화역량', '표준입학허가서', '유치·관리'],
   study_finance: ['재정능력', '잔고', '학비', '체재비', '재정보증'],
   study_admission: ['입학허가', '학력', '아포스티유', '학위'],
   study_language: ['어학', 'TOPIK', '한국어능력'],
