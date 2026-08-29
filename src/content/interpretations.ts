@@ -9,7 +9,22 @@
 //  - 개별 사안의 판단은 다를 수 있다는 점을 화면에서 함께 밝힌다.
 //  - 오래된 해석이 있다. 회신일자를 반드시 함께 보여준다(2011~2019년).
 
+/** 재결례 글에서 함께 보여주는 개별 사건 */
+export type RulingCase = {
+  name: string;
+  decidedOn: string;
+  /** 인용은 처분이 취소된 것, 기각은 유지된 것 */
+  result: '인용' | '기각' | '각하';
+  gist: string;
+};
+
 export type Interpretation = {
+  /**
+   * 글의 종류.
+   * interpretation — 법제처 법령해석. "법을 어떻게 읽나"
+   * ruling — 행정심판 재결례. "그 처분이 정당했나"
+   */
+  kind: 'interpretation' | 'ruling';
   /** URL 경로. 바꾸면 색인된 주소가 깨지니 고정한다 */
   slug: string;
   /** 실무자가 검색할 만한 말로 지은 제목 */
@@ -32,12 +47,15 @@ export type Interpretation = {
   answeredOn: string;
   /** 법제처 법령해석례 일련번호 */
   sourceId: string;
-  /** 법제처가 붙인 원래 안건명 */
+  /** 법제처가 붙인 원래 안건명. 재결례 글에서는 자료 출처를 적는다 */
   sourceTitle: string;
+  /** 재결례 글에서 근거로 삼은 사건들 */
+  cases?: RulingCase[];
 };
 
 export const INTERPRETATIONS: Interpretation[] = [
   {
+    kind: 'interpretation',
     slug: 'capital-per-office',
     title: '사무소를 두 곳 두면 자본금도 두 배여야 하나',
     summary:
@@ -62,6 +80,7 @@ export const INTERPRETATIONS: Interpretation[] = [
       '여성가족부 - 국제결혼중개업 등록 요건인 자본금 보유 요건 충족 주체(「결혼중개업의 관리에 관한 법률」 제24조의3 등 관련)',
   },
   {
+    kind: 'interpretation',
     slug: 'branch-office-suspension',
     title: '한 사무소가 잘못하면 그 사무소만 영업정지되나',
     summary:
@@ -89,6 +108,7 @@ export const INTERPRETATIONS: Interpretation[] = [
       '여성가족부 - 국제결혼중개업 등록법인의 개별 중개사무소에 대한 영업정지 처분 가부(「결혼중개업의 관리에 관한 법률」 제18조 관련)',
   },
   {
+    kind: 'interpretation',
     slug: 'foreign-partner-banned-country',
     title: '결혼중개를 금지하는 나라의 업체와 제휴할 수 있나',
     summary:
@@ -113,6 +133,7 @@ export const INTERPRETATIONS: Interpretation[] = [
       '여성가족부 - 결혼중개업 금지 국가에서 활동하는 업체 등과의 업무제휴 가능 여부(「결혼중개업의 관리에 관한 법률」 제14조의2 관련)',
   },
   {
+    kind: 'interpretation',
     slug: 'disqualification-suspension',
     title: '대표가 결격사유에 걸리면 등록이 취소되나',
     summary:
@@ -141,6 +162,7 @@ export const INTERPRETATIONS: Interpretation[] = [
       '여성가족부 - 국내결혼중개업자가 결격사유에 해당하게 된 경우의 조치(「결혼중개업의 관리에 관한 법률」 제18조제1항 등 관련)',
   },
   {
+    kind: 'interpretation',
     slug: 'administrative-guidance-remedy',
     title: '지적받고 바로 고쳤는데도 영업정지를 받나',
     summary:
@@ -165,6 +187,7 @@ export const INTERPRETATIONS: Interpretation[] = [
       '전주시 - 결혼중개업자가 「결혼중개업의 관리에 관한 법률」 제12조제1항을 위반하였으나 행정지도로 인하여 위반사항이 시정된 경우 영업정지처분을 하여야 하는지',
   },
   {
+    kind: 'interpretation',
     slug: 'multiple-branches-same-district',
     title: '같은 구에 사무소를 두 개 낼 수 있나',
     summary:
@@ -187,6 +210,7 @@ export const INTERPRETATIONS: Interpretation[] = [
     sourceTitle: '여성가족부 다문화가족지원과 - 결혼중개업의 관리에 관한 법률 제3조관련 질의',
   },
   {
+    kind: 'interpretation',
     slug: 'notarization-abroad',
     title: '신상정보 공증에서 말하는 "외국"은 어느 나라인가',
     summary:
@@ -210,6 +234,7 @@ export const INTERPRETATIONS: Interpretation[] = [
       '여성가족부 - 「결혼중개업의 관리에 관한 법률」 제10조의2제1항 각 호 외의 부분 단서의 “외국”의 의미',
   },
   {
+    kind: 'interpretation',
     slug: 'registration-transfer',
     title: '등록 관청이 바뀌었는데 다시 등록해야 하나',
     summary:
@@ -234,6 +259,7 @@ export const INTERPRETATIONS: Interpretation[] = [
       '상주시- 부칙에 별도의 경과조치가 없는 경우 개정 전·후 「결혼중개업의 관리에 관한 법률」의 적용관계',
   },
   {
+    kind: 'interpretation',
     slug: 'penalty-count-carryover',
     title: '관청이 바뀌면 위반 횟수도 초기화되나',
     summary:

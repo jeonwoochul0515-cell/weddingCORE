@@ -34,6 +34,11 @@ const ROUTES = [
   '/guides/notarization-abroad',
   '/guides/registration-transfer',
   '/guides/penalty-count-carryover',
+  '/guides/personal-info-disclosure-cases',
+  '/guides/suspension-overturned-cases',
+  '/guides/criminal-fine-registration-cancel',
+  '/guides/prohibited-brokerage-acts',
+  '/guides/third-party-complaint-limit',
 ];
 
 const MIME = {
