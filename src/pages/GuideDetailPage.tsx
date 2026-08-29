@@ -63,7 +63,13 @@ export default function GuideDetailPage() {
           <span className="rounded-md bg-slate-100 px-2 py-1 font-semibold">{item.agency}</span>
           <span>{item.answeredOn}</span>
           <span className="text-slate-300">·</span>
-          <span>{item.kind === 'ruling' ? '행정심판 재결례' : '법제처 법령해석'}</span>
+          <span>
+            {item.kind === 'court'
+              ? '법원 판례'
+              : item.kind === 'ruling'
+                ? '행정심판 재결례'
+                : '법제처 법령해석'}
+          </span>
         </div>
 
         <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
@@ -73,7 +79,7 @@ export default function GuideDetailPage() {
 
         <section className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 sm:p-6">
           <h2 className="mb-2 text-sm font-bold text-emerald-800">
-            {item.kind === 'ruling' ? '이렇게 판단됐습니다' : '법제처는 이렇게 답했습니다'}
+            {item.kind === 'interpretation' ? '법제처는 이렇게 답했습니다' : '이렇게 판단됐습니다'}
           </h2>
           <p className="text-lg font-semibold leading-relaxed text-[#102621]">{item.answer}</p>
         </section>
@@ -140,17 +146,17 @@ export default function GuideDetailPage() {
           </ul>
           <div className="mt-5 border-t border-slate-200 pt-4">
             <p className="mb-2 text-xs text-slate-500">
-              {item.kind === 'ruling' ? '자료 출처. ' : '원문 안건명. '}
+              {item.kind === 'interpretation' ? '원문 안건명. ' : '자료 출처. '}
               {item.sourceTitle}
             </p>
-            {item.kind === 'ruling' ? (
+            {item.kind !== 'interpretation' ? (
               <a
                 href="https://www.law.go.kr"
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline"
               >
-                국가법령정보센터에서 재결례 검색 <ExternalLink size={12} />
+                국가법령정보센터에서 원문 검색 <ExternalLink size={12} />
               </a>
             ) : (
               <a
@@ -166,9 +172,11 @@ export default function GuideDetailPage() {
         </section>
 
         <p className="mt-8 rounded-xl bg-slate-50 p-4 text-xs leading-relaxed text-slate-500">
-          {item.kind === 'ruling'
-            ? '이 글은 행정심판 재결례를 쟁점별로 묶어 옮긴 것입니다. 그 사건의 사실관계에 대한 판단이므로 사실관계가 다르면 결론도 달라질 수 있고, 이후 법이 개정된 부분이 있을 수 있습니다.'
-            : '이 글은 법제처 법령해석을 쉽게 옮긴 것입니다. 해석은 질의한 사안을 전제로 하므로 사실관계가 다르면 결론도 달라질 수 있고, 회신 이후 법이 개정된 부분이 있을 수 있습니다.'}{' '}
+          {item.kind === 'court'
+            ? '이 글은 법원 판결을 쟁점별로 옮긴 것입니다. 형사 사건은 특히 개별 사실관계에 좌우되므로 같은 결론이 나온다고 볼 수 없고, 이후 법이 개정된 부분이 있을 수 있습니다.'
+            : item.kind === 'ruling'
+              ? '이 글은 행정심판 재결례를 쟁점별로 묶어 옮긴 것입니다. 그 사건의 사실관계에 대한 판단이므로 사실관계가 다르면 결론도 달라질 수 있고, 이후 법이 개정된 부분이 있을 수 있습니다.'
+              : '이 글은 법제처 법령해석을 쉽게 옮긴 것입니다. 해석은 질의한 사안을 전제로 하므로 사실관계가 다르면 결론도 달라질 수 있고, 회신 이후 법이 개정된 부분이 있을 수 있습니다.'}{' '}
           개별 사건의 판단은 변호사 검토를 거쳐야 합니다.
         </p>
 
@@ -193,9 +201,11 @@ export default function GuideDetailPage() {
       <footer className="mt-10 border-t border-slate-200 bg-white px-6 py-8 text-center text-xs text-slate-500">
         <span className="inline-flex items-center gap-1.5">
           <ShieldCheck size={14} className="text-emerald-600" />
-          {item.kind === 'ruling'
-            ? '출처. 국가법령정보센터 행정심판 재결례'
-            : `출처. 법제처 국가법령정보센터 법령해석례 (일련번호 ${item.sourceId})`}
+          {item.kind === 'court'
+            ? '출처. 국가법령정보센터 판례'
+            : item.kind === 'ruling'
+              ? '출처. 국가법령정보센터 행정심판 재결례'
+              : `출처. 법제처 국가법령정보센터 법령해석례 (일련번호 ${item.sourceId})`}
         </span>
       </footer>
     </div>

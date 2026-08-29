@@ -5,14 +5,19 @@
 
 import { INTERPRETATIONS, type Interpretation } from './interpretations';
 import { RULINGS } from './rulings';
+import { COURT_CASES } from './courtCases';
 
 export type { Interpretation, RulingCase } from './interpretations';
 export { sourceUrl } from './interpretations';
 
-/** 재결례를 먼저 둔다. 업체에게는 "실제로 어떻게 됐나"가 더 급한 질문이다. */
-export const GUIDES: Interpretation[] = [...RULINGS, ...INTERPRETATIONS];
+/**
+ * 형사 판례 → 재결례 → 법령해석 순으로 둔다.
+ * 업체에게 급한 순서다. 형사처벌이 가장 무겁고, 그다음이 행정처분, 마지막이 해석이다.
+ */
+export const GUIDES: Interpretation[] = [...COURT_CASES, ...RULINGS, ...INTERPRETATIONS];
 
 export const findGuide = (slug: string) => GUIDES.find((g) => g.slug === slug) ?? null;
 
+export const COURT_COUNT = COURT_CASES.length;
 export const RULING_COUNT = RULINGS.length;
 export const INTERPRETATION_COUNT = INTERPRETATIONS.length;

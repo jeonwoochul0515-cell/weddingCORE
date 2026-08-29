@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, ScrollText, ShieldCheck } from 'lucide-react';
 import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
-import { GUIDES, RULING_COUNT, INTERPRETATION_COUNT } from '@/content/guides';
+import { GUIDES, COURT_COUNT, RULING_COUNT, INTERPRETATION_COUNT } from '@/content/guides';
 
 export default function GuidesPage() {
   usePageMeta({
@@ -27,7 +27,7 @@ export default function GuidesPage() {
       <section className="mx-auto max-w-3xl px-5 py-12 sm:px-6 sm:py-16">
         <div className="mb-10">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
-            <ScrollText size={14} />재결례 {RULING_COUNT}편 · 법령해석 {INTERPRETATION_COUNT}건
+            <ScrollText size={14} />판례 {COURT_COUNT}편 · 재결례 {RULING_COUNT}편 · 법령해석 {INTERPRETATION_COUNT}건
           </div>
           <h1 className="text-3xl font-bold tracking-[-0.04em] text-[#102621] sm:text-4xl">
             결혼중개업법, 실제로는 이렇게 해석됩니다
@@ -55,12 +55,14 @@ export default function GuidesPage() {
               <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
                 <span
                   className={`rounded-md px-1.5 py-0.5 font-bold ${
-                    item.kind === 'ruling'
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : 'bg-emerald-100 text-emerald-700'
+                    item.kind === 'court'
+                      ? 'bg-rose-100 text-rose-700'
+                      : item.kind === 'ruling'
+                        ? 'bg-indigo-100 text-indigo-700'
+                        : 'bg-emerald-100 text-emerald-700'
                   }`}
                 >
-                  {item.kind === 'ruling' ? '다툰 사례' : '법령해석'}
+                  {item.kind === 'court' ? '법원 판례' : item.kind === 'ruling' ? '다툰 사례' : '법령해석'}
                 </span>
                 <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-semibold">
                   {item.agency}

@@ -23,8 +23,9 @@ export type Interpretation = {
    * 글의 종류.
    * interpretation — 법제처 법령해석. "법을 어떻게 읽나"
    * ruling — 행정심판 재결례. "그 처분이 정당했나"
+   * court — 법원 판례. "형사처벌 대상인가"
    */
-  kind: 'interpretation' | 'ruling';
+  kind: 'interpretation' | 'ruling' | 'court';
   /** URL 경로. 바꾸면 색인된 주소가 깨지니 고정한다 */
   slug: string;
   /** 실무자가 검색할 만한 말로 지은 제목 */

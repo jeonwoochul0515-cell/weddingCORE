@@ -114,4 +114,22 @@
     <changefreq>yearly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://weddingcore.net/guides/advertising-liability</loc>
+    <lastmod>2026-08-29T00:00:00+09:00</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://weddingcore.net/guides/personal-info-criminal</loc>
+    <lastmod>2026-08-29T00:00:00+09:00</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://weddingcore.net/guides/local-partner-contract-name</loc>
+    <lastmod>2026-08-29T00:00:00+09:00</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
 </urlset>

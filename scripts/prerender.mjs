@@ -39,6 +39,9 @@ const ROUTES = [
   '/guides/criminal-fine-registration-cancel',
   '/guides/prohibited-brokerage-acts',
   '/guides/third-party-complaint-limit',
+  '/guides/advertising-liability',
+  '/guides/personal-info-criminal',
+  '/guides/local-partner-contract-name',
 ];
 
 const MIME = {
