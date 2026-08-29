@@ -28,6 +28,8 @@ const LawyerWorkbenchPage = lazy(() => import('./pages/LawyerWorkbenchPage'));
 const MarketingCenterPage = lazy(() => import('./pages/MarketingCenterPage'));
 const VisaWorkCenterPage = lazy(() => import('./pages/VisaWorkCenterPage'));
 const PrecedentsPage = lazy(() => import('./pages/PrecedentsPage'));
+const GuidesPage = lazy(() => import('./pages/GuidesPage'));
+const GuideDetailPage = lazy(() => import('./pages/GuideDetailPage'));
 
 function RouteFallback() {
   return (
@@ -45,6 +47,9 @@ export default function AppRoutes() {
         <Route path="/visa-simulator" element={<VisaSimulatorPage />} />
         <Route path="/mbti-test" element={<MbtiTestPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
+        {/* 결혼중개업법 해석 — 검색으로 들어오는 공개 입구 */}
+        <Route path="/guides" element={<GuidesPage />} />
+        <Route path="/guides/:slug" element={<GuideDetailPage />} />
 
         {/* 로그인 후: 가입/대기 분기 */}
         <Route path="/signup/agency" element={<AgencySignupPage />} />

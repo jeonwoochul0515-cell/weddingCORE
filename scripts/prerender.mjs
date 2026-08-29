@@ -15,10 +15,26 @@ import { createRequire } from 'node:module';
 const HEADLESS_TOOLS = 'C:/Users/jeonw/tools/headless-tools/package.json';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
-const PORT = 4178;
+// 포트를 고정하지 않는다. 고정하면 같은 머신에서 다른 프로젝트가 그 포트를 쓰고 있을 때
+// 그쪽 사이트를 렌더해 우리 dist에 덮어쓴다. 2026-08-29에 실제로 그렇게 KoAdmit 페이지가
+// weddingcore.net에 배포됐다. 0을 주면 OS가 빈 포트를 골라 준다.
 
 /** 색인 대상 공개 라우트. 로그인·업체 화면은 noindex라 제외한다. */
-const ROUTES = ['/', '/visa-simulator', '/mbti-test', '/privacy'];
+// 공개 라우트. 결혼중개업법 해석은 검색 유입 경로라 본문이 정적 HTML에 들어가야 한다.
+// src/content/interpretations.ts의 slug와 같아야 하니 항목을 늘리면 여기도 늘린다.
+const ROUTES = [
+  '/', '/visa-simulator', '/mbti-test', '/privacy',
+  '/guides',
+  '/guides/capital-per-office',
+  '/guides/branch-office-suspension',
+  '/guides/foreign-partner-banned-country',
+  '/guides/disqualification-suspension',
+  '/guides/administrative-guidance-remedy',
+  '/guides/multiple-branches-same-district',
+  '/guides/notarization-abroad',
+  '/guides/registration-transfer',
+  '/guides/penalty-count-carryover',
+];
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -42,7 +58,11 @@ function startServer() {
     res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath)] ?? 'application/octet-stream' });
     fs.createReadStream(filePath).pipe(res);
   });
-  return new Promise((resolve) => server.listen(PORT, () => resolve(server)));
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    // 포트 0 = 빈 포트를 OS가 고르게 한다. 충돌 자체가 생기지 않는다.
+    server.listen(0, '127.0.0.1', () => resolve(server));
+  });
 }
 
 async function main() {
@@ -55,6 +75,7 @@ async function main() {
   const puppeteer = require('puppeteer');
 
   const server = await startServer();
+  const port = server.address().port;
   const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
   const rendered = [];
   const failed = [];
@@ -69,7 +90,7 @@ async function main() {
         await page.evaluateOnNewDocument(() => {
           Object.defineProperty(window, '__PRERENDER__', { value: true });
         });
-        await page.goto(`http://localhost:${PORT}${route}`, {
+        await page.goto(`http://127.0.0.1:${port}${route}`, {
           waitUntil: 'domcontentloaded',
           timeout: 45_000,
         });
@@ -80,6 +101,10 @@ async function main() {
         );
         const html = await page.content();
         const title = await page.title();
+        // 우리 사이트가 맞는지 확인한다. 아니면 저장하지 않는다.
+        if (!html.includes('weddingCORE') && !html.includes('weddingcore.net')) {
+          throw new Error(`우리 사이트가 아닙니다 — 렌더된 제목: ${title}`);
+        }
         rendered.push({ route, html, title });
         console.log(`  렌더 완료 ${route} — ${title}`);
       } catch (error) {
