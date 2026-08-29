@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Bot, Languages, Heart, Plus } from 'lucide-react';
 import { useClient } from '@/features/agency/useAgencyClients';
 import DocumentSection from '@/features/documents/DocumentSection';
+import ConsistencyCard from '@/features/documents/ConsistencyCard';
+import { useClientDocuments } from '@/features/documents/useClientDocuments';
 import TimelineView from '@/features/timeline/TimelineView';
 import ProfileForm from '@/features/matching/ProfileForm';
 import MbtiCard from '@/features/matching/MbtiCard';
@@ -22,6 +24,7 @@ const STAGE_LABEL: Record<number, string> = {
 export default function ClientDetailPage() {
   const { clientId } = useParams();
   const { client, loading } = useClient(clientId);
+  const { items: documents } = useClientDocuments(clientId);
   const { updateClient } = useProfileUpdater();
   const [tab, setTab] = useState<'compliance' | 'matching'>('compliance');
   const [showMatchDialog, setShowMatchDialog] = useState(false);
@@ -33,6 +36,12 @@ export default function ClientDetailPage() {
   const k = client.koreanClient;
   const profile = client.profile ?? null;
   const birthInfo = client.birthInfo ?? null;
+  // 신상정보를 맞선 전에 갖췄는지 대조하려면 맞선 예정일이 필요하다
+  const meetingAnchor = client.anchors?.meeting_scheduled ?? null;
+  const meetingAt =
+    meetingAnchor && typeof (meetingAnchor as { toDate?: () => Date }).toDate === 'function'
+      ? (meetingAnchor as { toDate: () => Date }).toDate()
+      : null;
 
   // 임시: 파트너 프로필 (실제로는 파트너 서브컬렉션에서 가져와야 함)
   // Phase 1.5에서는 한국측 프로필 기반으로 MBTI/사주 확인 UI를 제공
@@ -119,6 +128,9 @@ export default function ClientDetailPage() {
       </div>
 
       {tab === 'compliance' && (
+        <>
+        {/* 목록보다 먼저 "지금 위험한 게 있는가"를 보여준다 */}
+        <ConsistencyCard documents={documents} meetingAt={meetingAt} />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <h2 className="mb-3 text-lg font-semibold text-slate-900">컴플라이언스 타임라인</h2>
@@ -128,6 +140,7 @@ export default function ClientDetailPage() {
             <DocumentSection clientId={client.id} />
           </div>
         </div>
+        </>
       )}
 
       {tab === 'matching' && (
