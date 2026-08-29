@@ -18,6 +18,9 @@ const ROUTE_PREFIXES = [
   '/visa-simulator',
   '/mbti-test',
   '/privacy',
+  // 결혼중개업법 해석 모음. 여기 없으면 프리렌더된 페이지가 있어도 404 + noindex로
+  // 나가서 색인이 되지 않는다. 공개 라우트를 늘리면 반드시 여기도 늘린다.
+  '/guides',
   '/agency',
   '/lawyer',
   '/admin',

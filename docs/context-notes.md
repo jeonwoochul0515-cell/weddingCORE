@@ -4,6 +4,33 @@
 
 ---
 
+## 2026-08-29 · 공개 라우트를 늘릴 때 손대야 하는 곳 네 군데
+
+`/guides`를 만들면서 한 군데를 빠뜨려 페이지가 **404 + noindex**로 나갔다. 화면에는
+정상으로 보여서 title만 확인하고 넘어갔는데, 상태코드를 보니 404였다. 그 상태로는
+검색엔진이 색인하지 않는다 — 검색 유입을 노린 페이지인데 목적이 통째로 무산될 뻔했다.
+
+공개 라우트를 하나 늘리면 **네 곳을 함께 고쳐야 한다.**
+
+1. `src/routes.tsx` — 라우트 등록
+2. `scripts/prerender.mjs`의 `ROUTES` — 본문을 정적 HTML로 굽는다
+3. `public/sitemap.xml` — 검색엔진에 알린다
+4. **`worker/index.js`의 `ROUTE_PREFIXES`** ← 빠뜨린 곳
+
+4번을 빠뜨리면 어떻게 되나. 이 워커는 소프트404를 막으려고 "앱이 처리하는 경로"가
+아니면 **내용은 그대로 주되 상태를 404로 바꾸고 robots를 noindex로 바꾼다.** 그래서
+브라우저로 열면 멀쩡해 보이고 `grep '<title>'`도 통과한다. `curl -w '%{http_code}'`로
+상태코드를 봐야 드러난다.
+
+**배포 검증은 이렇게 한다.**
+
+```bash
+curl -s -w "|%{http_code}" https://weddingcore.net/새경로 | tail -c 20   # 200이어야 한다
+curl -s https://weddingcore.net/새경로 | grep -c noindex                 # 0이어야 한다
+```
+
+---
+
 ## 2026-08-29 · 사고 — 다른 프로젝트 사이트가 weddingcore.net에 배포됐다
 
 **무슨 일이 있었나.** 프리렌더가 KoAdmit 사이트를 렌더해 우리 dist에 덮어썼고, 그대로
