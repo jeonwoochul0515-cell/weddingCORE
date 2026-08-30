@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { ExternalLink, Flame, ScrollText, ShieldCheck } from 'lucide-react';
 import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
+import { LAW_ARTICLE_DETAILS } from '@/content/lawArticles';
 import {
   HOT_COUNT,
   LAW_ARTICLES,
@@ -102,6 +103,18 @@ export default function LawMapPage() {
                   {a.consequence}
                 </p>
               )}
+
+              {(() => {
+                const detail = LAW_ARTICLE_DETAILS.find((d) => d.label === a.no);
+                return detail ? (
+                  <Link
+                    to={`/law/${detail.slug}`}
+                    className="mb-2 inline-block text-xs font-semibold text-emerald-700 hover:underline"
+                  >
+                    원문과 해설 보기 →
+                  </Link>
+                ) : null;
+              })()}
 
               {(a.feature || a.guides) && (
                 <div className="flex flex-wrap items-center gap-2 text-[11px]">

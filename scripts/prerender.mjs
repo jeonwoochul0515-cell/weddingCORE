@@ -24,6 +24,16 @@ const DIST = path.join(ROOT, 'dist');
 // src/content/interpretations.ts의 slug와 같아야 하니 항목을 늘리면 여기도 늘린다.
 const ROUTES = [
   '/', '/visa-simulator', '/mbti-test', '/privacy', '/law',
+  '/law/article-6',
+  '/law/article-10-2',
+  '/law/article-12',
+  '/law/article-12-2',
+  '/law/article-14-2',
+  '/law/article-18',
+  '/law/article-21',
+  '/law/article-24-3',
+  '/law/article-26',
+  '/law/article-27',
   '/guides',
   '/guides/capital-per-office',
   '/guides/branch-office-suspension',
