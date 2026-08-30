@@ -4,6 +4,7 @@ import { ArrowLeft, Bot, Languages, Heart, Plus } from 'lucide-react';
 import { useClient } from '@/features/agency/useAgencyClients';
 import DocumentSection from '@/features/documents/DocumentSection';
 import ConsistencyCard from '@/features/documents/ConsistencyCard';
+import StageGuideCard from '@/features/precedents/StageGuideCard';
 import { useClientDocuments } from '@/features/documents/useClientDocuments';
 import TimelineView from '@/features/timeline/TimelineView';
 import ProfileForm from '@/features/matching/ProfileForm';
@@ -136,8 +137,9 @@ export default function ClientDetailPage() {
             <h2 className="mb-3 text-lg font-semibold text-slate-900">컴플라이언스 타임라인</h2>
             <TimelineView clientId={client.id} />
           </div>
-          <div>
+          <div className="space-y-6">
             <DocumentSection clientId={client.id} />
+            <StageGuideCard stage={client.currentStage} />
           </div>
         </div>
         </>

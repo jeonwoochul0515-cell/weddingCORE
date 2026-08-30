@@ -40,6 +40,19 @@ export default function GuidesPage() {
           </p>
         </div>
 
+        <Link
+          to="/law"
+          className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-emerald-300"
+        >
+          <div>
+            <p className="text-sm font-bold text-[#102621]">조문부터 훑고 싶다면</p>
+            <p className="mt-0.5 text-xs text-slate-600">
+              결혼중개업법 40개 조문이 무엇을 요구하는지 한 줄씩 정리했습니다.
+            </p>
+          </div>
+          <ArrowRight size={18} className="shrink-0 text-slate-300" />
+        </Link>
+
         <div className="space-y-3">
           {GUIDES.map((item) => (
             <Link

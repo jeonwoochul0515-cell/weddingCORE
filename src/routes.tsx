@@ -30,6 +30,7 @@ const VisaWorkCenterPage = lazy(() => import('./pages/VisaWorkCenterPage'));
 const PrecedentsPage = lazy(() => import('./pages/PrecedentsPage'));
 const OfficePage = lazy(() => import('./pages/OfficePage'));
 const GuidesPage = lazy(() => import('./pages/GuidesPage'));
+const LawMapPage = lazy(() => import('./pages/LawMapPage'));
 const GuideDetailPage = lazy(() => import('./pages/GuideDetailPage'));
 
 function RouteFallback() {
@@ -49,6 +50,7 @@ export default function AppRoutes() {
         <Route path="/mbti-test" element={<MbtiTestPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         {/* 결혼중개업법 해석 — 검색으로 들어오는 공개 입구 */}
+        <Route path="/law" element={<LawMapPage />} />
         <Route path="/guides" element={<GuidesPage />} />
         <Route path="/guides/:slug" element={<GuideDetailPage />} />
 

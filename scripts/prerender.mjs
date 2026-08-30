@@ -23,7 +23,7 @@ const DIST = path.join(ROOT, 'dist');
 // 공개 라우트. 결혼중개업법 해석은 검색 유입 경로라 본문이 정적 HTML에 들어가야 한다.
 // src/content/interpretations.ts의 slug와 같아야 하니 항목을 늘리면 여기도 늘린다.
 const ROUTES = [
-  '/', '/visa-simulator', '/mbti-test', '/privacy',
+  '/', '/visa-simulator', '/mbti-test', '/privacy', '/law',
   '/guides',
   '/guides/capital-per-office',
   '/guides/branch-office-suspension',
