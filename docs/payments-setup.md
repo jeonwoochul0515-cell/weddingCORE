@@ -41,6 +41,10 @@ printf '%s' 'test_sk_여기에_시크릿_키' | \
   npx firebase functions:secrets:set TOSS_SECRET_KEY --project sungpan2026 --data-file -
 ```
 
+> **지금은 자리표시 값이 들어 있습니다.** `TOSS_SECRET_KEY`에 `NOT_CONFIGURED`가 저장되어 있고,
+> 서버는 이 값을 보면 결제를 열지 않습니다. firebase가 시크릿이 아예 없으면 함수 배포 자체를
+> 막기 때문에 자리만 만들어 둔 것입니다. 위 명령으로 실제 키를 넣으면 그때부터 작동합니다.
+
 넣은 뒤 **함수를 다시 배포해야** 반영됩니다. 함수가 시크릿 버전을 배포 시점에 고정하기 때문입니다.
 
 ```bash
