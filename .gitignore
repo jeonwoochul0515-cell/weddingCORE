@@ -22,3 +22,10 @@ ui-debug.log*
 .vite
 coverage
 functions/.secret.local
+
+# 키·비밀번호가 찍힌 캡처가 실수로 커밋되는 일을 막는다.
+# (2026-08-31 src/토스페이먼츠키.png 가 추적 직전까지 갔다)
+*키*.png
+*키*.jpg
+*secret*.png
+*secret*.jpg
