@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
+import { useCheckout } from '@/features/payments/useCheckout';
 
 /**
  * 초기 프로모션. 정가는 2026년 국내 시세(홈페이지 제작 150만~800만원, 블로그·콘텐츠
@@ -99,6 +100,7 @@ export default function MarketingCenterPage() {
   const [keywords, setKeywords] = useState('');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const checkout = useCheckout();
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const completed = useMemo(() => CHECKLIST.filter((item) => item.done).length, []);
   const score = Math.round((completed / CHECKLIST.length) * 100);
@@ -195,11 +197,31 @@ export default function MarketingCenterPage() {
           <div><div className="eyebrow">Growth services</div><h2 className="mt-1 text-xl font-bold text-slate-950">필요한 마케팅 업무를 선택하세요</h2></div>
           <Globe2 className="text-emerald-700" size={22} />
         </div>
+        {!checkout.ready && (
+          <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800">
+            카드 결제는 아직 준비 중입니다. 아래에서 상담 요청을 접수해 주시면 담당자가 연락드립니다.
+          </p>
+        )}
+        {checkout.error && (
+          <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-[11px] leading-4 text-red-700">{checkout.error}</p>
+        )}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {SERVICES.map(({ id, title, description, icon: Icon, items, listPrice, promoPrice, billing, priceNote, benefit }) => {
             const selected = selectedServices.includes(id);
             return (
-              <button key={id} type="button" onClick={() => toggleService(id)} className={`app-surface rounded-[22px] p-5 text-left transition ${selected ? 'border-emerald-400 ring-2 ring-emerald-100' : 'hover:-translate-y-0.5 hover:border-slate-300'}`}>
+              <div
+                key={id}
+                role="button"
+                tabIndex={0}
+                onClick={() => toggleService(id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleService(id);
+                  }
+                }}
+                className={`app-surface cursor-pointer rounded-[22px] p-5 text-left transition ${selected ? 'border-emerald-400 ring-2 ring-emerald-100' : 'hover:-translate-y-0.5 hover:border-slate-300'}`}
+              >
                 <div className="flex items-start justify-between"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><Icon size={21} /></span>{selected && <CheckCircle2 className="text-emerald-600" size={20} />}</div>
                 {benefit && (
                   <span className={`mt-4 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${benefit === 'membership' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-900 text-white'}`}>
@@ -217,7 +239,21 @@ export default function MarketingCenterPage() {
                   </div>
                   <p className="mt-1 text-[11px] leading-4 text-slate-400">{priceNote}</p>
                 </div>
-              </button>
+                {/* 유료 서비스만 바로 결제할 수 있다. 홈페이지 제작은 회원 무료다. */}
+                {promoPrice > 0 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      checkout.start('marketing', id);
+                    }}
+                    disabled={!checkout.ready || checkout.pending !== null}
+                    className="primary-button mt-3 w-full justify-center !py-2"
+                  >
+                    {checkout.pending === id ? '결제창 여는 중…' : '카드로 결제'}
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>

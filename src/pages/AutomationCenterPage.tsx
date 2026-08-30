@@ -4,6 +4,7 @@ import { httpsCallable } from 'firebase/functions';
 import { Bot, CheckCircle2, FileText, Gem, LockKeyhole, PlusCircle, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { db, functions } from '@/lib/firebase';
+import { useCheckout } from '@/features/payments/useCheckout';
 import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
 import { useAutomationJobs } from '@/features/automation/useAutomationJobs';
@@ -56,6 +57,8 @@ export default function AutomationCenterPage() {
   const monthlyRemaining = Math.max(0, allowance - (credits?.used ?? 0));
   const purchased = credits?.purchased ?? 0;
   const remaining = monthlyRemaining + purchased;
+
+  const checkout = useCheckout();
 
   async function orderCarats(pack: (typeof CARAT_PACKS)[number]) {
     if (!agencyId || !uid) return;
@@ -158,17 +161,36 @@ export default function AutomationCenterPage() {
                 {pack.note && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{pack.note}</span>}
               </div>
               <div className="mt-1 text-sm font-semibold text-slate-700">{pack.price.toLocaleString()}원</div>
+              {/* 카드 결제가 주 경로. 큰 금액은 계좌이체를 선호하는 경우가 있어 함께 둔다. */}
+              <button
+                type="button"
+                onClick={() => checkout.start('carat', pack.id)}
+                disabled={!agencyId || !checkout.ready || checkout.pending !== null}
+                className="primary-button mt-4 w-full justify-center !py-2.5"
+              >
+                {checkout.pending === pack.id ? '결제창 여는 중…' : '카드로 충전'}
+              </button>
               <button
                 type="button"
                 onClick={() => orderCarats(pack)}
                 disabled={!agencyId || busy !== null}
-                className="secondary-button mt-4 w-full justify-center"
+                className="mt-1.5 w-full py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700"
               >
-                {busy === 'order' ? '신청 중' : '충전 신청'}
+                {busy === 'order' ? '신청 중' : '계좌이체로 신청'}
               </button>
             </div>
           ))}
         </div>
+        {!checkout.ready && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800">
+            카드 결제는 아직 준비 중입니다. 계좌이체로 신청해 주시면 입금 확인 후 지급됩니다.
+          </p>
+        )}
+        {checkout.error && (
+          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-[11px] leading-4 text-red-700">
+            {checkout.error}
+          </p>
+        )}
         <p className="mt-4 text-[11px] leading-4 text-slate-400">
           부가세 포함 금액입니다. 신청 후 안내되는 계좌로 입금하면 확인 즉시 캐럿이 지급됩니다.
         </p>

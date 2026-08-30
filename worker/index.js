@@ -23,6 +23,7 @@ const ROUTE_PREFIXES = [
   '/guides',
   '/law',
   '/agency',
+  '/payment',
   '/lawyer',
   '/admin',
 ];

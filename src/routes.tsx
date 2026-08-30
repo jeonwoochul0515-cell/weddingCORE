@@ -29,6 +29,7 @@ const MarketingCenterPage = lazy(() => import('./pages/MarketingCenterPage'));
 const VisaWorkCenterPage = lazy(() => import('./pages/VisaWorkCenterPage'));
 const PrecedentsPage = lazy(() => import('./pages/PrecedentsPage'));
 const OfficePage = lazy(() => import('./pages/OfficePage'));
+const PaymentResultPage = lazy(() => import('./pages/PaymentResultPage'));
 const GuidesPage = lazy(() => import('./pages/GuidesPage'));
 const LawMapPage = lazy(() => import('./pages/LawMapPage'));
 const LawArticlePage = lazy(() => import('./pages/LawArticlePage'));
@@ -74,6 +75,9 @@ export default function AppRoutes() {
             <Route path="/agency/visa" element={<VisaWorkCenterPage />} />
             <Route path="/agency/precedents" element={<PrecedentsPage />} />
             <Route path="/agency/office" element={<OfficePage />} />
+            {/* 결제 결과 — 토스에서 돌아오는 곳 */}
+            <Route path="/payment/success" element={<PaymentResultPage mode="success" />} />
+            <Route path="/payment/fail" element={<PaymentResultPage mode="fail" />} />
           </Route>
         </Route>
 

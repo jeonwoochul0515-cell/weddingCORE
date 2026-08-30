@@ -148,6 +148,13 @@ service cloud.firestore {
       allow read: if isAgencyMember(aid);
       allow write: if canWriteAgency(aid);
     }
+    // 결제 주문. 금액과 상태는 서버(Admin SDK)만 쓴다.
+    // 화면에서 금액을 고칠 수 있으면 결제 검증이 무의미해진다.
+    match /agencies/{aid}/payments/{orderId} {
+      allow read: if isAgencyMember(aid);
+      allow write: if false;
+    }
+
     // 업체 자체에 붙는 자료(통역자·현지 파트너·처분 이력·결격사유·사무소).
     // 고객과 무관하며 업체 구성원만 읽고 쓴다.
     match /agencies/{aid}/interpreters/{id} {

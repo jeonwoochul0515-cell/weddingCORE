@@ -167,3 +167,6 @@ export { submitConsult, weddingcoreAdmin } from './consult/index.js';
 export { collectPrecedents, runPrecedentCollectNow } from './regulations/precedents.js';
 export { tagPrecedentRequirements, runRequirementTaggingNow } from './regulations/tagRequirements.js';
 export { searchPrecedents, precedentCounts, getPrecedent } from './regulations/precedentSearch.js';
+
+// 결제 (토스페이먼츠)
+export { createPaymentOrder, confirmPayment } from './payments/toss.js';
