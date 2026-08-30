@@ -54,7 +54,12 @@ export default function AutomationCenterPage() {
       && selectedClient.automationConsents.legalReviewSharing,
   );
   const allowance = credits?.monthlyAllowance ?? 0;
-  const monthlyRemaining = Math.max(0, allowance - (credits?.used ?? 0));
+  // 월이 바뀌면 무료분은 다시 채워진다. 저장된 used는 지난달 값이라 그대로 빼면
+  // 잔여가 실제보다 적게 보인다(서버는 문서를 만들 때 resetAt을 보고 리셋한다).
+  const monthResetPassed =
+    !credits?.resetAt || credits.resetAt.toMillis() <= Date.now();
+  const usedThisMonth = monthResetPassed ? 0 : (credits?.used ?? 0);
+  const monthlyRemaining = Math.max(0, allowance - usedThisMonth);
   const purchased = credits?.purchased ?? 0;
   const remaining = monthlyRemaining + purchased;
 
@@ -151,7 +156,8 @@ export default function AutomationCenterPage() {
           <PlusCircle className="text-emerald-700" size={21} />
         </div>
         <p className="mt-2 text-xs leading-5 text-slate-500">
-          월 무료 캐럿을 다 쓰면 충전해서 계속 사용합니다. 충전분은 월이 바뀌어도 사라지지 않습니다.
+          월 무료 캐럿은 매달 새로 채워집니다. 남은 무료분은 다음 달로 넘어가지 않습니다.
+          충전분은 돈을 내신 몫이라 월이 바뀌어도 사라지지 않습니다.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           {CARAT_PACKS.map((pack) => (
