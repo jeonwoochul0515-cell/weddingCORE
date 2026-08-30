@@ -119,9 +119,23 @@ const DOMAIN_TERMS = [
     '출입국·외국인',
     '출입국관리사무소',
 ];
+/**
+ * 부분문자열 오탐을 막는다.
+ * '사증'을 그냥 includes로 찾으면 "준공검사증발급", "항공신체검사증명"이 걸린다.
+ * 실제로 「하천공작물(보)설치공사준공검사증발급처분취소」가 이렇게 들어왔다.
+ * 앞 글자가 한글이면 다른 낱말의 일부이므로 제외한다.
+ */
+const BOUNDARY_TERMS = {
+    사증: /(?<![가-힣])사증/,
+    귀화: /(?<![가-힣])귀화/,
+};
+function hasTerm(text, term) {
+    const re = BOUNDARY_TERMS[term];
+    return re ? re.test(text) : text.includes(term);
+}
 function isRelevant(...parts) {
     const text = parts.join(' ');
-    return DOMAIN_TERMS.some((t) => text.includes(t));
+    return DOMAIN_TERMS.some((t) => hasTerm(text, t));
 }
 function toArray(v) {
     if (!v)

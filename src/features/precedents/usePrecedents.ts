@@ -22,6 +22,8 @@ export type PrecedentSummary = {
   /** 본문에서만 낱말이 걸린 요건. 쟁점이 아닐 수 있어 화면에서 구분해 보여준다. */
   requirementsWeak: string[];
   requirementConfidence: 'auto' | 'reviewed' | 'none';
+  /** 결혼중개와 무관한 사건(난민·유학 등). 기본으로 감춰진다 */
+  offTopic: boolean;
 };
 
 export type PrecedentDetail = PrecedentSummary & {
@@ -39,6 +41,8 @@ export type PrecedentCounts = {
   decc: number;
   /** 강·약 어느 요건에도 걸리지 않은 사건 수 */
   unlinked: number;
+  /** 결혼중개와 무관해 감춰둔 사건 수 */
+  offTopicCount: number;
   byRequirement: Record<string, number>;
   /** 약한 연결까지 합친 건수 */
   byRequirementWithWeak: Record<string, number>;

@@ -26,6 +26,7 @@ const SUMMARY_FIELDS = [
     'requirementsWeak',
     'requirementConfidence',
     'tracks',
+    'offTopic',
 ];
 let cache = null;
 const CACHE_TTL_MS = 30 * 60 * 1000;
@@ -60,6 +61,7 @@ async function loadRows() {
                 : v.requirementConfidence === 'auto'
                     ? 'auto'
                     : 'none',
+            offTopic: v.offTopic === true,
             // 검색은 사건명·요지에서만 한다. 본문까지 넣으면 인용된 다른 사건이 걸린다.
             searchText: `${caseName} ${summary} ${str(v.caseNumber)}`,
         };
@@ -88,6 +90,9 @@ export const searchPrecedents = onCall({ region: REGION, timeoutSeconds: 30, mem
         throw new HttpsError('invalid-argument', '검색어가 너무 깁니다.');
     }
     let rows = await loadRows();
+    // 난민·외국인근로자·유학 사건은 결혼중개 업체에게 소음이라 기본으로 감춘다.
+    if (data.includeOffTopic !== true)
+        rows = rows.filter((r) => !r.offTopic);
     // 약한 연결까지 포함하면 걸리는 사건이 크게 늘지만 쟁점이 아닐 수 있다.
     // 켜고 끄는 것은 화면에서 정하고, 결과에는 어느 쪽으로 걸렸는지 남긴다.
     const includeWeak = data.includeWeak === true;
@@ -118,7 +123,9 @@ export const precedentCounts = onCall({ region: REGION, timeoutSeconds: 30, memo
     if (!request.auth?.uid) {
         throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    const rows = await loadRows();
+    const all = await loadRows();
+    const rows = all.filter((r) => !r.offTopic);
+    const offTopicCount = all.length - rows.length;
     const byRequirement = {};
     // 약한 연결까지 합친 건수. 화면에서 "포함" 토글을 켰을 때 보여줄 값이다.
     const byRequirementWithWeak = {};
@@ -140,7 +147,7 @@ export const precedentCounts = onCall({ region: REGION, timeoutSeconds: 30, memo
             byRequirementWithWeak[k] = (byRequirementWithWeak[k] ?? 0) + 1;
         }
     }
-    return { total: rows.length, prec, decc, unlinked, byRequirement, byRequirementWithWeak };
+    return { total: rows.length, prec, decc, unlinked, offTopicCount, byRequirement, byRequirementWithWeak };
 });
 /** 단건 전문. 목록에서 뺀 본문·주문·참조조문이 여기 들어 있다. */
 export const getPrecedent = onCall({ region: REGION, timeoutSeconds: 30, memory: '256MiB' }, async (request) => {

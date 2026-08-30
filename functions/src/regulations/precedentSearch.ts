@@ -29,6 +29,7 @@ const SUMMARY_FIELDS = [
   'requirementsWeak',
   'requirementConfidence',
   'tracks',
+  'offTopic',
 ] as const;
 
 export type PrecedentSummary = {
@@ -49,6 +50,8 @@ export type PrecedentSummary = {
    */
   requirementsWeak: string[];
   requirementConfidence: 'auto' | 'reviewed' | 'none';
+  /** 결혼중개와 무관한 사건(난민·외국인근로자·유학 등). 기본으로 감춘다 */
+  offTopic: boolean;
 };
 
 type CachedRow = PrecedentSummary & { searchText: string };
@@ -90,6 +93,7 @@ async function loadRows(): Promise<CachedRow[]> {
           : v.requirementConfidence === 'auto'
             ? 'auto'
             : 'none',
+      offTopic: v.offTopic === true,
       // 검색은 사건명·요지에서만 한다. 본문까지 넣으면 인용된 다른 사건이 걸린다.
       searchText: `${caseName} ${summary} ${str(v.caseNumber)}`,
     };
@@ -121,6 +125,8 @@ export const searchPrecedents = onCall(
       keyword?: string;
       limit?: number;
       includeWeak?: boolean;
+      /** 결혼중개와 무관한 사건까지 볼지 */
+      includeOffTopic?: boolean;
     };
 
     const requirement = str(data.requirement).trim();
@@ -133,6 +139,9 @@ export const searchPrecedents = onCall(
     }
 
     let rows = await loadRows();
+
+    // 난민·외국인근로자·유학 사건은 결혼중개 업체에게 소음이라 기본으로 감춘다.
+    if (data.includeOffTopic !== true) rows = rows.filter((r) => !r.offTopic);
 
     // 약한 연결까지 포함하면 걸리는 사건이 크게 늘지만 쟁점이 아닐 수 있다.
     // 켜고 끄는 것은 화면에서 정하고, 결과에는 어느 쪽으로 걸렸는지 남긴다.
@@ -173,7 +182,9 @@ export const precedentCounts = onCall(
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
 
-    const rows = await loadRows();
+    const all = await loadRows();
+    const rows = all.filter((r) => !r.offTopic);
+    const offTopicCount = all.length - rows.length;
     const byRequirement: Record<string, number> = {};
     // 약한 연결까지 합친 건수. 화면에서 "포함" 토글을 켰을 때 보여줄 값이다.
     const byRequirementWithWeak: Record<string, number> = {};
@@ -195,7 +206,7 @@ export const precedentCounts = onCall(
       }
     }
 
-    return { total: rows.length, prec, decc, unlinked, byRequirement, byRequirementWithWeak };
+    return { total: rows.length, prec, decc, unlinked, offTopicCount, byRequirement, byRequirementWithWeak };
   },
 );
 

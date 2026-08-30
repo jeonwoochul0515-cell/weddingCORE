@@ -286,6 +286,12 @@ export default function PrecedentsPage() {
           <p className="mt-2 text-xs text-slate-500">
             전체 {counts.total.toLocaleString()}건 · 재결례 {counts.decc.toLocaleString()}건 · 판례{' '}
             {counts.prec.toLocaleString()}건
+            {counts.offTopicCount > 0 && (
+              <span className="text-slate-400">
+                {' '}
+                (난민·유학 등 결혼중개와 무관한 {counts.offTopicCount.toLocaleString()}건은 제외)
+              </span>
+            )}
           </p>
         )}
       </header>
