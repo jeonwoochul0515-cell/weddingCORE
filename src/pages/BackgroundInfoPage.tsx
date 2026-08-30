@@ -11,13 +11,22 @@ import {
 } from '@/features/sideBySide/useBackgroundInfo';
 import BackgroundInfoForm from '@/features/sideBySide/BackgroundInfoForm';
 import ParallelView from '@/features/sideBySide/ParallelView';
+import DeliverySection from '@/features/sideBySide/DeliverySection';
+import { useClient } from '@/features/agency/useAgencyClients';
 import type { SupportedLang } from '@/features/sideBySide/fields';
 
 export default function BackgroundInfoPage() {
   const { clientId } = useParams();
+  // 제공 시점이 맞선 전인지 대조하려면 맞선 예정일이 필요하다
+  const { client } = useClient(clientId);
+  const meetingAnchor = client?.anchors?.meeting_scheduled ?? null;
+  const meetingAt =
+    meetingAnchor && typeof (meetingAnchor as { toDate?: () => Date }).toDate === 'function'
+      ? (meetingAnchor as { toDate: () => Date }).toDate()
+      : null;
   const [params, setParams] = useSearchParams();
   const activeInfoId = params.get('info');
-  const activeMode = (params.get('mode') as 'edit' | 'parallel' | null) ?? 'edit';
+  const activeMode = (params.get('mode') as 'edit' | 'parallel' | 'delivery' | null) ?? 'edit';
 
   const { items } = useBackgroundInfoList(clientId);
   const user = useAuthStore((s) => s.user);
@@ -124,6 +133,12 @@ export default function BackgroundInfoPage() {
                 >
                   나란히 보기
                 </button>
+                <button
+                  onClick={() => setParams({ info: info.id, mode: 'delivery' })}
+                  className={`rounded px-3 py-1 ${activeMode === 'delivery' ? 'bg-slate-900 text-white' : 'text-slate-600'}`}
+                >
+                  제공 기록
+                </button>
               </div>
 
               {activeMode === 'edit' && (
@@ -142,6 +157,15 @@ export default function BackgroundInfoPage() {
                   translations={translations}
                   targetLang={targetLang}
                   onTargetLangChange={setTargetLang}
+                />
+              )}
+
+              {activeMode === 'delivery' && clientId && (
+                <DeliverySection
+                  clientId={clientId}
+                  infoId={info.id}
+                  infoSubject={info.subject}
+                  meetingAt={meetingAt}
                 />
               )}
             </>

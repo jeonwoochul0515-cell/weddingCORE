@@ -148,6 +148,35 @@ service cloud.firestore {
       allow read: if isAgencyMember(aid);
       allow write: if canWriteAgency(aid);
     }
+    // 업체 자체에 붙는 자료(통역자·현지 파트너·처분 이력·결격사유·사무소).
+    // 고객과 무관하며 업체 구성원만 읽고 쓴다.
+    match /agencies/{aid}/interpreters/{id} {
+      allow read: if isAgencyMember(aid);
+      allow write: if canWriteAgency(aid);
+    }
+    match /agencies/{aid}/localPartners/{id} {
+      allow read: if isAgencyMember(aid);
+      allow write: if canWriteAgency(aid);
+    }
+    match /agencies/{aid}/sanctions/{id} {
+      allow read: if isAgencyMember(aid);
+      allow write: if canWriteAgency(aid);
+    }
+    match /agencies/{aid}/disqualChecks/{id} {
+      allow read: if isAgencyMember(aid);
+      allow write: if canWriteAgency(aid);
+    }
+    match /agencies/{aid}/offices/{id} {
+      allow read: if isAgencyMember(aid);
+      allow write: if canWriteAgency(aid);
+    }
+
+    // 신상정보 제공 기록. 언제 누구에게 건넸는지가 처분을 가르는 지점이라
+    // 업체 구성원만 읽고 쓰게 하되, 기록 자체는 남도록 삭제도 권한 안에서만 허용한다.
+    match /agencies/{aid}/clients/{clientId}/backgroundInfo/{infoId}/deliveries/{deliveryId} {
+      allow read: if isAgencyMember(aid);
+      allow write: if canWriteAgency(aid);
+    }
     match /agencies/{aid}/clients/{clientId}/backgroundInfo/{infoId}/translations/{lang} {
       allow read: if isAgencyMember(aid);
       allow create: if canWriteAgency(aid)

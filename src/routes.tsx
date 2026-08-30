@@ -28,6 +28,7 @@ const LawyerWorkbenchPage = lazy(() => import('./pages/LawyerWorkbenchPage'));
 const MarketingCenterPage = lazy(() => import('./pages/MarketingCenterPage'));
 const VisaWorkCenterPage = lazy(() => import('./pages/VisaWorkCenterPage'));
 const PrecedentsPage = lazy(() => import('./pages/PrecedentsPage'));
+const OfficePage = lazy(() => import('./pages/OfficePage'));
 const GuidesPage = lazy(() => import('./pages/GuidesPage'));
 const GuideDetailPage = lazy(() => import('./pages/GuideDetailPage'));
 
@@ -68,6 +69,7 @@ export default function AppRoutes() {
             <Route path="/agency/marketing" element={<MarketingCenterPage />} />
             <Route path="/agency/visa" element={<VisaWorkCenterPage />} />
             <Route path="/agency/precedents" element={<PrecedentsPage />} />
+            <Route path="/agency/office" element={<OfficePage />} />
           </Route>
         </Route>
 

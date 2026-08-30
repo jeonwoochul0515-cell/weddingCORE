@@ -11,6 +11,7 @@ const agencyLinks = [
   { to: '/agency/marketing', label: '마케팅 센터', shortLabel: '마케팅', icon: Megaphone },
   { to: '/agency/automation', label: 'AI 업무 자동화', shortLabel: 'AI', icon: Bot },
   { to: '/agency/precedents', label: '거부 사례', shortLabel: '사례', icon: Scale },
+  { to: '/agency/office', label: '업체 정보', shortLabel: '업체', icon: Building2 },
   { to: '/agency/regulatory', label: '규제 레이더', shortLabel: '규제', icon: Radio },
 ];
 
