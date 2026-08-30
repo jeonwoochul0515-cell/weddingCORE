@@ -141,6 +141,32 @@ export default function LawMapPage() {
           ))}
         </div>
 
+        {/* 하위법령 — 실무 기준의 대부분이 여기 있다 */}
+        <section className="mt-10">
+          <h2 className="mb-1 text-lg font-bold text-[#102621]">시행령·시행규칙</h2>
+          <p className="mb-3 text-sm leading-relaxed text-slate-600">
+            법은 뼈대만 정하고 구체적인 기준은 아래에 있습니다. 신상정보로 무엇을 받아야
+            하는지, 어떤 광고 문구가 걸리는지, 처분이 어떻게 가중·감경되는지가 여기 적혀 있습니다.
+          </p>
+          <div className="space-y-2.5">
+            {LAW_ARTICLE_DETAILS.filter((d) => d.label.startsWith('시행')).map((d) => (
+              <Link
+                key={d.slug}
+                to={`/law/${d.slug}`}
+                className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-emerald-300 sm:p-5"
+              >
+                <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                  <span className="rounded-md bg-indigo-100 px-1.5 py-0.5 text-xs font-bold text-indigo-700">
+                    {d.label}
+                  </span>
+                  <h3 className="text-base font-bold text-[#102621]">{d.title}</h3>
+                </div>
+                <p className="text-sm leading-relaxed text-slate-600">{d.plain}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <p className="mt-8 rounded-xl bg-slate-50 p-4 text-xs leading-relaxed text-slate-500">
           조문의 요지를 실무 기준으로 옮긴 것이며 원문이 아닙니다. 정확한 문언과 개정 여부는
           국가법령정보센터에서 확인해 주세요. 개별 사안의 판단은 변호사 검토를 거쳐야 합니다.

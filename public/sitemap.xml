@@ -198,4 +198,34 @@
     <changefreq>yearly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://weddingcore.net/law/decree-article-2</loc>
+    <lastmod>2026-08-30T00:00:00+09:00</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://weddingcore.net/law/decree-article-3-2</loc>
+    <lastmod>2026-08-30T00:00:00+09:00</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://weddingcore.net/law/decree-article-4</loc>
+    <lastmod>2026-08-30T00:00:00+09:00</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://weddingcore.net/law/rule-table-1</loc>
+    <lastmod>2026-08-30T00:00:00+09:00</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://weddingcore.net/law/rule-table-2</loc>
+    <lastmod>2026-08-30T00:00:00+09:00</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
 </urlset>
