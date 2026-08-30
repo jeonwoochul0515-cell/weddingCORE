@@ -44,7 +44,13 @@ function newOrderId(kind) {
 /**
  * 주문을 만든다. 금액은 여기서 정해지고 이후 바뀌지 않는다.
  */
-export const createPaymentOrder = onCall({ region: REGION, timeoutSeconds: 30 }, async (request) => {
+export const createPaymentOrder = onCall({ region: REGION, secrets: [TOSS_SECRET_KEY], timeoutSeconds: 30 }, async (request) => {
+    // 승인에 쓸 시크릿이 없으면 주문부터 막는다.
+    // 결제창까지 갔다가 승인이 실패하면 돈이 빠져나갔다 취소되는 일이 생긴다.
+    const secret = process.env.TOSS_SECRET_KEY;
+    if (!secret || secret === 'NOT_CONFIGURED') {
+        throw new HttpsError('failed-precondition', '카드 결제가 아직 열리지 않았습니다. 계좌이체로 신청해 주세요.');
+    }
     const uid = request.auth?.uid;
     const agencyId = request.auth?.token?.agencyId;
     const role = request.auth?.token?.role;
