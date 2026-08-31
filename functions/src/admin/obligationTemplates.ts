@@ -833,7 +833,6 @@ const MARRIAGE_BROKERAGE_OBLIGATIONS: ObligationTemplateSeed[] = [
 /** 사업별 의무 세트. 키는 트랙 정의(domain/visaTracks.ts)의 obligationSet과 같아야 한다. */
 export const OBLIGATION_SETS: Record<string, ObligationTemplateSeed[]> = {
   marriage_brokerage_act: MARRIAGE_BROKERAGE_OBLIGATIONS,
-  // study_agency_act: 유학원 관련 법령 조사 후 추가
   // extension_immigration_act: 체류 연장 관련 의무 조사 후 추가
 };
 

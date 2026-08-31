@@ -22,6 +22,19 @@ const STAGE_LABEL: Record<number, string> = {
   4: '맞선·혼인', 5: '비자 신청', 6: '사후관리',
 };
 
+/**
+ * 혼인이력을 우리말로 바꾼다. 저장값은 등록 폼이 쓰는 none/divorced/widowed 인데
+ * 그대로 내보내면 화면에 "divorced" 가 뜬다. 읽는 사람이 쓰는 말로 보여준다.
+ * 모르는 값이면 원래 값을 그대로 두어 정보가 사라지지 않게 한다.
+ */
+const MARITAL_LABEL: Record<string, string> = {
+  none: '미혼',
+  single: '미혼',
+  divorced: '이혼',
+  widowed: '사별',
+};
+const maritalLabel = (value: string) => MARITAL_LABEL[value] ?? value;
+
 export default function ClientDetailPage() {
   const { clientId } = useParams();
   const { client, loading } = useClient(clientId);
@@ -81,7 +94,7 @@ export default function ClientDetailPage() {
               <dt className="text-slate-500">연락처</dt><dd>{k.phone}</dd>
               <dt className="text-slate-500">주소</dt><dd>{k.address}</dd>
               <dt className="text-slate-500">연소득</dt><dd>{k.incomeAnnual.toLocaleString()}원</dd>
-              <dt className="text-slate-500">혼인이력</dt><dd>{k.maritalHistory}</dd>
+              <dt className="text-slate-500">혼인이력</dt><dd>{maritalLabel(k.maritalHistory)}</dd>
               {profile?.education && <><dt className="text-slate-500">학력</dt><dd>{profile.education}</dd></>}
               {profile?.religion && <><dt className="text-slate-500">종교</dt><dd>{profile.religion}</dd></>}
             </dl>

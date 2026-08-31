@@ -1,15 +1,16 @@
 // 비자 사업 종류(트랙)마다 다른 규칙을 한곳에 모은 정의
 //
-// weddingCORE는 결혼중개 하나가 아니라 세 사업의 공통 엔진으로 쓴다.
+// weddingCORE는 결혼중개 하나가 아니라 두 사업의 공통 엔진으로 쓴다.
 //   1) 결혼중개 (F-6 결혼이민)
-//   2) 유학생 비자 (D-2 유학, D-4 어학연수)
-//   3) 비자 연장 (체류기간 연장·자격변경 — 같은 고객이 주기적으로 돌아온다)
+//   2) 비자 연장 (체류기간 연장·자격변경 — 같은 고객이 주기적으로 돌아온다)
 //
-// 고객 관리·기한 추적·서류 보관·변호사 검토·캐럿 과금은 세 사업이 똑같이 쓰므로
+// 유학생 비자(D-2·D-4)는 2026-08-28에 KoAdmit으로 넘겼다. 여기로 되돌리지 말 것.
+//
+// 고객 관리·기한 추적·서류 보관·변호사 검토·캐럿 과금은 두 사업이 똑같이 쓰므로
 // 이 파일에 넣지 않는다. 여기에는 "사업마다 달라지는 것"만 둔다.
 // 새 사업을 추가할 때는 아래 TRACKS에 항목 하나를 더하면 된다.
 
-export type TrackId = 'marriage' | 'study' | 'extension';
+export type TrackId = 'marriage' | 'extension';
 
 export type DocumentSpec = {
   /** 문서 식별자. Firestore에 저장되므로 한번 정하면 바꾸지 않는다. */
@@ -97,48 +98,6 @@ export const TRACKS: Record<TrackId, VisaTrack> = {
         creditCost: 30,
         instruction:
           '혼인 전 보유재산, 채무, 생활비, 송금, 혼인 중 취득재산을 정리한 부부재산약정 초안을 작성한다. 양 당사자 이해충돌과 혼인 전 등기 검토를 필수 경고한다.',
-      },
-      ...SHARED_DOCUMENTS,
-    ],
-  },
-
-  study: {
-    id: 'study',
-    label: '유학생 비자',
-    description: '어학연수·학위과정 입학부터 D-2·D-4 사증 발급까지',
-    visaTypes: ['D-2', 'D-4'],
-    obligationSet: null,
-    requirementSet: 'study_finance',
-    recurring: false,
-    stages: [
-      { id: 'intake', label: '상담 접수', description: '지원자 학력·어학 수준 확인' },
-      { id: 'admission', label: '입학 절차', description: '학교 지원과 입학허가서 수령' },
-      { id: 'finance', label: '재정 확인', description: '학비·체재비 잔고 증명 준비' },
-      { id: 'documents', label: '서류 준비', description: '학력·경력 서류 인증과 번역' },
-      { id: 'submitted', label: '접수 완료', description: '공관 사증 신청 접수' },
-      { id: 'approved', label: '발급 완료', description: '사증 발급과 입국 후 등록 안내' },
-    ],
-    documents: [
-      {
-        key: 'study_application_package',
-        label: '유학 사증 신청 패키지',
-        creditCost: 30,
-        instruction:
-          '유학 사증 신청용 지원자 요약, 학업 동기, 재정능력과 귀국 의사 입증 구조, 누락서류 목록을 작성한다. 발급 가능성을 보장하지 않는다.',
-      },
-      {
-        key: 'study_purpose_statement',
-        label: '학업계획서 초안',
-        creditCost: 20,
-        instruction:
-          '지원 학교·전공 선택 이유, 학업 계획, 졸업 후 계획을 사실 자료에 근거해 구성한다. 확인되지 않은 경력이나 성적을 만들지 않는다.',
-      },
-      {
-        key: 'admission_document_review',
-        label: '입학허가·재정증명 검토',
-        creditCost: 15,
-        instruction:
-          '입학허가서, 잔고증명, 학비 납입증명의 명의·금액·기간이 사증 요건과 맞는지 점검표를 작성하고 부족한 부분을 지적한다.',
       },
       ...SHARED_DOCUMENTS,
     ],

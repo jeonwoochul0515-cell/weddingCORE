@@ -3,12 +3,13 @@
 // 서버(functions/src/domain/visaTracks.ts)와 문서 키·캐럿 비용이 반드시 같아야 한다.
 // 어긋나면 화면에 표시한 가격과 실제 차감액이 달라지므로 `npm run check:tracks`로 검사한다.
 //
-// 세 사업이 같은 엔진을 쓴다. 사업마다 달라지는 것만 여기에 둔다.
+// 두 사업이 같은 엔진을 쓴다. 사업마다 달라지는 것만 여기에 둔다.
 //   1) marriage  — 결혼중개 (F-6)
-//   2) study     — 유학생 비자 (D-2, D-4)
-//   3) extension — 체류 연장·변경 (같은 고객이 주기적으로 재신청)
+//   2) extension — 체류 연장·변경 (같은 고객이 주기적으로 재신청)
+//
+// 유학생 비자(D-2·D-4)는 2026-08-28에 KoAdmit으로 넘겼다. 여기로 되돌리지 말 것.
 
-export type TrackId = 'marriage' | 'study' | 'extension';
+export type TrackId = 'marriage' | 'extension';
 
 export type DocumentSpec = {
   key: string;
@@ -74,28 +75,6 @@ export const TRACKS: Record<TrackId, VisaTrack> = {
     ],
   },
 
-  study: {
-    id: 'study',
-    label: '유학생 비자',
-    description: '입학 절차부터 D-2·D-4 사증 발급까지',
-    visaTypes: ['D-2', 'D-4'],
-    recurring: false,
-    stages: [
-      { id: 'intake', label: '상담 접수', description: '지원자 학력·어학 수준 확인', tone: 'bg-slate-100 text-slate-700' },
-      { id: 'admission', label: '입학 절차', description: '학교 지원과 입학허가서 수령', tone: 'bg-blue-50 text-blue-700' },
-      { id: 'finance', label: '재정 확인', description: '학비·체재비 잔고 증명 준비', tone: 'bg-cyan-50 text-cyan-700' },
-      { id: 'documents', label: '서류 준비', description: '학력·경력 서류 인증과 번역', tone: 'bg-violet-50 text-violet-700' },
-      { id: 'submitted', label: '접수 완료', description: '공관 사증 신청 접수', tone: 'bg-amber-50 text-amber-800' },
-      { id: 'approved', label: '발급 완료', description: '사증 발급과 입국 후 등록 안내', tone: 'bg-emerald-50 text-emerald-700' },
-    ],
-    documents: [
-      { key: 'study_application_package', label: '유학 사증 신청 패키지', creditCost: 30, description: '학업동기·재정능력 입증 초안' },
-      { key: 'study_purpose_statement', label: '학업계획서 초안', creditCost: 20, description: '전공 선택 이유와 졸업 후 계획' },
-      { key: 'admission_document_review', label: '입학허가·재정증명 검토', creditCost: 15, description: '명의·금액·기간 요건 점검표' },
-      ...SHARED_DOCUMENTS,
-    ],
-  },
-
   extension: {
     id: 'extension',
     label: '체류 연장·변경',
@@ -123,7 +102,6 @@ export const TRACKS: Record<TrackId, VisaTrack> = {
  */
 export const RULE_READINESS: Record<TrackId, { requirements: boolean; obligations: boolean }> = {
   marriage: { requirements: true, obligations: true },
-  study: { requirements: false, obligations: false },
   extension: { requirements: false, obligations: false },
 };
 

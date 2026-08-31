@@ -136,6 +136,15 @@ service cloud.firestore {
       allow read: if isAgencyMember(aid);
       allow write: if canWriteAgency(aid);
     }
+    // 대시보드는 고객을 가로질러 임박한 기한을 모아 보여준다(collectionGroup 쿼리).
+    // 위의 경로 규칙은 collectionGroup 쿼리에 적용되지 않으므로 따로 선언해야 한다.
+    // 없으면 화면이 permission-denied 로 조용히 멈춘 채 "불러오는 중"만 남는다.
+    // 문서에 비정규화해 둔 agencyId 로 자기 업체 것만 열어 준다.
+    match /{path=**}/timeline/{itemId} {
+      allow read: if isAuthed()
+                  && myRole() in ['owner', 'manager', 'staff', 'readonly']
+                  && resource.data.agencyId == myAgencyId();
+    }
     match /agencies/{aid}/clients/{clientId}/documents/{documentId} {
       allow read: if isAgencyMember(aid);
       allow write: if canWriteAgency(aid);
