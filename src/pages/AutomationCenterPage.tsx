@@ -139,7 +139,7 @@ export default function AutomationCenterPage() {
           <div className="mt-1 text-3xl font-bold tracking-tight text-white">{credits ? remaining : '—'}<span className="ml-1 text-xs font-normal text-slate-400">캐럿</span></div>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${allowance > 0 ? Math.min(100, (monthlyRemaining / allowance) * 100) : 0}%` }} /></div>
           <p className="mt-2 text-[11px] leading-4 text-slate-300">월 무료 {monthlyRemaining}/{allowance} · 충전 {purchased}캐럿</p>
-          <p className="mt-1 text-[10px] leading-4 text-slate-400">1캐럿 = 1,000원. 월 무료 제공량은 사전 고지 후 변경될 수 있습니다.</p>
+          <p className="mt-1 text-[10px] leading-4 text-slate-400">1캐럿 = 1,000원. 월 무료 {allowance}캐럿은 다음 달로 이월되지 않습니다. 충전분은 그대로 남습니다.</p>
         </div>
       </div>
       </section>
@@ -156,8 +156,8 @@ export default function AutomationCenterPage() {
           <PlusCircle className="text-emerald-700" size={21} />
         </div>
         <p className="mt-2 text-xs leading-5 text-slate-500">
-          월 무료 캐럿은 매달 새로 채워집니다. 남은 무료분은 다음 달로 넘어가지 않습니다.
-          충전분은 돈을 내신 몫이라 월이 바뀌어도 사라지지 않습니다.
+          월 무료 캐럿은 매달 새로 채워집니다. <strong className="font-semibold text-slate-700">남은 무료분은 다음 달로 이월되지 않습니다.</strong>{' '}
+          충전분은 돈을 내신 몫이라 월이 바뀌어도 사라지지 않습니다. 월 무료 제공량은 사전 고지 후 변경될 수 있습니다.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           {CARAT_PACKS.map((pack) => (
