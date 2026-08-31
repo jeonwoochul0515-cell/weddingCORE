@@ -9,6 +9,7 @@ import { ArrowLeft, ExternalLink, ShieldCheck } from 'lucide-react';
 import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
 import { findLawArticle, LAW_ARTICLE_DETAILS } from '@/content/lawArticles';
+import { findGuide } from '@/content/guides';
 import { LAW_ENFORCED_ON, LAW_NAME, LAW_SOURCE_URL } from '@/content/lawMap';
 import { breadcrumbSchema, articleSchema } from '@/lib/schema';
 import NotFoundPage from './NotFoundPage';
@@ -129,15 +130,20 @@ export default function LawArticlePage() {
                 {a.feature.label}
               </Link>
             )}
-            {a.guides?.map((g) => (
-              <Link
-                key={g}
-                to={`/guides/${g}`}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-emerald-300"
-              >
-                관련 사례 보기
-              </Link>
-            ))}
+            {/* 전에는 전부 "관련 사례 보기"라고만 적혀 있어서, 여러 개가 붙으면
+                무엇이 있는지 알 수 없었다. 실제 제목을 보여준다. */}
+            {a.guides?.map((g) => {
+              const guide = findGuide(g);
+              return (
+                <Link
+                  key={g}
+                  to={`/guides/${g}`}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-emerald-300 hover:text-emerald-800"
+                >
+                  {guide ? guide.title : '관련 사례 보기'}
+                </Link>
+              );
+            })}
           </section>
         )}
 

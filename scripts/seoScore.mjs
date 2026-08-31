@@ -61,6 +61,10 @@ const jsonLd = (html) =>
 /** 한국어는 공백 기준 어절이 영어 단어보다 짧아 40~60단어를 60~110어절로 환산한다. */
 const words = (text) => text.split(/\s+/).filter(Boolean).length;
 
+/** 문장 단위로 쪼갠다. 너무 짧은 조각은 우연히 일치할 수 있어 뺀다. */
+const sentences = (text) =>
+  text.split(/(?<=[.!?])\s+/).map((t) => t.trim()).filter((t) => t.length >= 10);
+
 function scoreBlock(title, checks) {
   const max = checks.reduce((s, c) => s + c.max, 0);
   const got = checks.reduce((s, c) => s + c.got, 0);
@@ -182,9 +186,15 @@ async function main() {
     // FAQPage여야 하는 것이 아니다 — 아니면서 FAQ를 붙이면 그게 스팸이다.
     ratio('화면 성격에 맞는 스키마', 20, all,
       (p) => info[p].ld.some((d) => ['FAQPage', 'Article', 'CollectionPage', 'WebPage'].includes(d?.['@type']))),
+    // 답변 전체가 화면에 한 덩어리로 있어야 하는 것은 아니다. 결론은 문단에,
+    // 근거는 목록에 있는 식이라 이어 붙으면 연속 문자열로는 찾을 수 없다.
+    // 대신 문장 하나하나가 화면에 그대로 있는지 본다 — 앞 몇 글자만 보던 것보다
+    // 엄격하다. 답변 중간에 화면에 없는 말을 끼워 넣으면 여기서 걸린다.
     ratio('스키마 ↔ 화면 문구 1:1 일치', 20, hasFaq,
       (p) => info[p].faq.mainEntity.every(
-        (q) => info[p].text.includes(q.name.slice(0, 20)) && info[p].text.includes(q.acceptedAnswer.text.slice(0, 25)))),
+        (q) =>
+          info[p].text.includes(q.name.slice(0, 20)) &&
+          sentences(q.acceptedAnswer.text).every((line) => info[p].text.includes(line)))),
     ratio('FAQ 답변 길이 적정 (두괄식 40~60단어 상당)', 15, hasFaq,
       (p) => faqAnswers(p).every((a) => { const w = words(a); return w >= 25 && w <= 110; })),
     ratio('FAQ 답변 자기완결 (문맥 없이 읽힘)', 15, hasFaq,

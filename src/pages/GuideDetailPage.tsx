@@ -5,10 +5,12 @@
 // FAQPage 구조화 데이터를 화면 문구와 1:1로 맞춰 넣는다.
 
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink, ShieldCheck } from 'lucide-react';
 import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
 import { findGuide, sourceUrl, GUIDES } from '@/content/guides';
+import { matchLawArticle } from '@/content/lawArticles';
+import { matchLawMapEntry } from '@/content/lawMap';
 import { breadcrumbSchema, articleSchema } from '@/lib/schema';
 import NotFoundPage from './NotFoundPage';
 
@@ -162,10 +164,38 @@ export default function GuideDetailPage() {
 
         <section className="mt-8 rounded-2xl bg-white p-5 sm:p-6">
           <h2 className="mb-3 text-sm font-bold text-slate-500">관련 조문</h2>
-          <ul className="space-y-1.5">
-            {item.articles.map((a) => (
-              <li key={a} className="text-sm text-slate-700">{a}</li>
-            ))}
+          {/* 조문 이름만 적어두면 읽는 사람이 그 조문을 다시 찾아야 한다.
+              조문 지도에 페이지가 있으면 그리로 잇고, 무엇을 요구하는 조문인지도 함께 보여준다. */}
+          <ul className="space-y-2.5">
+            {item.articles.map((a) => {
+              const article = matchLawArticle(a);
+              if (!article) {
+                // 상세 페이지가 없는 조문. 조문 지도의 요약이라도 함께 보여준다.
+                const entry = matchLawMapEntry(a);
+                return (
+                  <li key={a} className="rounded-xl border border-slate-200 bg-white px-3.5 py-3">
+                    <span className="text-sm font-semibold text-slate-800">{a}</span>
+                    {entry && (
+                      <span className="mt-1 block text-xs leading-5 text-slate-600">{entry.gist}</span>
+                    )}
+                  </li>
+                );
+              }
+              return (
+                <li key={a}>
+                  <Link
+                    to={`/law/${article.slug}`}
+                    className="group block rounded-xl border border-slate-200 bg-white px-3.5 py-3 transition hover:border-emerald-300"
+                  >
+                    <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-800 group-hover:text-emerald-800">
+                      {a}
+                      <ArrowRight size={13} className="text-slate-300 group-hover:text-emerald-600" />
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-600">{article.plain}</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
           <div className="mt-5 border-t border-slate-200 pt-4">
             <p className="mb-2 text-xs text-slate-500">

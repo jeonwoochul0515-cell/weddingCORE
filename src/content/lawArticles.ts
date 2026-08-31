@@ -529,3 +529,17 @@ export const LAW_ARTICLE_DETAILS: LawArticleDetail[] = [
 
 export const findLawArticle = (slug: string) =>
   LAW_ARTICLE_DETAILS.find((a) => a.slug === slug) ?? null;
+
+/**
+ * 해석집의 `articles` 문자열("결혼중개업법 제24조의3(자본금)")을 조문 페이지와 잇는다.
+ *
+ * 해석집이 참조하는 조문을 글자로만 적어 두면 읽는 사람이 그 조문을 다시 찾아야 한다.
+ * 조문 지도에 그 페이지가 이미 있는데도 갈 길이 없는 셈이라 여기서 이어 준다.
+ * 시행령·시행규칙은 표기가 달라 아직 잇지 않는다 — 못 찾으면 null이고, 화면은 글자로 남긴다.
+ */
+export function matchLawArticle(reference: string) {
+  const m = reference.match(/제\s?(\d+)조(?:의\s?(\d+))?/);
+  if (!m) return null;
+  const slug = m[2] ? `article-${m[1]}-${m[2]}` : `article-${m[1]}`;
+  return findLawArticle(slug);
+}

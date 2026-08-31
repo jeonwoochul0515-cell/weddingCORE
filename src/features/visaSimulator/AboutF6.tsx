@@ -36,7 +36,7 @@ export const F6_FAQ = [
   },
   {
     q: '소득 말고 또 무엇을 보나',
-    a: '결혼이 진짜인지를 봅니다. 두 사람이 통역 없이 말이 통하는지, 직접 만난 횟수와 교제 기간이 충분한지, 배우자 본국법상 혼인할 수 있는 나이인지, 이전 혼인이 정리되었는지, 초청인에게 아동학대·성범죄 같은 결격 사유가 없는지, 결혼이민 사전안내 프로그램을 이수했는지를 확인합니다.',
+    a: '결혼이 진짜인지를 봅니다. 두 사람이 말이 통하는지, 만난 적이 있고 교제 기간이 충분한지, 배우자 본국법상 혼인할 수 있는 나이인지, 이전 혼인이 정리되었는지, 초청인에게 결격 사유가 없는지, 결혼이민 사전안내 프로그램을 이수했는지를 확인합니다.',
   },
   {
     q: '이 점검을 통과하면 비자가 나오나',
@@ -106,11 +106,9 @@ export default function AboutF6() {
         </p>
 
         <h2 className="mt-10 text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">
-          소득 말고 또 무엇을 보나
+          {F6_FAQ[2]!.q}
         </h2>
-        <p className="mt-3 text-sm leading-7 text-slate-700">
-          결혼이 진짜인지를 봅니다. 구체적으로는 아래를 확인합니다.
-        </p>
+        <p className="mt-3 text-sm leading-7 text-slate-700">{F6_FAQ[2]!.a}</p>
         <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
           {[
             ['두 사람이 말이 통하는가', '통역 없이는 대화가 안 되는 경우 혼인의 진정성을 의심받습니다. 한국어 능력이나 배우자 언어 학습 이력을 함께 냅니다.'],
@@ -128,12 +126,11 @@ export default function AboutF6() {
         </ul>
 
         <h2 className="mt-10 text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">
-          이 점검을 통과하면 비자가 나오나
+          {F6_FAQ[3]!.q}
         </h2>
-        <p className="mt-3 text-sm leading-7 text-slate-700">
-          아닙니다. 이 도구는 서류와 요건이 어디까지 준비됐는지 스스로 확인해 보는 것이고,
-          심사 결과를 예측하지 않습니다. 실제 판단은 담당 공관과 법무부가 하며, 같은 조건이라도
-          결과가 다를 수 있습니다. 개별 사안의 법률 판단이 필요하면 변호사에게 확인하십시오.
+        <p className="mt-3 text-sm leading-7 text-slate-700">{F6_FAQ[3]!.a}</p>
+        <p className="mt-2 text-sm leading-7 text-slate-700">
+          개별 사안의 법률 판단이 필요하면 변호사에게 확인하십시오.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-2 border-t border-slate-100 pt-6">

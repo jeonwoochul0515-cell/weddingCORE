@@ -190,3 +190,16 @@ export const LAW_ARTICLES: LawArticle[] = [
 ];
 
 export const HOT_COUNT = LAW_ARTICLES.filter((a) => a.hot).length;
+
+/**
+ * 해석집의 참조 문자열("같은 법 제3조(국내결혼중개업의 신고)")로 조문 지도 항목을 찾는다.
+ *
+ * 상세 페이지(lawArticles.ts)가 없는 조문도 지도에는 요약이 있다. 상세가 없다고
+ * 조문 이름만 덩그러니 두면 읽는 사람이 그 조문이 무슨 내용인지 알 길이 없다.
+ */
+export function matchLawMapEntry(reference: string) {
+  const m = reference.match(/제\s?\d+조(?:의\s?\d+)?/);
+  if (!m) return null;
+  const no = m[0].replace(/\s/g, '');
+  return LAW_ARTICLES.find((a) => a.no === no) ?? null;
+}
