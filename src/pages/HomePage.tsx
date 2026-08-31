@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
+import { breadcrumbSchema } from '@/lib/schema';
 
 const FEATURES = [
   { icon: Bot, number: '01', title: '반복 문서업무 자동화', body: '고객정보와 보유서류를 바탕으로 F-6, 계약검토, 보완답변 초안을 구조화합니다.' },
@@ -24,7 +25,7 @@ const FEATURES = [
 
 /**
  * 검색·AI 답변에서 인용되도록 질문형 제목과 두괄식 답변으로 쓴다.
- * index.html의 FAQPage JSON-LD와 1:1로 동기화할 것. 한쪽만 고치면 스팸으로 처리된다.
+ * 아래 FAQPage 스키마를 이 배열에서 그대로 만들어 화면과 어긋날 일이 없다.
  */
 const FAQ = [
   {
@@ -52,8 +53,23 @@ export default function HomePage() {
     path: '/',
   });
 
+  // 화면의 FAQ 배열에서 그대로 만든다. 홈에만 실려야 하므로 index.html이 아니라 여기 둔다.
+  const schemas = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: FAQ.map(({ q, a }) => ({
+        '@type': 'Question',
+        name: q,
+        acceptedAnswer: { '@type': 'Answer', text: a },
+      })),
+    },
+    breadcrumbSchema([{ name: 'weddingCORE', path: '/' }]),
+  ];
+
   return (
     <div className="min-h-screen overflow-hidden bg-[#f6f7f3] text-[#102621]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas) }} />
       <div className="relative border-b border-emerald-950/10 bg-[#f6f7f3]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_22%,rgba(15,159,124,.16),transparent_26rem)]" />
         <header className="relative mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8">

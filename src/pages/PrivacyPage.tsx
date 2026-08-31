@@ -5,6 +5,7 @@
 import { Link } from 'react-router-dom';
 import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
+import { breadcrumbSchema } from '@/lib/schema';
 
 const UPDATED_AT = '2026-08-28';
 
@@ -15,8 +16,14 @@ export default function PrivacyPage() {
     path: '/privacy',
   });
 
+  const crumbs = breadcrumbSchema([
+    { name: 'weddingCORE', path: '/' },
+    { name: '개인정보처리방침', path: '/privacy' },
+  ]);
+
   return (
     <div className="min-h-screen bg-slate-50">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }} />
       <header className="border-b border-slate-200 bg-white px-5 py-4 sm:px-8">
         <Link to="/" aria-label="weddingCORE 홈">
           <BrandMark />

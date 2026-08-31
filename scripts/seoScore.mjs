@@ -7,7 +7,9 @@
 // 사용법: node scripts/seoScore.mjs [https://호스트]
 
 const ORIGIN = (process.argv[2] ?? 'https://weddingcore.net').replace(/\/$/, '');
-const PAGES = ['/', '/visa-simulator', '/mbti-test'];
+// 채점 대상. 공개 라우트를 늘리면 여기도 늘린다 — 안 늘리면 새 페이지는
+// 한 번도 채점되지 않은 채 "100점"이 나온다(2026-08-31에 35개가 그 상태였다).
+const PAGES = ['/', '/visa-simulator', '/mbti-test', '/guides', '/law'];
 
 const bold = (s) => `\x1b[1m${s}\x1b[0m`;
 const dim = (s) => `\x1b[2m${s}\x1b[0m`;
@@ -39,9 +41,20 @@ const meta = (html, attr, key) => {
 };
 const tag = (html, name) => html.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, 'i'))?.[1]?.trim() ?? null;
 const canonical = (html) => html.match(/rel=["']canonical["'][^>]*href=["']([^"']+)["']/i)?.[1] ?? null;
+/**
+ * 한 script 안에 스키마를 배열로 여러 개 넣는 것도 표준이다.
+ * 펴서 담지 않으면 배열째 하나로 세어져 안에 든 FAQPage를 못 찾는다.
+ */
 const jsonLd = (html) =>
   [...html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g)]
-    .map((m) => { try { return JSON.parse(m[1]); } catch { return null; } });
+    .flatMap((m) => {
+      try {
+        const parsed = JSON.parse(m[1]);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        return [null];
+      }
+    });
 
 /** 한국어는 공백 기준 어절이 영어 단어보다 짧아 40~60단어를 60~110어절로 환산한다. */
 const words = (text) => text.split(/\s+/).filter(Boolean).length;

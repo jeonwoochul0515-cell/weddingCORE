@@ -7,6 +7,8 @@ import { t, type UiLang } from '@/features/visaSimulator/i18n';
 import BrandMark from '@/components/brand/BrandMark';
 import { ShieldCheck, Sparkles } from 'lucide-react';
 import { usePageMeta } from '@/lib/usePageMeta';
+import { breadcrumbSchema } from '@/lib/schema';
+import AboutF6, { F6_FAQ } from '@/features/visaSimulator/AboutF6';
 
 export default function VisaSimulatorPage() {
   usePageMeta({
@@ -30,8 +32,28 @@ export default function VisaSimulatorPage() {
     window.scrollTo({ top: 0 });
   }
 
+  // 아래 설명 영역의 질문·답과 1:1로 맞춘다. 화면에 없는 것을 스키마에 넣지 않는다.
+  const schemas = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: F6_FAQ.map(({ q, a }) => ({
+        '@type': 'Question',
+        name: q,
+        acceptedAnswer: { '@type': 'Answer', text: a },
+      })),
+    },
+    breadcrumbSchema([
+      { name: 'weddingCORE', path: '/' },
+      { name: 'F-6 결혼이민 비자 준비도 점검', path: '/visa-simulator' },
+    ]),
+  ];
+
   return (
     <div className="min-h-screen bg-[#f6f7f3]">
+      {lang === 'ko' && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas) }} />
+      )}
       <header className="flex h-20 items-center justify-between border-b border-slate-200/80 bg-white/80 px-5 backdrop-blur-xl print:hidden sm:px-8">
         <Link to="/"><BrandMark /></Link>
         <div className="flex items-center gap-2">
@@ -64,6 +86,10 @@ export default function VisaSimulatorPage() {
         {!result && <InputForm lang={lang} onSubmit={handleSubmit} />}
         {result && <ResultView result={result} lang={lang} onReset={handleReset} />}
       </section>
+
+      {/* 요건 설명. 도구는 자바스크립트로 그려져 검색·AI가 읽을 내용이 없으므로 글로도 둔다.
+          한국어로만 쓰여 있어 다른 언어를 고른 사람에게는 보여주지 않는다. */}
+      {lang === 'ko' && <AboutF6 />}
 
       <footer className="mt-16 border-t border-slate-200 bg-white px-6 py-8 text-center text-xs text-slate-500 print:hidden">
         <span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-600" />본 결과는 준비도 점검이며 법률자문이나 승인 예측이 아닙니다.</span>

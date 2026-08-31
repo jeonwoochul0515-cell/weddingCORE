@@ -9,6 +9,7 @@ import { ArrowLeft, ExternalLink, ShieldCheck } from 'lucide-react';
 import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
 import { findGuide, sourceUrl, GUIDES } from '@/content/guides';
+import { breadcrumbSchema, articleSchema } from '@/lib/schema';
 import NotFoundPage from './NotFoundPage';
 
 export default function GuideDetailPage() {
@@ -38,9 +39,25 @@ export default function GuideDetailPage() {
     ],
   };
 
+  // 이동경로와 글 정보. 화면에 실제로 있는 계층·제목·날짜만 담는다.
+  const schemas = [
+    faqSchema,
+    breadcrumbSchema([
+      { name: 'weddingCORE', path: '/' },
+      { name: '결혼중개업법 해석 모음', path: '/guides' },
+      { name: item.title, path: `/guides/${item.slug}` },
+    ]),
+    articleSchema({
+      headline: item.title,
+      description: item.summary,
+      path: `/guides/${item.slug}`,
+      sourceDate: item.answeredOn,
+    }),
+  ];
+
   return (
     <div className="min-h-screen bg-[#f6f7f3]">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas) }} />
 
       <header className="flex h-20 items-center justify-between border-b border-slate-200/80 bg-white/80 px-5 backdrop-blur-xl sm:px-8">
         <Link to="/"><BrandMark /></Link>

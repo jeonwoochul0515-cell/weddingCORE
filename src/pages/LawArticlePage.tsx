@@ -10,6 +10,7 @@ import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
 import { findLawArticle, LAW_ARTICLE_DETAILS } from '@/content/lawArticles';
 import { LAW_ENFORCED_ON, LAW_NAME, LAW_SOURCE_URL } from '@/content/lawMap';
+import { breadcrumbSchema, articleSchema } from '@/lib/schema';
 import NotFoundPage from './NotFoundPage';
 
 export default function LawArticlePage() {
@@ -26,8 +27,23 @@ export default function LawArticlePage() {
 
   const others = LAW_ARTICLE_DETAILS.filter((x) => x.slug !== a.slug).slice(0, 3);
 
+  // 이동경로와 글 정보. 조문 원문·해설이 화면에 그대로 있는 내용만 담는다.
+  const schemas = [
+    breadcrumbSchema([
+      { name: 'weddingCORE', path: '/' },
+      { name: '결혼중개업법 조문 지도', path: '/law' },
+      { name: `${a.label} ${a.title}`, path: `/law/${a.slug}` },
+    ]),
+    articleSchema({
+      headline: `${a.label} ${a.title}`,
+      description: a.plain,
+      path: `/law/${a.slug}`,
+    }),
+  ];
+
   return (
     <div className="min-h-screen bg-[#f6f7f3]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas) }} />
       <header className="flex h-20 items-center justify-between border-b border-slate-200/80 bg-white/80 px-5 backdrop-blur-xl sm:px-8">
         <Link to="/"><BrandMark /></Link>
         <Link to="/login" className="secondary-button !px-3.5 !py-2">업체 로그인</Link>

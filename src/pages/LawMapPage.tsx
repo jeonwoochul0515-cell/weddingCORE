@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { ExternalLink, Flame, ScrollText, ShieldCheck } from 'lucide-react';
 import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
+import { breadcrumbSchema } from '@/lib/schema';
 import { LAW_ARTICLE_DETAILS } from '@/content/lawArticles';
 import {
   HOT_COUNT,
@@ -31,8 +32,14 @@ export default function LawMapPage() {
     path: '/law',
   });
 
+  const crumbs = breadcrumbSchema([
+    { name: 'weddingCORE', path: '/' },
+    { name: '결혼중개업법 조문 지도', path: '/law' },
+  ]);
+
   return (
     <div className="min-h-screen bg-[#f6f7f3]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }} />
       <header className="flex h-20 items-center justify-between border-b border-slate-200/80 bg-white/80 px-5 backdrop-blur-xl sm:px-8">
         <Link to="/"><BrandMark /></Link>
         <Link to="/login" className="secondary-button !px-3.5 !py-2">업체 로그인</Link>

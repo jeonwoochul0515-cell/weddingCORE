@@ -5,6 +5,8 @@ import { QUESTIONS, calculateMbti, type MbtiResult } from '@/features/matching/m
 import { MBTI_DESCRIPTIONS } from '@/features/matching/mbtiTest/descriptions';
 import { mt, type MbtiLang } from '@/features/matching/mbtiTest/i18n';
 import { usePageMeta } from '@/lib/usePageMeta';
+import { breadcrumbSchema } from '@/lib/schema';
+import AboutTest, { TEST_FAQ } from '@/features/matching/mbtiTest/AboutTest';
 
 const LANGS: { code: MbtiLang; label: string }[] = [
   { code: 'ko', label: '한국어' },
@@ -99,7 +101,30 @@ export default function MbtiTestPage() {
 
   // 질문 화면
   return (
+    <>
     <div className="mx-auto max-w-lg px-4 py-8">
+      {lang === 'ko' && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([
+              {
+                '@context': 'https://schema.org',
+                '@type': 'FAQPage',
+                mainEntity: TEST_FAQ.map(({ q: name, a }) => ({
+                  '@type': 'Question',
+                  name,
+                  acceptedAnswer: { '@type': 'Answer', text: a },
+                })),
+              },
+              breadcrumbSchema([
+                { name: 'weddingCORE', path: '/' },
+                { name: '국제결혼 성향 진단', path: '/mbti-test' },
+              ]),
+            ]),
+          }}
+        />
+      )}
       <LangSelector lang={lang} onChange={setLang} />
 
       <div className="mt-6 text-center">
@@ -166,6 +191,10 @@ export default function MbtiTestPage() {
 
       <p className="mt-6 text-center text-[10px] text-slate-400">{mt('disclaimer', lang)}</p>
     </div>
+    {/* 진단이 무엇을 보는지 글로도 둔다. 문항은 자바스크립트로 그려져 검색·AI가 읽을 게 없다.
+        한국어로만 쓰여 있어 다른 언어를 고른 사람에게는 보여주지 않는다. */}
+    {lang === 'ko' && <AboutTest />}
+    </>
   );
 }
 
