@@ -215,6 +215,12 @@ FUNCTIONS_DISCOVERY_TIMEOUT=120 npx firebase deploy --only functions:이름
 `firebase.json`에 hosting 설정이 남아 있지만 실서비스 도메인은 Cloudflare가 받는다.
 `npm run deploy:all`은 Firebase Hosting으로 올리므로 실제 사이트에는 반영되지 않는다.
 
+**★ `wrangler deploy`를 직접 부르지 말 것.** 사이트는 올라가지만 뒤에 붙은
+`npm run indexnow`(검색엔진 통지)와 `npm run score:seo`(점검)가 통째로 빠진다.
+겉으로는 "Deployment complete!"라 성공처럼 보여서 알아채기 어렵다.
+2026-08-31에 이 방식으로 여러 번 배포해 새 페이지 통지가 나가지 않았다.
+반드시 `npm run deploy:cloudflare`를 쓴다(토큰을 환경변수로 물린 상태에서).
+
 ---
 
 ## 2026-08-28 · 유학 도메인을 KoAdmit으로 이관하며
