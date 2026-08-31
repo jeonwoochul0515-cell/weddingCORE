@@ -55,9 +55,9 @@ export default function AboutF6() {
           F-6 결혼이민 비자를 받으려면 소득이 얼마나 있어야 하나
         </h2>
         <p className="mt-3 text-sm leading-7 text-slate-700">
-          한국인 배우자(초청인)의 연간 소득이 가구원 수별 기준 금액 이상이어야 합니다.
-          {CURRENT_RULE_YEAR}년 기준으로 2인 가구는 {won(at(2))}, 4인 가구는 {won(at(4))}입니다. 여기서 말하는 소득은 신청일 기준
-          최근 1년치이며, 세전 금액으로 봅니다.
+          한국인 배우자(초청인)의 연간 소득이 가구원 수별 기준 금액 이상이어야 합니다.{' '}
+          {CURRENT_RULE_YEAR}년 기준으로 2인 가구는 {won(at(2))}, 4인 가구는 {won(at(4))}입니다.
+          신청일 기준 최근 1년치 세전 금액으로 봅니다.
         </p>
 
         <div className="mt-5 overflow-x-auto">
@@ -99,11 +99,10 @@ export default function AboutF6() {
           소득이 기준에 모자라면 방법이 없나
         </h2>
         <p className="mt-3 text-sm leading-7 text-slate-700">
-          두 가지를 함께 볼 수 있습니다. 첫째, 예금·부동산 같은 재산을 연{' '}
-          {(PROPERTY_TO_INCOME_RATE * 100).toFixed(0)}%로 환산해 소득에 더합니다. 1억원의 재산은{' '}
-          {won(100_000_000 * PROPERTY_TO_INCOME_RATE)}의 소득으로 봅니다. 둘째, 같이 사는 가족의
-          소득을 합산할 수 있습니다. 다만 두 방법 모두 증빙 서류가 필요하고, 공관에 따라 인정
-          범위가 다를 수 있습니다.
+          두 가지를 함께 볼 수 있습니다. 재산을 연 {(PROPERTY_TO_INCOME_RATE * 100).toFixed(0)}%로 환산해
+          소득에 더하거나, 같이 사는 가족의 소득을 합산합니다. 두 방법 모두 증빙이 필요하고 공관에 따라
+          인정 범위가 다를 수 있습니다. 예를 들어 1억원의 재산은{' '}
+          {won(100_000_000 * PROPERTY_TO_INCOME_RATE)}의 소득으로 봅니다.
         </p>
 
         <h2 className="mt-10 text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">

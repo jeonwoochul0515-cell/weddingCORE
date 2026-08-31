@@ -5,7 +5,7 @@ import { QUESTIONS, calculateMbti, type MbtiResult } from '@/features/matching/m
 import { MBTI_DESCRIPTIONS } from '@/features/matching/mbtiTest/descriptions';
 import { mt, type MbtiLang } from '@/features/matching/mbtiTest/i18n';
 import { usePageMeta } from '@/lib/usePageMeta';
-import { breadcrumbSchema } from '@/lib/schema';
+import { breadcrumbSchema, webPageSchema } from '@/lib/schema';
 import AboutTest, { TEST_FAQ } from '@/features/matching/mbtiTest/AboutTest';
 
 const LANGS: { code: MbtiLang; label: string }[] = [
@@ -121,6 +121,11 @@ export default function MbtiTestPage() {
                 { name: 'weddingCORE', path: '/' },
                 { name: '국제결혼 성향 진단', path: '/mbti-test' },
               ]),
+              webPageSchema({
+                name: '국제결혼 성향 진단',
+                description: '국제결혼을 준비하는 두 사람의 생활 성향과 소통 방식을 진단해 상담에 활용할 자료로 정리합니다.',
+                path: '/mbti-test',
+              }),
             ]),
           }}
         />

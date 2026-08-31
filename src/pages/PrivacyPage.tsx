@@ -5,7 +5,7 @@
 import { Link } from 'react-router-dom';
 import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
-import { breadcrumbSchema } from '@/lib/schema';
+import { breadcrumbSchema, webPageSchema } from '@/lib/schema';
 
 const UPDATED_AT = '2026-08-28';
 
@@ -16,14 +16,22 @@ export default function PrivacyPage() {
     path: '/privacy',
   });
 
-  const crumbs = breadcrumbSchema([
-    { name: 'weddingCORE', path: '/' },
-    { name: '개인정보처리방침', path: '/privacy' },
-  ]);
+  const schemas = [
+    breadcrumbSchema([
+      { name: 'weddingCORE', path: '/' },
+      { name: '개인정보처리방침', path: '/privacy' },
+    ]),
+    webPageSchema({
+      name: '개인정보처리방침',
+      description: 'weddingCORE가 수집·이용하는 개인정보의 항목과 처리 방법을 안내합니다.',
+      path: '/privacy',
+      updated: UPDATED_AT,
+    }),
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas) }} />
       <header className="border-b border-slate-200 bg-white px-5 py-4 sm:px-8">
         <Link to="/" aria-label="weddingCORE 홈">
           <BrandMark />

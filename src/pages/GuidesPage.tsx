@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, ScrollText, ShieldCheck } from 'lucide-react';
 import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
-import { breadcrumbSchema } from '@/lib/schema';
+import { breadcrumbSchema, collectionSchema } from '@/lib/schema';
 import { GUIDES, COURT_COUNT, RULING_COUNT, INTERPRETATION_COUNT } from '@/content/guides';
 
 export default function GuidesPage() {
@@ -18,14 +18,22 @@ export default function GuidesPage() {
     path: '/guides',
   });
 
-  const crumbs = breadcrumbSchema([
-    { name: 'weddingCORE', path: '/' },
-    { name: '결혼중개업법 해석 모음', path: '/guides' },
-  ]);
+  const schemas = [
+    breadcrumbSchema([
+      { name: 'weddingCORE', path: '/' },
+      { name: '결혼중개업법 해석 모음', path: '/guides' },
+    ]),
+    collectionSchema({
+      name: '결혼중개업법 해석과 처분 사례',
+      description: '법제처 법령해석·행정심판 재결례·법원 판례를 실무 질문으로 정리한 모음입니다.',
+      path: '/guides',
+      itemCount: GUIDES.length,
+    }),
+  ];
 
   return (
     <div className="min-h-screen bg-[#f6f7f3]">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas) }} />
       <header className="flex h-20 items-center justify-between border-b border-slate-200/80 bg-white/80 px-5 backdrop-blur-xl sm:px-8">
         <Link to="/"><BrandMark /></Link>
         <Link to="/login" className="secondary-button !px-3.5 !py-2">업체 로그인</Link>
@@ -60,10 +68,11 @@ export default function GuidesPage() {
           <ArrowRight size={18} className="shrink-0 text-slate-300" />
         </Link>
 
-        <div className="space-y-3">
+        {/* div가 아니라 ul/li로 둔다. 검색엔진과 화면낭독기가 "몇 개짜리 목록"으로 읽는다. */}
+        <ul className="space-y-3">
           {GUIDES.map((item) => (
+            <li key={item.slug}>
             <Link
-              key={item.slug}
               to={`/guides/${item.slug}`}
               className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md sm:p-6"
             >
@@ -90,8 +99,9 @@ export default function GuidesPage() {
                 <span>{item.answeredOn}</span>
               </div>
             </Link>
+            </li>
           ))}
-        </div>
+        </ul>
 
         <p className="mt-10 rounded-xl bg-slate-50 p-4 text-xs leading-relaxed text-slate-500">
           법령해석은 질의한 사안을 전제로 한 답변이고, 재결례는 그 사건의 사실관계에 대한 판단입니다.

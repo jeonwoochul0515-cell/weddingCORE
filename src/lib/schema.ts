@@ -53,3 +53,38 @@ export function articleSchema(args: {
     publisher: { '@type': 'Organization', name: 'weddingCORE', url: ORIGIN },
   };
 }
+
+/**
+ * 목록 화면(해석 모음·조문 지도)용. 글 하나가 아니라 "무엇을 모아 둔 곳인지"를 알린다.
+ * 항목 수를 함께 담아 검색엔진이 목록의 규모를 알 수 있게 한다.
+ */
+export function collectionSchema(args: {
+  name: string;
+  description: string;
+  path: string;
+  itemCount: number;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: args.name,
+    description: args.description,
+    url: `${ORIGIN}${args.path}`,
+    inLanguage: 'ko',
+    dateModified: CONTENT_REVIEWED,
+    mainEntity: { '@type': 'ItemList', numberOfItems: args.itemCount },
+  };
+}
+
+/** 도구·정책처럼 글도 목록도 아닌 화면용. 갱신일을 알리는 것이 주목적이다. */
+export function webPageSchema(args: { name: string; description: string; path: string; updated?: string }) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: args.name,
+    description: args.description,
+    url: `${ORIGIN}${args.path}`,
+    inLanguage: 'ko',
+    dateModified: args.updated ?? CONTENT_REVIEWED,
+  };
+}
