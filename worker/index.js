@@ -37,8 +37,16 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    if (url.hostname === `www.${CANONICAL_HOST}`) {
+    // 대표 주소는 https://weddingcore.net 하나다. http와 www는 검색엔진에게 별개 사이트라
+    // 그대로 두면 같은 내용이 최대 네 벌로 색인된다(http/https × www 유무).
+    // 두 가지를 한 번에 바로잡아 리다이렉트가 두 번 일어나지 않게 한다.
+    const wrongHost = url.hostname === `www.${CANONICAL_HOST}`;
+    // Cloudflare 뒤에서는 url.protocol이 항상 https로 보일 수 있으므로 원래 프로토콜 헤더를 본다.
+    const forwarded = request.headers.get('X-Forwarded-Proto');
+    const wrongScheme = forwarded ? forwarded !== 'https' : url.protocol !== 'https:';
+    if (wrongHost || wrongScheme) {
       url.hostname = CANONICAL_HOST;
+      url.protocol = 'https:';
       return Response.redirect(url.toString(), 301);
     }
 
