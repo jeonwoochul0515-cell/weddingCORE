@@ -1,5 +1,10 @@
+# 토스 결제에 필요한 도메인을 CSP에 열어 둔다. 빠지면 결제창이 아예 안 뜨고
+# 버튼이 "결제창 여는 중…"에서 멈춘 채 주문만 쌓인다(2026-09-01 실제 사고).
+#   js.tosspayments.com   결제 SDK 스크립트
+#   *.tosspayments.com    API 호출·결제창 iframe·폼 전송
+# 카드사 인증 페이지는 토스 도메인으로 넘어간 뒤에 뜨므로 우리 CSP 대상이 아니다.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; frame-src https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
