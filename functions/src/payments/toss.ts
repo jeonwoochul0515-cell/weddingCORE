@@ -23,9 +23,9 @@ const CONFIRM_URL = 'https://api.tosspayments.com/v1/payments/confirm';
 
 /** 캐럿 팩. 1캐럿 = 1,000원이고 대량 구매에만 할인을 준다. */
 export const CARAT_PACKS = {
-  pack_50: { label: '50캐럿', carats: 50, amount: 50_000 },
-  pack_200: { label: '200캐럿', carats: 200, amount: 180_000 },
-  pack_500: { label: '500캐럿', carats: 500, amount: 400_000 },
+  pack_110: { label: '110캐럿', carats: 110, amount: 110_000 },
+  pack_330: { label: '330캐럿', carats: 330, amount: 300_000 },
+  pack_550: { label: '550캐럿', carats: 550, amount: 480_000 },
 } as const;
 
 /**

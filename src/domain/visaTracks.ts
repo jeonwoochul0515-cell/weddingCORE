@@ -1,5 +1,12 @@
 // 화면에서 쓰는 비자 사업(트랙)별 규칙 정의
 //
+// [값을 정하는 기준] 행정사 보수와 같은 선에 맞춘다. 변호사가 본다고 더 받는 구조가 아니다.
+// 공시된 행정사 요금표(출입국 민원)에서 우리 상품에 대응하는 값은 둘이다.
+//   · 서류작성 1건  =  20,000원  → 서류 하나를 만들어 주는 것 (20캐럿)
+//   · 신청지원      = 110,000원  → 신청 한 건을 통째로 준비해 주는 것 (110캐럿)
+// 신청대행(30만~44만)은 접수까지 대신하는 것이라 우리 범위가 아니다.
+// 값을 고칠 때는 화면(src/domain/visaTracks.ts)과 서버를 함께 고친다 — npm run check:tracks 가 대조한다.
+//
 // 서버(functions/src/domain/visaTracks.ts)와 문서 키·캐럿 비용이 반드시 같아야 한다.
 // 어긋나면 화면에 표시한 가격과 실제 차감액이 달라지므로 `npm run check:tracks`로 검사한다.
 //
@@ -41,13 +48,13 @@ const SHARED_DOCUMENTS: DocumentSpec[] = [
   {
     key: 'privacy_third_party_consent',
     label: '개인정보 제3자 제공 동의서',
-    creditCost: 5,
+    creditCost: 20,
     description: '법률사무소 제공 범위 초안',
   },
   {
     key: 'immigration_supplement_response',
     label: '출입국 보완요청 답변서',
-    creditCost: 40,
+    creditCost: 110,
     description: '사실·증빙별 대응 구조 초안',
   },
 ];
@@ -68,9 +75,9 @@ export const TRACKS: Record<TrackId, VisaTrack> = {
       { id: 'approved', label: '허가 완료', description: '발급·입국 후속 절차 안내', tone: 'bg-emerald-50 text-emerald-700' },
     ],
     documents: [
-      { key: 'f6_application_package', label: 'F-6 신청 패키지', creditCost: 30, description: '요건·입증구조·누락서류 초안' },
-      { key: 'brokerage_contract_review', label: '국제결혼중개 계약 검토', creditCost: 15, description: '환불·제휴·업무범위 위험 점검' },
-      { key: 'premarital_property_agreement', label: '혼인 전 재산약정', creditCost: 30, description: '재산·채무·생활비 조항 초안' },
+      { key: 'f6_application_package', label: 'F-6 신청 패키지', creditCost: 110, description: '요건·입증구조·누락서류 초안' },
+      { key: 'brokerage_contract_review', label: '국제결혼중개 계약 검토', creditCost: 20, description: '환불·제휴·업무범위 위험 점검' },
+      { key: 'premarital_property_agreement', label: '혼인 전 재산약정', creditCost: 20, description: '재산·채무·생활비 조항 초안' },
       ...SHARED_DOCUMENTS,
     ],
   },
@@ -89,8 +96,8 @@ export const TRACKS: Record<TrackId, VisaTrack> = {
       { id: 'approved', label: '허가 완료', description: '허가 확인과 다음 만료일 등록', tone: 'bg-emerald-50 text-emerald-700' },
     ],
     documents: [
-      { key: 'extension_application_package', label: '체류기간 연장 패키지', creditCost: 20, description: '연장 사유·생계유지 입증 초안' },
-      { key: 'status_change_review', label: '체류자격 변경 검토', creditCost: 25, description: '변경 가능성과 요건 점검표' },
+      { key: 'extension_application_package', label: '체류기간 연장 패키지', creditCost: 110, description: '연장 사유·생계유지 입증 초안' },
+      { key: 'status_change_review', label: '체류자격 변경 검토', creditCost: 20, description: '변경 가능성과 요건 점검표' },
       ...SHARED_DOCUMENTS,
     ],
   },

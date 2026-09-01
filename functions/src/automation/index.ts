@@ -468,9 +468,9 @@ export const reviewLegalDocument = onCall({ region: REGION, enforceAppCheck: ENF
  * 1캐럿 = 1,000원 기준이며 대량 구매에만 할인을 준다.
  */
 export const CARAT_PACKS = {
-  pack_50: { carats: 50, price: 50_000 },
-  pack_200: { carats: 200, price: 180_000 },
-  pack_500: { carats: 500, price: 400_000 },
+  pack_110: { carats: 110, price: 110_000 },
+  pack_330: { carats: 330, price: 300_000 },
+  pack_550: { carats: 550, price: 480_000 },
 } as const;
 
 type CaratPackId = keyof typeof CARAT_PACKS;

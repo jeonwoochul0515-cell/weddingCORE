@@ -12,9 +12,9 @@ import type { AutomationJobStatus } from '@/types/schema';
 import { RULE_READINESS, TRACKS, TRACK_LIST, firstDocument, won, type TrackId } from '@/domain/visaTracks';
 
 const CARAT_PACKS = [
-  { id: 'pack_50', carats: 50, price: 50_000, note: null },
-  { id: 'pack_200', carats: 200, price: 180_000, note: '10% 할인' },
-  { id: 'pack_500', carats: 500, price: 400_000, note: '20% 할인' },
+  { id: 'pack_110', carats: 110, price: 110_000, note: null },
+  { id: 'pack_330', carats: 330, price: 300_000, note: '9% 할인' },
+  { id: 'pack_550', carats: 550, price: 480_000, note: '13% 할인' },
 ] as const;
 
 

@@ -451,7 +451,7 @@ export type AgencyAiCredits = {
 
 export type CaratOrder = {
   agencyId: string;
-  packId: 'pack_50' | 'pack_200' | 'pack_500';
+  packId: 'pack_110' | 'pack_330' | 'pack_550';
   carats: number;
   price: number;
   status: 'requested' | 'granted' | 'cancelled';
