@@ -61,14 +61,14 @@ const SERVICES = [
   {
     id: 'local-content',
     title: '블로그 글 자동 발행',
-    description: '업체 홈페이지에 지역·업종 검색용 글이 매달 자동으로 올라갑니다.',
+    description: '업체 홈페이지에 지역·업종 검색용 글이 매달 8건 자동으로 올라갑니다.',
     icon: PenLine,
-    items: ['지역·업종 키워드 자동 선정', '홈페이지에 글 자동 발행', '네이버 블로그용 원고 함께 제공'],
+    items: ['월 8건 발행', '지역·업종 키워드 자동 선정', '네이버 블로그용 원고 함께 제공'],
     listPrice: 100_000,
     promoPrice: 100_000,
     billing: 'monthly',
     benefit: null,
-    priceNote: '네이버 블로그 게시는 업주가 직접 옮겨 적는 조건',
+    priceNote: '월 8건 · 건당 12,500원 · 자동이체가 아니라 달마다 결제 · 네이버 블로그 게시는 업주가 직접 옮겨 적는 조건',
   },
   {
     id: 'aeo-geo',

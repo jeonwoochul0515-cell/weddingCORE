@@ -34,7 +34,10 @@ export const CARAT_PACKS = {
  */
 export const MARKETING_SERVICES = {
   'naver-seo': { label: '네이버 검색노출·플레이스 광고 최적화', amount: 500_000, billing: 'once' },
-  'local-content': { label: '블로그 글 자동 발행', amount: 100_000, billing: 'monthly' },
+  // 월 10만원짜리다. 이름에 기간을 넣지 않으면 토스 결제창과 영수증에 그냥
+  // "블로그 글 자동 발행 100,000원"으로만 떠서 1회성으로 오해한다.
+  // 정기결제(빌링)는 아직 없어서 매달 다시 결제해야 한다.
+  'local-content': { label: '블로그 글 자동 발행 (월 8건 · 1개월분)', amount: 100_000, billing: 'monthly' },
   'aeo-geo': { label: 'AEO·GEO 콘텐츠 설계', amount: 500_000, billing: 'once' },
   // website(홈페이지 제작)는 회원 무료라 결제 대상이 아니다.
 } as const;
