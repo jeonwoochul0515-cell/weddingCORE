@@ -10,6 +10,7 @@ import { db, storage, auth, functions } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import BrokerAutocomplete, { type BrokerHit } from '@/features/registry/BrokerAutocomplete';
 import { usePageMeta } from '@/lib/usePageMeta';
+import { signOut } from '@/lib/auth';
 
 type FormValues = {
   businessNumber: string;
@@ -255,10 +256,26 @@ export default function AgencySignupPage() {
     <div className="min-h-screen bg-slate-50 py-12">
       <div className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <h1 className="mb-1 text-2xl font-semibold text-slate-900">업체 정보 등록</h1>
-        <p className="mb-6 text-sm text-slate-600">
+        <p className="mb-4 text-sm text-slate-600">
           사업자등록증을 촬영하면 상호·등록번호·대표자를 자동으로 읽어 입력란을 채웁니다.
           채워진 값은 실제 문서와 같은지 확인한 뒤 제출해 주세요.
         </p>
+
+        {/* 여기까지 왔다는 것은 계정은 만들어졌으나 업체 등록이 안 끝났다는 뜻이다.
+            빠져나갈 길이 없으면 로그인 화면으로도 못 가고 이 화면만 반복해서 보게 된다.
+            (2026-09-01에 실제로 그렇게 갇힌 계정이 나왔다) */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
+          <span>
+            계정은 만들어졌습니다. 이 단계를 마쳐야 서비스를 쓸 수 있습니다.
+          </span>
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="shrink-0 font-semibold text-slate-700 underline underline-offset-2 hover:text-slate-900"
+          >
+            다른 계정으로 로그인
+          </button>
+        </div>
 
         <div className="mb-6 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 p-5">
           <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
