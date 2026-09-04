@@ -1,0 +1,91 @@
+// 국제결혼 요건 빠른 점검 공개 화면 (/check) — 7문항으로 "나도 되나"를 익명으로 먼저 확인한다
+//
+// 손님은 이름을 밝히기 전에 자격부터 확인하고 싶어 한다(우리결혼중개 손님 리서치, 2026-09-04).
+// ?agency=<업체ID>&name=<업체명>이 붙으면 그 업체의 접수 칸이 열린다. 회원 업체는 같은 화면을
+// /embed/check로 홈페이지에 심는다.
+
+import { Link, useSearchParams } from 'react-router-dom';
+import { ShieldCheck, Timer } from 'lucide-react';
+import BrandMark from '@/components/brand/BrandMark';
+import QuickCheck from '@/features/quickCheck/QuickCheck';
+import { QUESTIONS } from '@/features/quickCheck/questions';
+import { usePageMeta } from '@/lib/usePageMeta';
+import { breadcrumbSchema, webPageSchema } from '@/lib/schema';
+
+const AGENCY_ID_RE = /^ag_[A-Za-z0-9_-]{6,40}$/;
+
+export default function QuickCheckPage() {
+  usePageMeta({
+    title: '국제결혼 요건 빠른 점검 · 2분 7문항',
+    description: '혼인 상태·나이·소득·주거·범죄경력·초청 이력·진행 나라 7문항으로 국제결혼(F-6 결혼이민) 진행에 걸리는 점이 있는지 이름 없이 먼저 확인합니다.',
+    path: '/check',
+  });
+  const [params] = useSearchParams();
+  const rawAgency = params.get('agency') ?? '';
+  const agencyId = AGENCY_ID_RE.test(rawAgency) ? rawAgency : undefined;
+  const agencyName = (params.get('name') ?? '').slice(0, 40) || undefined;
+
+  const schemas = [
+    breadcrumbSchema([
+      { name: 'weddingCORE', path: '/' },
+      { name: '국제결혼 요건 빠른 점검', path: '/check' },
+    ]),
+    webPageSchema({
+      name: '국제결혼 요건 빠른 점검',
+      description: '7문항으로 국제결혼 진행 요건에 걸리는 점이 있는지 이름 없이 먼저 확인하는 화면.',
+      path: '/check',
+    }),
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#f6f7f3]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas) }} />
+      <header className="flex h-20 items-center justify-between border-b border-slate-200/80 bg-white/80 px-5 backdrop-blur-xl sm:px-8">
+        <Link to="/"><BrandMark /></Link>
+        <Link to="/login" className="secondary-button !px-3.5 !py-2">업체 로그인</Link>
+      </header>
+
+      <section className="mx-auto max-w-3xl px-5 py-12 sm:px-6 sm:py-16">
+        <div className="mb-8 text-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><Timer size={14} />2분 · 7문항 · 이름 없이</div>
+          <h1 className="text-4xl font-bold tracking-[-0.045em] text-[#102621] sm:text-5xl">국제결혼 요건 빠른 점검</h1>
+          <p className="mt-4 text-base leading-7 text-slate-600">
+            상담 전에 실제로 진행할 수 있는 조건인지 먼저 확인해 보세요. 답은 이 화면에만 있고 저장되지 않습니다.
+            {agencyName && <> 결과는 원하실 때만 {agencyName}에 전달됩니다.</>}
+          </p>
+        </div>
+
+        <QuickCheck agencyId={agencyId} agencyName={agencyName} />
+      </section>
+
+      {/* 도구는 자바스크립트로 그려져 검색·AI가 읽을 글이 적다. 무엇을 보는지 글로도 둔다. */}
+      <section className="mx-auto max-w-3xl px-5 pb-16 sm:px-6">
+        <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <h2 className="text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">이 점검은 무엇을 보나</h2>
+          <p className="mt-3 text-sm leading-7 text-slate-700">
+            국제결혼을 진행할 때 처음에 걸리는 조건 일곱 가지만 봅니다. 소득 기준 금액과 재산 환산, 교제 증빙까지 보는 정밀 점검은{' '}
+            <Link to="/visa-simulator" className="font-semibold text-emerald-700 underline underline-offset-2">F-6 결혼이민 비자 준비도 점검</Link>에서 할 수 있습니다.
+          </p>
+          <ol className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
+            {QUESTIONS.map((q, i) => (
+              <li key={q.key} className="rounded-xl bg-slate-50 px-4 py-3">
+                <strong className="font-semibold text-slate-900">{i + 1}. {q.title.replace(/\?$/, '')}</strong>
+                <span className="mt-0.5 block text-slate-600">{q.why}</span>
+              </li>
+            ))}
+          </ol>
+          <h2 className="mt-8 text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">중개업체가 이 점검을 홈페이지에 두려면</h2>
+          <p className="mt-3 text-sm leading-7 text-slate-700">
+            weddingCORE 회원 업체는 이 점검을 자기 홈페이지에 그대로 심을 수 있습니다. 손님이 결과를 보고 남긴 연락처는 업체 전화로 문자가 갑니다.
+            삽입 코드는 로그인 뒤{' '}
+            <Link to="/agency/marketing" className="font-semibold text-emerald-700 underline underline-offset-2">마케팅 센터</Link>에 있습니다.
+          </p>
+        </div>
+      </section>
+
+      <footer className="border-t border-slate-200 bg-white px-6 py-8 text-center text-xs text-slate-500">
+        <span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-600" />본 결과는 준비도 점검이며 법률자문이나 심사 결과 예측이 아닙니다.</span>
+      </footer>
+    </div>
+  );
+}

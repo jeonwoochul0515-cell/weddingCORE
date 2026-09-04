@@ -16,6 +16,9 @@ const ROUTE_PREFIXES = [
   '/signup',
   '/pending-approval',
   '/visa-simulator',
+  // 빠른 요건 점검. /embed는 업체 홈페이지 iframe용이라 색인하지 않지만 앱 라우트다.
+  '/check',
+  '/embed',
   '/mbti-test',
   '/privacy',
   // 결혼중개업법 해석 모음. 여기 없으면 프리렌더된 페이지가 있어도 404 + noindex로

@@ -34,6 +34,9 @@ const GuidesPage = lazy(() => import('./pages/GuidesPage'));
 const LawMapPage = lazy(() => import('./pages/LawMapPage'));
 const LawArticlePage = lazy(() => import('./pages/LawArticlePage'));
 const GuideDetailPage = lazy(() => import('./pages/GuideDetailPage'));
+// 빠른 요건 점검. 업체 홈페이지에 iframe으로 들어가므로 가볍게 유지한다(Firebase를 쓰지 않는다).
+const QuickCheckPage = lazy(() => import('./pages/QuickCheckPage'));
+const EmbedCheckPage = lazy(() => import('./pages/EmbedCheckPage'));
 
 function RouteFallback() {
   return (
@@ -49,6 +52,8 @@ export default function AppRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/visa-simulator" element={<VisaSimulatorPage />} />
+        <Route path="/check" element={<QuickCheckPage />} />
+        <Route path="/embed/check" element={<EmbedCheckPage />} />
         <Route path="/mbti-test" element={<MbtiTestPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         {/* 결혼중개업법 해석 — 검색으로 들어오는 공개 입구 */}

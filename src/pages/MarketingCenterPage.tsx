@@ -1,11 +1,24 @@
 // 홈페이지·검색노출·콘텐츠 마케팅 상품을 고르고 견적과 함께 상담을 접수하는 화면
-import { useMemo, useState } from 'react';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  type Timestamp,
+} from 'firebase/firestore';
 import {
   BarChart3,
   CheckCircle2,
   Compass,
+  Copy,
   Globe2,
+  Inbox,
   LayoutTemplate,
   PenLine,
   Megaphone,
@@ -86,6 +99,42 @@ const SERVICES = [
 
 const won = (value: number) => `${value.toLocaleString()}원`;
 
+/**
+ * 홈페이지 빠른 점검 위젯. 손님이 이름을 밝히기 전에 7문항으로 "나도 되나"를 확인하고,
+ * 결과를 본 뒤 성함·연락처만 남긴다. 접수는 업체 전화로 문자가 가고 leads에 쌓인다.
+ * 업체 사이트마다 기술이 달라 iframe으로 준다. 바깥 스크립트는 높이만 맞춘다.
+ */
+const EMBED_ORIGIN = 'https://weddingcore.net';
+
+function embedUrl(agencyId: string, agencyName: string) {
+  return EMBED_ORIGIN + '/embed/check?agency=' + encodeURIComponent(agencyId) + '&name=' + encodeURIComponent(agencyName);
+}
+
+function embedSnippet(agencyId: string, agencyName: string) {
+  const src = embedUrl(agencyId, agencyName);
+  return [
+    '<iframe src="' + src + '" title="국제결혼 요건 빠른 점검" style="width:100%;min-height:760px;border:0" loading="lazy"></iframe>',
+    '<script>window.addEventListener("message",function(e){if(e.origin!=="' + EMBED_ORIGIN + '")return;var d=e.data||{};' +
+      'if(d.type==="weddingcore-check:height"){var f=document.querySelector(\'iframe[src^="' + EMBED_ORIGIN + '/embed/check"]\');if(f)f.style.height=d.height+"px";}});</script>',
+  ].join('\n');
+}
+
+type Lead = {
+  id: string;
+  name: string;
+  phone: string;
+  level: string;
+  summary: string;
+  status: string;
+  createdAt: Timestamp | null;
+};
+
+const LEAD_LEVEL: Record<string, { label: string; cls: string }> = {
+  ok: { label: '걸림 없음', cls: 'bg-emerald-100 text-emerald-700' },
+  check: { label: '확인 필요', cls: 'bg-amber-100 text-amber-800' },
+  stop: { label: '정리 필요', cls: 'bg-red-100 text-red-700' },
+};
+
 const CHECKLIST = [
   { label: '회사 기본정보와 등록번호 공개', done: true },
   { label: '상담 전환 버튼과 연락 경로 점검', done: true },
@@ -102,7 +151,38 @@ export default function MarketingCenterPage() {
   const [submitting, setSubmitting] = useState(false);
   const checkout = useCheckout();
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  const [agency, setAgency] = useState<{ name: string; phone: string }>({ name: '', phone: '' });
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [copied, setCopied] = useState(false);
   const completed = useMemo(() => CHECKLIST.filter((item) => item.done).length, []);
+
+  useEffect(() => {
+    if (!agencyId) return;
+    void getDoc(doc(db, 'agencies', agencyId))
+      .then((snap) => {
+        const data = snap.data();
+        setAgency({ name: String(data?.name ?? ''), phone: String(data?.phone ?? '') });
+      })
+      .catch(() => {});
+    const leadsQuery = query(collection(db, 'agencies/' + agencyId + '/leads'), orderBy('createdAt', 'desc'), limit(20));
+    return onSnapshot(
+      leadsQuery,
+      (snap) => setLeads(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Lead, 'id'>) }))),
+      () => setLeads([]),
+    );
+  }, [agencyId]);
+
+  const snippet = agencyId ? embedSnippet(agencyId, agency.name) : '';
+
+  async function copySnippet() {
+    try {
+      await navigator.clipboard.writeText(snippet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* 클립보드를 못 쓰는 환경. 글상자에서 직접 복사하면 된다. */
+    }
+  }
   const score = Math.round((completed / CHECKLIST.length) * 100);
   const quote = useMemo(() => {
     const picked = SERVICES.filter((service) => selectedServices.includes(service.id));
@@ -256,6 +336,55 @@ export default function MarketingCenterPage() {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      <section className="app-surface rounded-[24px] p-5 sm:p-6">
+        <div className="flex items-center justify-between"><div><div className="eyebrow">Lead widget</div><h2 className="mt-1 text-lg font-bold text-slate-950">홈페이지 요건 점검 위젯</h2></div><Inbox className="text-emerald-700" size={21} /></div>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          손님의 첫 질문은 "나도 될까"입니다. 이 점검을 홈페이지에 두면 손님이 이름을 밝히기 전에 7문항으로 먼저 확인하고,
+          결과를 본 뒤 성함·연락처만 남깁니다. 접수는 업체 전화{agency.phone ? '(' + agency.phone + ')' : ''}로 문자가 가고 아래 목록에 쌓입니다.
+        </p>
+        <div className="mt-4 grid gap-5 lg:grid-cols-2">
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700">삽입 코드</span>
+              <button type="button" onClick={copySnippet} disabled={!snippet} className="secondary-button !px-3 !py-1.5 text-xs"><Copy size={13} />{copied ? '복사됨' : '복사'}</button>
+            </div>
+            <textarea readOnly value={snippet} className="field-control min-h-40 font-mono text-[11px] leading-5" onFocus={(event) => event.currentTarget.select()} />
+            <p className="mt-1.5 text-[11px] leading-4 text-slate-400">
+              홈페이지의 원하는 자리에 그대로 붙여 넣으면 됩니다.{' '}
+              {agencyId && <a href={embedUrl(agencyId, agency.name)} target="_blank" rel="noreferrer" className="underline">새 창에서 미리 보기</a>}
+              {' '}홈페이지를 저희가 만든 경우에는 말씀만 주시면 넣어 드립니다.
+            </p>
+          </div>
+          <div>
+            <div className="mb-1.5 text-xs font-semibold text-slate-700">최근 접수 {leads.length}건</div>
+            {leads.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-200 px-3.5 py-6 text-center text-xs leading-5 text-slate-400">아직 접수가 없습니다. 위젯을 심은 뒤 손님이 결과를 보고 접수하면 여기에 나타납니다.</p>
+            ) : (
+              <ul className="space-y-2">
+                {leads.map((lead) => {
+                  const level = LEAD_LEVEL[lead.level] ?? { label: '미확인', cls: 'bg-slate-100 text-slate-600' };
+                  return (
+                    <li key={lead.id} className="rounded-xl border border-slate-100 bg-slate-50/70 px-3.5 py-3">
+                      <div className="flex items-center justify-between gap-2 text-sm">
+                        <span className="font-semibold text-slate-900">{lead.name} <span className="font-normal text-slate-600">{lead.phone}</span></span>
+                        <span className={'rounded-full px-2 py-0.5 text-[10px] font-bold ' + level.cls}>{level.label}</span>
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-400">{lead.createdAt ? lead.createdAt.toDate().toLocaleString('ko-KR') : ''}</div>
+                      {lead.summary && (
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-xs text-emerald-700">점검 결과 보기</summary>
+                          <pre className="mt-1 whitespace-pre-wrap font-sans text-xs leading-5 text-slate-600">{lead.summary}</pre>
+                        </details>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </div>
       </section>
 

@@ -36,12 +36,14 @@ function normalizePhone(value: string): string {
   return value.trim();
 }
 
-/** Solapi 문자 발송. 실패해도 예외를 던지지 않고 성공 여부만 돌려준다. */
-async function sendSms(text: string): Promise<boolean> {
+/**
+ * Solapi 문자 발송. 실패해도 예외를 던지지 않고 성공 여부만 돌려준다.
+ * 받는 번호를 주지 않으면 우리 사무실(ADMIN_NOTIFY_PHONE)로 간다.
+ */
+async function sendSms(text: string, to = (process.env.ADMIN_NOTIFY_PHONE ?? '').trim()): Promise<boolean> {
   const key = (process.env.SOLAPI_API_KEY ?? '').trim();
   const secret = (process.env.SOLAPI_API_SECRET ?? '').trim();
   const from = (process.env.SOLAPI_SENDER ?? '').trim();
-  const to = (process.env.ADMIN_NOTIFY_PHONE ?? '').trim();
   if (!key || !secret || !from || !to) {
     logger.warn('문자 설정이 없어 발송을 건너뜀');
     return false;
@@ -189,6 +191,120 @@ export const submitConsult = onRequest(
       return;
     }
     res.json({ ok: true, sessionId: stored ? sessionId : null });
+  },
+);
+
+/** 빠른 점검 위젯 접수 본문. 업체 ID로 어느 업체의 손님인지 정한다. */
+type CheckLeadInput = {
+  agencyId?: string;
+  name?: string;
+  phone?: string;
+  level?: string;
+  summary?: string;
+  page?: string;
+  /** 사람에게 보이지 않는 칸. 값이 있으면 봇이다. */
+  company?: string;
+};
+
+const AGENCY_ID_RE = /^ag_[A-Za-z0-9_-]{6,40}$/;
+const CHECK_LEVEL_LABEL: Record<string, string> = {
+  ok: '걸림 없음',
+  check: '확인 필요',
+  stop: '진행 전 정리 필요',
+};
+
+/**
+ * 회원 업체 홈페이지에 심은 빠른 점검(/embed/check)에서 들어오는 상담 접수.
+ * 손님 연락처는 그 업체의 것이다. 업체 문서의 전화로 문자를 보내고 agencies/{aid}/leads에 쌓는다.
+ * 우리 사무실(ADMIN_NOTIFY_PHONE)로는 보내지 않는다. 비로그인 방문자가 부르므로 App Check를 걸지 않는다.
+ */
+export const submitCheckLead = onRequest(
+  {
+    region: REGION,
+    timeoutSeconds: 60,
+    cors: false,
+    secrets: ['SOLAPI_API_KEY', 'SOLAPI_API_SECRET', 'SOLAPI_SENDER'],
+  },
+  async (req, res) => {
+    cors(res);
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+    if (req.method !== 'POST') {
+      res.status(405).json({ ok: false, error: 'method' });
+      return;
+    }
+
+    const body = (req.body ?? {}) as CheckLeadInput;
+    // 봇은 값싸게 돌려보낸다. 성공처럼 보여야 다시 시도하지 않는다.
+    if (String(body.company ?? '').trim()) {
+      res.json({ ok: true });
+      return;
+    }
+
+    const agencyId = String(body.agencyId ?? '').trim();
+    const name = String(body.name ?? '').trim().slice(0, 40);
+    const phoneRaw = String(body.phone ?? '').trim();
+    if (!AGENCY_ID_RE.test(agencyId)) {
+      res.status(400).json({ ok: false, error: '업체 식별자가 올바르지 않습니다.' });
+      return;
+    }
+    if (!name || !PHONE_RE.test(phoneRaw.replace(/\s/g, ''))) {
+      res.status(400).json({ ok: false, error: '성함과 연락처를 확인해 주세요.' });
+      return;
+    }
+    const phone = normalizePhone(phoneRaw);
+    const level = ['ok', 'check', 'stop'].includes(String(body.level)) ? String(body.level) : 'unknown';
+    const summary = String(body.summary ?? '').slice(0, 2000);
+    const page = String(body.page ?? '').slice(0, 300);
+
+    const db = getFirestore();
+    const agencySnap = await db.doc('agencies/' + agencyId).get();
+    const agency = agencySnap.data();
+    // 승인된 업체만 받는다. 아무 ID나 넣어 남의 이름으로 접수를 만드는 것을 막는다.
+    if (!agencySnap.exists || !agency || agency.verificationStatus !== 'verified') {
+      res.status(404).json({ ok: false, error: '접수할 업체를 찾을 수 없습니다.' });
+      return;
+    }
+    const agencyPhone = String(agency.phone ?? '').trim();
+    const agencyName = String(agency.name ?? '');
+
+    // 저장을 먼저. 연락처는 어떤 경우에도 살아남아야 한다.
+    let stored = false;
+    try {
+      const now = Timestamp.now();
+      await db.collection('agencies/' + agencyId + '/leads').add({
+        agencyId,
+        source: 'quick_check',
+        name,
+        phone,
+        level,
+        summary,
+        page,
+        status: 'new',
+        memo: '',
+        createdAt: now,
+        updatedAt: now,
+      });
+      stored = true;
+    } catch (error) {
+      logger.error('점검 접수 저장 실패', { agencyId, error });
+    }
+
+    const head = stored ? '[요건점검 상담접수]' : '[요건점검 상담접수][주의] 저장 실패 — 이 문자가 유일한 기록';
+    const text = [head, name + ' ' + phone, '판정 ' + (CHECK_LEVEL_LABEL[level] ?? '미확인'), summary]
+      .filter(Boolean)
+      .join('\n')
+      .slice(0, 1900);
+    if (!agencyPhone) logger.warn('업체 전화번호가 없어 문자를 건너뜀', { agencyId });
+    const smsOk = agencyPhone ? await sendSms(text, agencyPhone) : false;
+
+    if (!stored && !smsOk) {
+      res.status(500).json({ ok: false, error: '지금 접수가 되지 않았어요. 잠시 후 다시 시도해 주세요.' });
+      return;
+    }
+    res.json({ ok: true, agencyName });
   },
 );
 

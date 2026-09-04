@@ -13,3 +13,10 @@
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# 회원 업체 홈페이지에 iframe으로 들어가는 빠른 점검. 이 경로만 프레임을 허용한다.
+# 위 규칙의 두 헤더를 떼어내고(!) 다시 적는다. 떼지 않으면 두 CSP가 합쳐져 'none'이 이긴다.
+/embed/*
+  ! X-Frame-Options
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors *

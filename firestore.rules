@@ -112,6 +112,16 @@ service cloud.firestore {
       allow update, delete: if isAgencyOwner(aid) || isAdmin();
     }
 
+    // 홈페이지 빠른 점검 위젯에서 들어온 상담 접수. 서버(Admin SDK)만 만들고,
+    // 업체는 읽고 처리 상태·메모만 바꾼다. 손님 연락처를 화면에서 고칠 수 없게 한다.
+    match /agencies/{aid}/leads/{leadId} {
+      allow read: if isAgencyMember(aid) || isAdmin();
+      allow update: if canWriteAgency(aid)
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['status', 'memo', 'updatedAt']);
+      allow create, delete: if isAdmin();
+    }
+
     match /agencies/{aid}/visaCases/{caseId} {
       allow read: if isAgencyMember(aid) || isLawyer() || isAdmin();
       allow create: if canWriteAgency(aid)

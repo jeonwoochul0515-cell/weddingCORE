@@ -11,18 +11,18 @@
 ## 2단계 · 비자 시뮬레이터
 - [x] 캄보디아 규정(외국인 남성 만 50세 미만·월 2,550달러) — `rules.ts`·`engine.ts`
 - [x] 설명 영역(`AboutF6.tsx`) 질문·답 1건 추가 — 화면과 FAQ 스키마 1:1 유지
-- [ ] 빠른 점검 7문항 — `src/features/quickCheck/`
-- [ ] 공개 화면 `/check` + 업체 사이트 삽입용 `/embed/check?agency=…`
-- [ ] 공개 라우트 4곳 갱신 — routes · prerender · sitemap · worker ROUTE_PREFIXES
-- [ ] `/embed/*` 프레임 허용 헤더 (기본은 frame-ancestors 'none')
-- [ ] 접수 함수 `submitCheckLead` — 업체 Firestore `leads` + 업체 전화로 문자
-- [ ] Firestore 규칙 `agencies/{aid}/leads`
-- [ ] 마케팅 센터에 삽입 코드 + 접수 목록 카드
+- [x] 빠른 점검 7문항 — `src/features/quickCheck/`
+- [x] 공개 화면 `/check` + 업체 사이트 삽입용 `/embed/check?agency=…`
+- [x] 공개 라우트 4곳 갱신 — routes · prerender · sitemap · worker ROUTE_PREFIXES
+- [x] `/embed/*` 프레임 허용 헤더 (기본은 frame-ancestors 'none')
+- [x] 접수 함수 `submitCheckLead` — 업체 Firestore `leads` + 업체 전화로 문자
+- [x] Firestore 규칙 `agencies/{aid}/leads`
+- [x] 마케팅 센터에 삽입 코드 + 접수 목록 카드
 - [ ] 타입검사 · 웹 빌드 · 함수 빌드
 - [ ] 커밋
 
 ## 3단계 · 진행 현황판
-- [ ] `docs/진행-현황판-설계.md` — 데이터·경로·보안·화면·문자 연결 설계 (구현은 다음)
+- [x] `docs/진행-현황판-설계.md` — 데이터·경로·보안·화면·문자 연결 설계 (구현은 다음)
 - [ ] 커밋
 
 ## 검증·배포
