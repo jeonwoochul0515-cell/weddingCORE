@@ -47,6 +47,31 @@ export const MIN_MARRIAGE_AGE_BY_COUNTRY: Record<string, { male: number; female:
   OTHER: { male: 18, female: 18 },
 };
 
+/**
+ * 상대 나라가 한국인 초청인에게 따로 요구하는 조건. F-6 이전에 현지 혼인등록 단계에서 걸린다.
+ *
+ * 캄보디아 — 외교부 규정(Prakas, 2011). 캄보디아 여성과 혼인하려는 외국인 남성은
+ * 만 50세 미만이어야 하고 월 소득 2,550달러 이상을 증명해야 한다. 둘 중 하나라도
+ * 어긋나면 캄보디아에서 혼인등록이 되지 않는다. 실태조사(2023)에서 한국인 이용자의
+ * 50세 이상 비중이 30.8%라 셋 중 하나가 이 조건에 걸린다.
+ */
+export const COUNTRY_SPONSOR_RULES: Record<
+  string,
+  { maxSponsorAgeExclusive: number; minMonthlyIncomeUsd: number; source: string }
+> = {
+  KH: {
+    maxSponsorAgeExclusive: 50,
+    minMonthlyIncomeUsd: 2_550,
+    source: '캄보디아 외교부 외국인과의 혼인에 관한 규정(Prakas, 2011)',
+  },
+};
+
+/**
+ * 달러 기준 규정을 원화 소득과 견주기 위한 참고 환율. 실제 심사는 증빙 시점 환율을 쓰므로
+ * 이 값으로 계산한 결과는 참고치다. 크게 바뀌면 갱신한다.
+ */
+export const USD_KRW_REFERENCE = 1_370;
+
 export const SUPPORTED_COUNTRIES = [
   { code: 'VN', ko: '베트남', en: 'Vietnam' },
   { code: 'KH', ko: '캄보디아', en: 'Cambodia' },

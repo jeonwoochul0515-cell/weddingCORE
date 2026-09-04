@@ -9,12 +9,15 @@
 
 import { Link } from 'react-router-dom';
 import {
+  COUNTRY_SPONSOR_RULES,
   CURRENT_RULE_YEAR,
   INCOME_THRESHOLDS,
   HOUSEHOLD_INCREMENT_OVER_SEVEN,
   PROPERTY_TO_INCOME_RATE,
   RULE_SOURCE_URL,
 } from './rules';
+
+const KH = COUNTRY_SPONSOR_RULES.KH!;
 
 const won = (n: number) => `${n.toLocaleString()}원`;
 
@@ -37,6 +40,10 @@ export const F6_FAQ = [
   {
     q: '소득 말고 또 무엇을 보나',
     a: '결혼이 진짜인지를 봅니다. 두 사람이 말이 통하는지, 만난 적이 있고 교제 기간이 충분한지, 배우자 본국법상 혼인할 수 있는 나이인지, 이전 혼인이 정리되었는지, 초청인에게 결격 사유가 없는지, 결혼이민 사전안내 프로그램을 이수했는지를 확인합니다.',
+  },
+  {
+    q: '상대 나라가 따로 요구하는 조건도 있나',
+    a: `있습니다. 캄보디아는 정부 규정상 외국인 남성이 만 ${KH.maxSponsorAgeExclusive}세 미만이고 월 소득 ${KH.minMonthlyIncomeUsd.toLocaleString()}달러 이상이어야 현지 혼인등록이 됩니다. 이 조건은 F-6 심사 이전 단계라, 맞지 않으면 다른 나라로 진행하는 것이 맞습니다. 나라마다 다르므로 진행할 나라를 정한 뒤 현지 규정을 먼저 확인합니다.`,
   },
   {
     q: '이 점검을 통과하면 비자가 나오나',
@@ -129,6 +136,11 @@ export default function AboutF6() {
           {F6_FAQ[3]!.q}
         </h2>
         <p className="mt-3 text-sm leading-7 text-slate-700">{F6_FAQ[3]!.a}</p>
+
+        <h2 className="mt-10 text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">
+          {F6_FAQ[4]!.q}
+        </h2>
+        <p className="mt-3 text-sm leading-7 text-slate-700">{F6_FAQ[4]!.a}</p>
         <p className="mt-2 text-sm leading-7 text-slate-700">
           개별 사안의 법률 판단이 필요하면 변호사에게 확인하십시오.
         </p>

@@ -9,8 +9,8 @@
 - [x] 커밋
 
 ## 2단계 · 비자 시뮬레이터
-- [ ] 캄보디아 규정(외국인 남성 만 50세 미만·월 2,550달러) — `rules.ts`·`engine.ts`
-- [ ] 설명 영역(`AboutF6.tsx`) 질문·답 1건 추가 — 화면과 FAQ 스키마 1:1 유지
+- [x] 캄보디아 규정(외국인 남성 만 50세 미만·월 2,550달러) — `rules.ts`·`engine.ts`
+- [x] 설명 영역(`AboutF6.tsx`) 질문·답 1건 추가 — 화면과 FAQ 스키마 1:1 유지
 - [ ] 빠른 점검 7문항 — `src/features/quickCheck/`
 - [ ] 공개 화면 `/check` + 업체 사이트 삽입용 `/embed/check?agency=…`
 - [ ] 공개 라우트 4곳 갱신 — routes · prerender · sitemap · worker ROUTE_PREFIXES

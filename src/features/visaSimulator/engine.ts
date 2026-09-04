@@ -4,11 +4,13 @@
  */
 
 import {
+  COUNTRY_SPONSOR_RULES,
   CURRENT_RULE_YEAR,
   HOUSEHOLD_INCREMENT_OVER_SEVEN,
   INCOME_THRESHOLDS,
   MIN_MARRIAGE_AGE_BY_COUNTRY,
   PROPERTY_TO_INCOME_RATE,
+  USD_KRW_REFERENCE,
 } from './rules';
 
 export type Inputs = {
@@ -50,7 +52,7 @@ export type Inputs = {
 
 export type Recommendation = {
   severity: 'blocker' | 'critical' | 'warning' | 'info';
-  category: 'income' | 'sincerity' | 'housing' | 'legal' | 'other';
+  category: 'income' | 'sincerity' | 'housing' | 'legal' | 'country' | 'other';
   title: string;
   detail: string;
   legalBasis?: string;
@@ -100,7 +102,7 @@ export function runSimulation(inputs: Inputs): Result {
       },
       hardBlockers: blockers,
       recommendations: [],
-      summary: 'F-6 비자 신청이 불가한 사유가 있습니다. 변호사 상담을 권장합니다.',
+      summary: '현재 조건으로는 진행할 수 없는 사유가 있습니다. 변호사 상담을 권장합니다.',
     };
   }
 
@@ -180,6 +182,21 @@ function checkHardBlockers(inputs: Inputs): Recommendation[] {
       title: '배우자 본국법 혼인연령 미달',
       detail: `배우자 본국법상 최저 혼인연령(${limit}세)에 미달합니다.`,
       legalBasis: '국제사법 §63 (혼인의 성립)',
+    });
+  }
+
+  // 상대 나라가 한국인 초청인에게 따로 두는 조건. 나이는 확정 규정이라 차단으로 둔다.
+  const sponsorRule = COUNTRY_SPONSOR_RULES[inputs.partnerCountry];
+  if (sponsorRule && inputs.inviterGender === 'M' && inputs.partnerGender === 'F'
+    && inputs.inviterAge >= sponsorRule.maxSponsorAgeExclusive) {
+    list.push({
+      severity: 'blocker',
+      category: 'country',
+      title: `상대 나라 규정상 초청인 나이 초과 (만 ${sponsorRule.maxSponsorAgeExclusive}세 미만)`,
+      detail:
+        `캄보디아 정부 규정상 외국인 남성은 만 ${sponsorRule.maxSponsorAgeExclusive}세 미만이어야 캄보디아에서 혼인등록이 됩니다. ` +
+        '현재 나이로는 캄보디아와 진행할 수 없으며, 다른 나라로 진행하는 것이 맞습니다.',
+      legalBasis: sponsorRule.source,
     });
   }
 
@@ -370,6 +387,24 @@ function buildRecommendations(
     });
   }
 
+  // 상대 나라의 초청인 소득 규정. 달러 기준이라 참고 환율로 환산한 값이므로 차단이 아니라 치명으로 둔다.
+  const sponsorRule = COUNTRY_SPONSOR_RULES[inputs.partnerCountry];
+  if (sponsorRule && inputs.inviterGender === 'M' && inputs.partnerGender === 'F') {
+    const requiredAnnualKrw = sponsorRule.minMonthlyIncomeUsd * 12 * USD_KRW_REFERENCE;
+    if (inputs.annualIncome < requiredAnnualKrw) {
+      list.push({
+        severity: 'critical',
+        category: 'country',
+        title: `상대 나라 규정상 초청인 소득 기준 (월 ${sponsorRule.minMonthlyIncomeUsd.toLocaleString()}달러)`,
+        detail:
+          `캄보디아 정부 규정상 외국인 남성은 월 소득 ${sponsorRule.minMonthlyIncomeUsd.toLocaleString()}달러 이상을 증명해야 합니다. ` +
+          `참고 환율 ${USD_KRW_REFERENCE.toLocaleString()}원 기준 연 약 ${Math.round(requiredAnnualKrw / 10_000).toLocaleString()}만원이며, ` +
+          `입력한 본인 연소득 ${inputs.annualIncome.toLocaleString()}원은 이에 미치지 못합니다. 재산·가족 소득은 이 규정에서 합산되지 않을 수 있으니 증빙 방식을 상담에서 확인하세요.`,
+        legalBasis: sponsorRule.source,
+      });
+    }
+  }
+
   // 범죄 경력
   if (inputs.inviterCriminalHistory === 'serious') {
     list.push({
@@ -391,7 +426,7 @@ function buildSummary(
   recs: Recommendation[],
 ): string {
   if (visaType === 'INELIGIBLE') {
-    return 'F-6 비자 신청이 불가한 하드 블로커가 있습니다. 해당 사유 해소 전 신청은 권장되지 않습니다.';
+    return '현재 조건으로는 진행할 수 없는 사유가 있습니다. 해당 사유를 해소하기 전에는 신청을 권장하지 않습니다.';
   }
   const criticalCount = recs.filter((r) => r.severity === 'critical').length;
   if (probability >= 80) {
