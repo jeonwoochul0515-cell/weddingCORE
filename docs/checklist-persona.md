@@ -18,15 +18,15 @@
 - [x] 접수 함수 `submitCheckLead` — 업체 Firestore `leads` + 업체 전화로 문자
 - [x] Firestore 규칙 `agencies/{aid}/leads`
 - [x] 마케팅 센터에 삽입 코드 + 접수 목록 카드
-- [ ] 타입검사 · 웹 빌드 · 함수 빌드
-- [ ] 커밋
+- [x] 타입검사 · 웹 빌드 · 함수 빌드
+- [x] 커밋
 
 ## 3단계 · 진행 현황판
 - [x] `docs/진행-현황판-설계.md` — 데이터·경로·보안·화면·문자 연결 설계 (구현은 다음)
-- [ ] 커밋
+- [x] 커밋
 
 ## 검증·배포
-- [ ] 함수 배포 (`--only functions:submitCheckLead`)
-- [ ] 규칙 배포
-- [ ] 웹 배포 (`npm run deploy:cloudflare`, 토큰 환경변수)
-- [ ] `/check` 200 · `/embed/check` 프레임 헤더 확인
+- [x] 함수 배포 (`--only functions:submitCheckLead`)
+- [x] 규칙 배포
+- [x] 웹 배포 (`npm run deploy:cloudflare`, 토큰 환경변수)
+- [x] `/check` 200 · `/embed/check` 프레임 헤더 확인
