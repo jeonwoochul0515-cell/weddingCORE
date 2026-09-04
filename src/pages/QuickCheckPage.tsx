@@ -9,10 +9,32 @@ import { ShieldCheck, Timer } from 'lucide-react';
 import BrandMark from '@/components/brand/BrandMark';
 import QuickCheck from '@/features/quickCheck/QuickCheck';
 import { QUESTIONS } from '@/features/quickCheck/questions';
+import { COUNTRY_SPONSOR_RULES, CURRENT_RULE_YEAR, INCOME_THRESHOLDS, RULE_SOURCE_URL } from '@/features/visaSimulator/rules';
 import { usePageMeta } from '@/lib/usePageMeta';
 import { breadcrumbSchema, webPageSchema } from '@/lib/schema';
 
 const AGENCY_ID_RE = /^ag_[A-Za-z0-9_-]{6,40}$/;
+const KH = COUNTRY_SPONSOR_RULES.KH!;
+const TWO_PERSON = INCOME_THRESHOLDS[CURRENT_RULE_YEAR][2]!;
+
+/**
+ * 아래 화면의 질문(h2)과 답을 그대로 옮긴 것. FAQPage 스키마가 이 배열을 쓴다.
+ * 화면 문구를 고치면 여기도 같이 고친다 — 어긋나면 스팸으로 처리된다.
+ */
+const CHECK_FAQ = [
+  {
+    q: '이 점검은 무엇을 보나',
+    a: '국제결혼을 진행할 때 처음에 걸리는 조건 일곱 가지만 봅니다. 혼인 상태, 나이대, 증빙 가능한 연소득, 결혼 후 주거, 범죄경력, 이전 초청 이력, 진행을 생각하는 나라입니다. 답은 저장되지 않고, 결과는 걸리는 점이 있는지까지만 알려 줍니다.',
+  },
+  {
+    q: '왜 소득과 나라를 함께 묻나',
+    a: `결혼이민(F-6) 비자는 ${CURRENT_RULE_YEAR}년 기준 2인 가구 연 ${TWO_PERSON.toLocaleString()}원 이상의 소득이 필요합니다. 여기에 더해 캄보디아는 외국인 남성이 만 ${KH.maxSponsorAgeExclusive}세 미만이고 월 소득 ${KH.minMonthlyIncomeUsd.toLocaleString()}달러 이상이어야 현지 혼인등록이 되므로, 나라에 따라 같은 조건이 다르게 판정됩니다.`,
+  },
+  {
+    q: '이 점검을 통과하면 진행이 되나',
+    a: '아닙니다. 답하신 범위에서 걸리는 점이 보이지 않는다는 뜻이고, 실제 판단은 업체가 서류를 보고 하며 비자는 공관과 법무부가 심사합니다. 소득 기준 금액, 재산 환산, 교제 증빙까지 보려면 23문항 정밀 점검을 쓰면 됩니다.',
+  },
+];
 
 export default function QuickCheckPage() {
   usePageMeta({
@@ -26,6 +48,15 @@ export default function QuickCheckPage() {
   const agencyName = (params.get('name') ?? '').slice(0, 40) || undefined;
 
   const schemas = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: CHECK_FAQ.map(({ q, a }) => ({
+        '@type': 'Question',
+        name: q,
+        acceptedAnswer: { '@type': 'Answer', text: a },
+      })),
+    },
     breadcrumbSchema([
       { name: 'weddingCORE', path: '/' },
       { name: '국제결혼 요건 빠른 점검', path: '/check' },
@@ -61,11 +92,8 @@ export default function QuickCheckPage() {
       {/* 도구는 자바스크립트로 그려져 검색·AI가 읽을 글이 적다. 무엇을 보는지 글로도 둔다. */}
       <section className="mx-auto max-w-3xl px-5 pb-16 sm:px-6">
         <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <h2 className="text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">이 점검은 무엇을 보나</h2>
-          <p className="mt-3 text-sm leading-7 text-slate-700">
-            국제결혼을 진행할 때 처음에 걸리는 조건 일곱 가지만 봅니다. 소득 기준 금액과 재산 환산, 교제 증빙까지 보는 정밀 점검은{' '}
-            <Link to="/visa-simulator" className="font-semibold text-emerald-700 underline underline-offset-2">F-6 결혼이민 비자 준비도 점검</Link>에서 할 수 있습니다.
-          </p>
+          <h2 className="text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">{CHECK_FAQ[0]!.q}</h2>
+          <p className="mt-3 text-sm leading-7 text-slate-700">{CHECK_FAQ[0]!.a}</p>
           <ol className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
             {QUESTIONS.map((q, i) => (
               <li key={q.key} className="rounded-xl bg-slate-50 px-4 py-3">
@@ -74,7 +102,24 @@ export default function QuickCheckPage() {
               </li>
             ))}
           </ol>
-          <h2 className="mt-8 text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">중개업체가 이 점검을 홈페이지에 두려면</h2>
+
+          <h2 className="mt-10 text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">{CHECK_FAQ[1]!.q}</h2>
+          <p className="mt-3 text-sm leading-7 text-slate-700">{CHECK_FAQ[1]!.a}</p>
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            출처.{' '}
+            <a href={RULE_SOURCE_URL} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+              외교부 재외공관 {CURRENT_RULE_YEAR} 결혼이민비자 소득요건 안내
+            </a>
+            , {KH.source}. 여성가족부 「2023년 결혼중개업 실태조사」에서 한국인 이용자의 50세 이상 비중은 30.8%였습니다. 기준은 해마다 바뀌므로 신청 전에 다시 확인해야 합니다.
+          </p>
+
+          <h2 className="mt-10 text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">{CHECK_FAQ[2]!.q}</h2>
+          <p className="mt-3 text-sm leading-7 text-slate-700">{CHECK_FAQ[2]!.a}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link to="/visa-simulator" className="secondary-button !px-4 !py-2.5 text-sm">F-6 결혼이민 비자 준비도 점검 (23문항)</Link>
+          </div>
+
+          <h2 className="mt-10 text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">중개업체가 이 점검을 홈페이지에 두려면</h2>
           <p className="mt-3 text-sm leading-7 text-slate-700">
             weddingCORE 회원 업체는 이 점검을 자기 홈페이지에 그대로 심을 수 있습니다. 손님이 결과를 보고 남긴 연락처는 업체 전화로 문자가 갑니다.
             삽입 코드는 로그인 뒤{' '}
