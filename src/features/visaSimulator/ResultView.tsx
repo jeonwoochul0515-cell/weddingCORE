@@ -114,11 +114,12 @@ export default function ResultView({
         >
           {t('button', 'reset', lang)}
         </button>
+        {/* 손님이 보는 화면이다. 업체 로그인이 아니라 사무소 상담 전화로 이어진다 */}
         <a
-          href="/login"
+          href="tel:1660-4452"
           className="primary-button"
         >
-          {t('button', 'consult', lang)}
+          {t('button', 'consult', lang)} · 1660-4452
         </a>
       </div>
     </div>
