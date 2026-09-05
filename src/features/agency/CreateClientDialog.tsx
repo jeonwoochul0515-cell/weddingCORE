@@ -86,7 +86,7 @@ export default function CreateClientDialog({ onClose, onCreated, initial, intake
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/30 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
       <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h2 className="text-lg font-semibold text-slate-900">{editing ? '고객 정보 수정' : '신규 고객 등록'}</h2>

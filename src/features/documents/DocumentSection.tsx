@@ -197,7 +197,7 @@ function UploadDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/30 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
       <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
         <h3 className="mb-4 text-lg font-semibold">서류 올리기</h3>
         <div className="space-y-3">

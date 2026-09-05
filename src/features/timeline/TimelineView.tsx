@@ -255,7 +255,7 @@ function TimelineDetail({
   const linkedIds = new Set(item.evidence.map((e) => e.docId));
 
   return (
-    <div className="fixed inset-y-0 right-0 z-30 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl">
+    <div className="fixed inset-y-0 right-0 z-[60] flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl">
       <div className="flex items-start justify-between border-b border-slate-200 p-5">
         <div>
           <div className="text-xs text-slate-500">[{item.stage}단계]</div>

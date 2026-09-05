@@ -75,7 +75,7 @@ export default function ImportClientsDialog({ existingPhones, onClose, onImporte
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/30 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
       <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
           <div>
