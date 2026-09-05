@@ -242,8 +242,11 @@ export default function HaramChat() {
 
   if (!mounted || (window as unknown as { __PRERENDER__?: boolean }).__PRERENDER__) return null;
 
+  // 업무 화면(휴대폰)에는 하단 메뉴가 있다. 그 위로 올려야 「업체」·「더보기」 메뉴를 가리지 않는다.
+  const inApp = /^\/(agency|lawyer|admin)(\/|$)/.test(location.pathname);
+
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-end gap-3 p-4 sm:p-6 lg:bottom-0">
+    <div className={`pointer-events-none fixed inset-x-0 z-50 flex flex-col items-end gap-3 p-4 sm:p-6 lg:bottom-0 ${inApp ? 'bottom-[4.25rem]' : 'bottom-0'}`}>
       {!open && bubble && (
         <button
           type="button"
