@@ -76,7 +76,7 @@ const SERVICES = [
   },
   {
     id: 'aeo-geo',
-    title: 'AEO·GEO 콘텐츠 설계',
+    title: 'AI 검색 노출 콘텐츠 설계',
     description: '검색 답변과 AI 검색에서 인용되기 쉬운 전문 콘텐츠 구조를 만듭니다.',
     icon: Sparkles,
     items: ['질문형 FAQ', '구조화된 답변', '전문성·출처 강화'],
@@ -112,12 +112,16 @@ function embedSnippet(agencyId: string, agencyName: string) {
 
 
 
-const CHECKLIST = [
-  { label: '회사 기본정보와 등록번호 공개', done: true },
-  { label: '상담 전환 버튼과 연락 경로 점검', done: true },
-  { label: '네이버 서치어드바이저 소유 확인', done: false },
-  { label: '핵심 서비스별 검색 페이지 제작', done: false },
-  { label: '월간 콘텐츠 발행 계획 수립', done: false },
+/**
+ * 검색에 잡히기 위해 갖출 것. 업체마다 어디까지 돼 있는지는 시스템이 알 수 없으므로
+ * 완료 표시나 점수를 매기지 않는다. 상담 요청이 오면 사람이 함께 확인한다.
+ */
+const SEARCH_STEPS = [
+  '회사 기본정보와 등록번호를 홈페이지에 공개',
+  '상담 신청 버튼과 전화 연결이 휴대폰에서 바로 되는지 점검',
+  '네이버 서치어드바이저에 홈페이지 소유 확인',
+  '핵심 서비스마다 검색용 페이지 제작',
+  '달마다 글을 올리는 계획 세우기',
 ];
 
 export default function MarketingCenterPage() {
@@ -132,7 +136,6 @@ export default function MarketingCenterPage() {
   const { items: leads } = useAgencyLeads();
   const funnel = useMemo(() => monthlyFunnel(leads), [leads]);
   const [copied, setCopied] = useState(false);
-  const completed = useMemo(() => CHECKLIST.filter((item) => item.done).length, []);
 
   useEffect(() => {
     if (!agencyId) return;
@@ -155,7 +158,6 @@ export default function MarketingCenterPage() {
       /* 클립보드를 못 쓰는 환경. 글상자에서 직접 복사하면 된다. */
     }
   }
-  const score = Math.round((completed / CHECKLIST.length) * 100);
   const quote = useMemo(() => {
     const picked = SERVICES.filter((service) => selectedServices.includes(service.id));
     const sum = (billing: string, key: 'promoPrice' | 'listPrice') =>
@@ -221,7 +223,7 @@ export default function MarketingCenterPage() {
               검색되는 홈페이지를 만들고<br className="hidden sm:block" /> 상담으로 연결합니다
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
-              홈페이지 제작부터 네이버 검색 기반 정비, 지역 콘텐츠, AEO·GEO까지 한곳에서 신청하고 진행상황을 관리하세요.
+              홈페이지 제작부터 네이버 검색 기반 정비, 지역 콘텐츠, AI 검색 노출까지 한곳에서 신청하고 진행상황을 관리하세요.
             </p>
             <div className="mt-5 space-y-2">
               <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-2.5 text-xs text-emerald-100">
@@ -231,22 +233,23 @@ export default function MarketingCenterPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-xs text-slate-300">
                 <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-white">{PROMOTION.label}</span>
-                <span className="font-semibold">AEO·GEO 설계 58% 할인</span>
+                <span className="font-semibold">AI 검색 노출 설계 58% 할인</span>
                 <span className="text-slate-400">· {PROMOTION.detail}</span>
               </div>
             </div>
           </div>
+          {/* 예전엔 고정 "준비도 40점"이 모든 업체에 똑같이 떴다. 진짜 숫자인 이번 달 접수 실적을 보여 준다 */}
           <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-5 backdrop-blur">
-            <div className="flex items-center justify-between text-xs text-slate-300"><span>검색 준비도</span><span>{score}점</span></div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${score}%` }} /></div>
-            <p className="mt-3 text-xs leading-5 text-slate-400">기본 설정 {completed}/{CHECKLIST.length}개 완료</p>
+            <div className="text-xs text-slate-300">이번 달 접수</div>
+            <div className="mt-1 text-3xl font-bold tracking-[-0.04em] text-white">{funnel.received}건</div>
+            <p className="mt-2 text-xs leading-5 text-slate-400">연락함 {funnel.contacted} · 고객 등록 {funnel.converted} · 전환율 {funnel.rate}%</p>
           </div>
         </div>
       </section>
 
       <section>
         <div className="mb-4 flex items-end justify-between gap-4">
-          <div><div className="eyebrow">Growth services</div><h2 className="mt-1 text-xl font-bold text-slate-950">필요한 마케팅 업무를 선택하세요</h2></div>
+          <div><div className="eyebrow">마케팅 상품</div><h2 className="mt-1 text-xl font-bold text-slate-950">필요한 마케팅 업무를 선택하세요</h2></div>
           <Globe2 className="text-emerald-700" size={22} />
         </div>
         {!checkout.ready && (
@@ -312,7 +315,7 @@ export default function MarketingCenterPage() {
       </section>
 
       <section className="app-surface rounded-[24px] p-5 sm:p-6">
-        <div className="flex items-center justify-between"><div><div className="eyebrow">Lead widget</div><h2 className="mt-1 text-lg font-bold text-slate-950">홈페이지 요건 점검 위젯</h2></div><Inbox className="text-emerald-700" size={21} /></div>
+        <div className="flex items-center justify-between"><div><div className="eyebrow">홈페이지 위젯</div><h2 className="mt-1 text-lg font-bold text-slate-950">홈페이지 요건 점검 위젯</h2></div><Inbox className="text-emerald-700" size={21} /></div>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           손님의 첫 질문은 "나도 될까"입니다. 이 점검을 홈페이지에 두면 손님이 이름을 밝히기 전에 7문항으로 먼저 확인하고,
           결과를 본 뒤 성함·연락처만 남깁니다. 접수는 업체 전화{agency.phone ? '(' + agency.phone + ')' : ''}로 문자가 가고 아래 목록에 쌓입니다.
@@ -359,17 +362,18 @@ export default function MarketingCenterPage() {
 
       <div className="grid gap-5 xl:grid-cols-[.88fr_1.12fr]">
         <section className="app-surface rounded-[24px] p-5 sm:p-6">
-          <div className="flex items-center justify-between"><div><div className="eyebrow">Readiness</div><h2 className="mt-1 text-lg font-bold text-slate-950">네이버 검색 준비 체크</h2></div><Compass className="text-emerald-700" size={21} /></div>
-          <div className="mt-5 space-y-3">
-            {CHECKLIST.map((item) => <div key={item.label} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3.5 py-3"><span className={`grid h-6 w-6 place-items-center rounded-full ${item.done ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-slate-300 ring-1 ring-slate-200'}`}><CheckCircle2 size={15} /></span><span className={`text-sm ${item.done ? 'font-medium text-slate-800' : 'text-slate-500'}`}>{item.label}</span></div>)}
-          </div>
+          <div className="flex items-center justify-between"><div><div className="eyebrow">검색 준비</div><h2 className="mt-1 text-lg font-bold text-slate-950">네이버 검색 준비 체크</h2></div><Compass className="text-emerald-700" size={21} /></div>
+          <p className="mt-3 text-sm leading-6 text-slate-600">검색에 잡히려면 이 다섯 가지가 필요합니다. 어디까지 돼 있는지는 아래 상담 요청을 보내 주시면 함께 확인합니다.</p>
+          <ol className="mt-4 space-y-2">
+            {SEARCH_STEPS.map((label, index) => <li key={label} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3.5 py-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-emerald-700 ring-1 ring-slate-200">{index + 1}</span><span className="text-sm text-slate-700">{label}</span></li>)}
+          </ol>
           <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
             검색 순위는 네이버 알고리즘과 경쟁 상황에 따라 달라지므로 특정 순위를 보장하지 않습니다. 비정상 트래픽이나 조작 대신 공식 가이드에 맞춘 지속 가능한 노출 개선을 진행합니다.
           </div>
         </section>
 
         <section className="app-surface rounded-[24px] p-5 sm:p-6">
-          <div className="flex items-center justify-between"><div><div className="eyebrow">Request</div><h2 className="mt-1 text-lg font-bold text-slate-950">마케팅 상담 요청</h2></div><BarChart3 className="text-emerald-700" size={21} /></div>
+          <div className="flex items-center justify-between"><div><div className="eyebrow">상담 요청</div><h2 className="mt-1 text-lg font-bold text-slate-950">마케팅 상담 요청</h2></div><BarChart3 className="text-emerald-700" size={21} /></div>
           <form onSubmit={submitRequest} className="mt-5 space-y-4">
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">목표 검색어</label>
@@ -407,7 +411,7 @@ export default function MarketingCenterPage() {
               )}
               <p className="mt-3 text-[11px] leading-4 text-slate-400">
                 부가세 포함 금액입니다. 홈페이지 제작은 회원 상시 혜택이라 기간 제한이 없고,
-                AEO·GEO 할인은 {PROMOTION.note} 최종 금액은 상담 후 확정됩니다.
+                AI 검색 노출 설계 할인은 {PROMOTION.note} 최종 금액은 상담 후 확정됩니다.
               </p>
             </div>
             {notice && <div className={`rounded-xl border px-3.5 py-3 text-sm ${notice.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-700'}`}>{notice.text}</div>}
