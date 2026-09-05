@@ -115,7 +115,13 @@ export default function LeadsPanel({ onConvert }: Props) {
 function LeadRow({ lead, open, onToggle, onConvert }: { lead: LeadListItem; open: boolean; onToggle: () => void; onConvert: () => void }) {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [memo, setMemo] = useState(lead.memo ?? '');
-  const [nextDate, setNextDate] = useState('');
+  // 저장된 다음 연락일을 칸에 보여 준다. 비어 있는 채로 저장하면 날짜가 지워지므로, 있는 값은 미리 채운다.
+  const [nextDate, setNextDate] = useState(() => {
+    const d = lead.nextActionAt?.toDate?.();
+    if (!d) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  });
   const [closing, setClosing] = useState(false);
   const [closeReason, setCloseReason] = useState<LeadCloseReason>('no_response');
   const [busy, setBusy] = useState(false);
@@ -189,20 +195,21 @@ function LeadRow({ lead, open, onToggle, onConvert }: { lead: LeadListItem; open
                   <button type="button" disabled={busy} onClick={() => run(() => markContacted(agencyId!, lead.id, memo))} className="primary-button !py-2">전화했음</button>
                 )}
                 {(lead.status === 'contacted' || lead.status === 'consulting') && (
-                  <>
-                    <div className="flex items-center gap-1.5">
-                      <input type="date" value={nextDate} onChange={(e) => setNextDate(e.target.value)} className="field-control !w-auto !py-1.5 text-xs" aria-label="다음 연락일" />
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => run(() => markConsulting(agencyId!, lead.id, nextDate ? new Date(nextDate + 'T09:00:00') : null, memo))}
-                        className="secondary-button !py-2"
-                      >
-                        {lead.status === 'consulting' ? '다음 연락일 저장' : '상담 중으로'}
-                      </button>
-                    </div>
-                    <button type="button" disabled={busy} onClick={onConvert} className="primary-button !py-2"><UserPlus size={15} />고객으로 등록</button>
-                  </>
+                  <div className="flex items-center gap-1.5">
+                    <input type="date" value={nextDate} onChange={(e) => setNextDate(e.target.value)} className="field-control !w-auto !py-1.5 text-xs" aria-label="다음 연락일" />
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => run(() => markConsulting(agencyId!, lead.id, nextDate ? new Date(nextDate + 'T09:00:00') : null, memo))}
+                      className="secondary-button !py-2"
+                    >
+                      {lead.status === 'consulting' ? '다음 연락일 저장' : '상담 중으로'}
+                    </button>
+                  </div>
+                )}
+                {/* 손님이 사무실로 바로 찾아와 계약하는 일이 흔하다. 「전화했음」을 거치지 않아도 등록할 수 있어야 한다 */}
+                {(lead.status === 'new' || lead.status === 'contacted' || lead.status === 'consulting') && (
+                  <button type="button" disabled={busy} onClick={onConvert} className="primary-button !py-2"><UserPlus size={15} />고객으로 등록</button>
                 )}
                 {lead.status !== 'closed' && lead.status !== 'converted' && !closing && (
                   <button type="button" disabled={busy} onClick={() => setClosing(true)} className="secondary-button !py-2 text-slate-500">종료</button>
