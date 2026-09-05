@@ -185,17 +185,16 @@ function checkHardBlockers(inputs: Inputs): Recommendation[] {
     });
   }
 
-  // 상대 나라가 한국인 초청인에게 따로 두는 조건. 나이는 확정 규정이라 차단으로 둔다.
+  // 상대 나라가 한국인 초청인에게 따로 두는 나이 상한. 지금은 해당 나라가 없다(캄보디아 50세 규정은 2021년 폐지).
+  // 규칙에 값이 생기면 다시 살아난다.
   const sponsorRule = COUNTRY_SPONSOR_RULES[inputs.partnerCountry];
-  if (sponsorRule && inputs.inviterGender === 'M' && inputs.partnerGender === 'F'
+  if (sponsorRule?.maxSponsorAgeExclusive && inputs.inviterGender === 'M' && inputs.partnerGender === 'F'
     && inputs.inviterAge >= sponsorRule.maxSponsorAgeExclusive) {
     list.push({
       severity: 'blocker',
       category: 'country',
       title: `상대 나라 규정상 초청인 나이 초과 (만 ${sponsorRule.maxSponsorAgeExclusive}세 미만)`,
-      detail:
-        `캄보디아 정부 규정상 외국인 남성은 만 ${sponsorRule.maxSponsorAgeExclusive}세 미만이어야 캄보디아에서 혼인등록이 됩니다. ` +
-        '현재 나이로는 캄보디아와 진행할 수 없으며, 다른 나라로 진행하는 것이 맞습니다.',
+      detail: `상대 나라 규정상 외국인 남성은 만 ${sponsorRule.maxSponsorAgeExclusive}세 미만이어야 현지 혼인등록이 됩니다.`,
       legalBasis: sponsorRule.source,
     });
   }
@@ -397,7 +396,7 @@ function buildRecommendations(
         category: 'country',
         title: `상대 나라 규정상 초청인 소득 기준 (월 ${sponsorRule.minMonthlyIncomeUsd.toLocaleString()}달러)`,
         detail:
-          `캄보디아 정부 규정상 외국인 남성은 월 소득 ${sponsorRule.minMonthlyIncomeUsd.toLocaleString()}달러 이상을 증명해야 합니다. ` +
+          `캄보디아 정부 규정상 외국인 배우자는 월 소득 ${sponsorRule.minMonthlyIncomeUsd.toLocaleString()}달러 이상을 증명해야 합니다(2021년까지 있던 만 50세 나이 제한은 폐지됨). ` +
           `참고 환율 ${USD_KRW_REFERENCE.toLocaleString()}원 기준 연 약 ${Math.round(requiredAnnualKrw / 10_000).toLocaleString()}만원이며, ` +
           `입력한 본인 연소득 ${inputs.annualIncome.toLocaleString()}원은 이에 미치지 못합니다. 재산·가족 소득은 이 규정에서 합산되지 않을 수 있으니 증빙 방식을 상담에서 확인하세요.`,
         legalBasis: sponsorRule.source,

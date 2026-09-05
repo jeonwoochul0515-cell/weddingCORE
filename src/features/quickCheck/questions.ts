@@ -52,7 +52,7 @@ export const QUESTIONS: Question[] = [
   {
     key: 'age',
     title: '나이대는 어떻게 되세요?',
-    why: '나이 자체로 막히지는 않습니다. 다만 나라에 따라 초청인 나이 규정이 있어 나라 선택에 영향을 줍니다.',
+    why: '나이 자체로 막히지는 않습니다. 캄보디아에 있던 만 50세 제한도 2021년에 폐지됐습니다. 다만 나이 차가 크면 혼인의 진정성 심사가 더 꼼꼼해집니다.',
     options: [
       { value: '20대', label: '20대', verdict: 'ok' },
       { value: '30대', label: '30대', verdict: 'ok' },
@@ -130,37 +130,20 @@ export type Evaluation = {
   level: Verdict;
 };
 
-const FIFTY_PLUS = new Set(['50대', '60대 이상']);
-
 export function evaluate(answers: Record<string, string>): Evaluation {
   const rows: Row[] = QUESTIONS.map((q) => ({ q, opt: q.options.find((o) => o.value === answers[q.key]) }));
   const cross: Evaluation['cross'] = [];
 
-  const age = answers.age;
   const income = answers.income;
   const country = answers.country;
 
-  // 캄보디아 — 외국인 남성 만 50세 미만, 월 소득 2,550달러. F-6 이전에 현지 혼인등록에서 걸린다.
-  if (country === 'KH') {
-    if (age && FIFTY_PLUS.has(age)) {
-      cross.push({
-        verdict: 'stop',
-        title: '캄보디아 초청인 나이 규정',
-        note: `캄보디아 정부 규정상 외국인 남성은 만 ${KH.maxSponsorAgeExclusive}세 미만이어야 현지 혼인등록이 됩니다. 캄보디아 대신 다른 나라로 진행하는 것이 맞습니다.`,
-      });
-    }
-    if (income && income !== 'high') {
-      cross.push({
-        verdict: 'check',
-        title: '캄보디아 초청인 소득 규정',
-        note: `캄보디아 정부 규정상 외국인 남성은 월 소득 ${KH.minMonthlyIncomeUsd.toLocaleString()}달러(연 ${roughWon(KH_ANNUAL)}, 참고 환율) 이상을 증명해야 합니다. 이 기준은 재산·가족 소득 합산이 안 될 수 있으니 증빙 방식을 상담에서 확인합니다.`,
-      });
-    }
-  } else if (country === 'undecided' && age && FIFTY_PLUS.has(age)) {
+  // 캄보디아 — 외국인 배우자 월 소득 USD 2,500 이상(주캄보디아 대사관). 만 50세 나이 제한은 2021년 폐지.
+  // F-6 이전에 현지 혼인등록에서 걸린다.
+  if (country === 'KH' && income && income !== 'high') {
     cross.push({
       verdict: 'check',
-      title: '나라 선택 때 참고',
-      note: `캄보디아는 외국인 남성 만 ${KH.maxSponsorAgeExclusive}세 미만 규정이 있어 진행이 어렵습니다. 다른 나라는 나이 상한 규정이 없습니다.`,
+      title: '캄보디아 초청인 소득 규정',
+      note: `캄보디아 정부 규정상 외국인 배우자는 월 소득 ${KH.minMonthlyIncomeUsd.toLocaleString()}달러(연 ${roughWon(KH_ANNUAL)}, 참고 환율) 이상을 증명해야 현지 혼인등록이 됩니다. 재산·가족 소득 합산이 안 될 수 있으니 증빙 방식을 상담에서 확인합니다.`,
     });
   }
 

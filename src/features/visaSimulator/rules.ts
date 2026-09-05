@@ -50,19 +50,19 @@ export const MIN_MARRIAGE_AGE_BY_COUNTRY: Record<string, { male: number; female:
 /**
  * 상대 나라가 한국인 초청인에게 따로 요구하는 조건. F-6 이전에 현지 혼인등록 단계에서 걸린다.
  *
- * 캄보디아 — 외교부 규정(Prakas, 2011). 캄보디아 여성과 혼인하려는 외국인 남성은
- * 만 50세 미만이어야 하고 월 소득 2,550달러 이상을 증명해야 한다. 둘 중 하나라도
- * 어긋나면 캄보디아에서 혼인등록이 되지 않는다. 실태조사(2023)에서 한국인 이용자의
- * 50세 이상 비중이 30.8%라 셋 중 하나가 이 조건에 걸린다.
+ * 캄보디아 — 외교부 규정(2011)으로 만 50세 미만·월소득 기준이 생겼으나, **나이 제한은 폐지됐다**
+ * (주시엠립 대한민국 분관 2021-11-11 안내 "외국인의 연령(만 50세) 제한 규정이 폐지됨").
+ * 월소득 **USD 2,500 이상** 규정만 남아 있다(같은 안내, 주캄보디아 대사관 2025-02-18 게시
+ * "월소득 $2,500불 이상"). 2026-09-04에 넣었던 "만 50세 미만·2,550달러"는 낡은 수치였다(2026-09-05 정정).
  */
 export const COUNTRY_SPONSOR_RULES: Record<
   string,
-  { maxSponsorAgeExclusive: number; minMonthlyIncomeUsd: number; source: string }
+  { maxSponsorAgeExclusive?: number; minMonthlyIncomeUsd: number; source: string; sourceUrl: string }
 > = {
   KH: {
-    maxSponsorAgeExclusive: 50,
-    minMonthlyIncomeUsd: 2_550,
-    source: '캄보디아 외교부 외국인과의 혼인에 관한 규정(Prakas, 2011)',
+    minMonthlyIncomeUsd: 2_500,
+    source: '주캄보디아 대한민국 대사관 국제결혼 절차 안내(2025-02-18) · 주시엠립 분관 나이제한 폐지 안내(2021-11-11)',
+    sourceUrl: 'https://overseas.mofa.go.kr/kh-ko/brd/m_3100/view.do?seq=938666',
   },
 };
 

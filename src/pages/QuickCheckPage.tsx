@@ -28,7 +28,7 @@ const CHECK_FAQ = [
   },
   {
     q: '왜 소득과 나라를 함께 묻나',
-    a: `결혼이민(F-6) 비자는 ${CURRENT_RULE_YEAR}년 기준 2인 가구 연 ${TWO_PERSON.toLocaleString()}원 이상의 소득이 필요합니다. 여기에 더해 캄보디아는 외국인 남성이 만 ${KH.maxSponsorAgeExclusive}세 미만이고 월 소득 ${KH.minMonthlyIncomeUsd.toLocaleString()}달러 이상이어야 현지 혼인등록이 되므로, 나라에 따라 같은 조건이 다르게 판정됩니다.`,
+    a: `결혼이민(F-6) 비자는 ${CURRENT_RULE_YEAR}년 기준 2인 가구 연 ${TWO_PERSON.toLocaleString()}원 이상의 소득이 필요합니다. 여기에 더해 캄보디아는 외국인 배우자가 월 소득 ${KH.minMonthlyIncomeUsd.toLocaleString()}달러 이상이어야 현지 혼인등록이 되므로, 나라에 따라 같은 조건이 다르게 판정됩니다. 캄보디아의 만 50세 나이 제한은 2021년에 폐지됐습니다.`,
   },
   {
     q: '이 점검을 통과하면 진행이 되나',
@@ -110,7 +110,9 @@ export default function QuickCheckPage() {
             <a href={RULE_SOURCE_URL} target="_blank" rel="noreferrer" className="underline underline-offset-2">
               외교부 재외공관 {CURRENT_RULE_YEAR} 결혼이민비자 소득요건 안내
             </a>
-            , {KH.source}. 여성가족부 「2023년 결혼중개업 실태조사」에서 한국인 이용자의 50세 이상 비중은 30.8%였습니다. 기준은 해마다 바뀌므로 신청 전에 다시 확인해야 합니다.
+            ,{' '}
+            <a href={KH.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">{KH.source}</a>
+            . 여성가족부 「2023년 결혼중개업 실태조사」에서 한국인 이용자의 50세 이상 비중은 30.8%였습니다. 기준은 해마다 바뀌므로 신청 전에 다시 확인해야 합니다.
           </p>
 
           <h2 className="mt-10 text-xl font-bold tracking-[-0.03em] text-[#102621] sm:text-2xl">{CHECK_FAQ[2]!.q}</h2>
