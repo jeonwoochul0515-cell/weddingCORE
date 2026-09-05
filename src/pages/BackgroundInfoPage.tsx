@@ -13,7 +13,7 @@ import BackgroundInfoForm from '@/features/sideBySide/BackgroundInfoForm';
 import ParallelView from '@/features/sideBySide/ParallelView';
 import DeliverySection from '@/features/sideBySide/DeliverySection';
 import { useClient } from '@/features/agency/useAgencyClients';
-import type { SupportedLang } from '@/features/sideBySide/fields';
+import { LANG_LABEL, type SupportedLang } from '@/features/sideBySide/fields';
 
 export default function BackgroundInfoPage() {
   const { clientId } = useParams();
@@ -32,6 +32,8 @@ export default function BackgroundInfoPage() {
   const user = useAuthStore((s) => s.user);
   const [creating, setCreating] = useState(false);
   const [targetLang, setTargetLang] = useState<SupportedLang>('vi');
+  // 외국인 측 원본 언어. 예전엔 무조건 베트남어로 박혀 캄보디아·우즈베키스탄 손님도 베트남어 문서가 됐다.
+  const [partnerLang, setPartnerLang] = useState<SupportedLang>('vi');
 
   const { info, translations, loading } = useBackgroundInfo(clientId, activeInfoId ?? undefined);
 
@@ -49,7 +51,7 @@ export default function BackgroundInfoPage() {
         agencyId: user.agencyId,
         clientId,
         subject,
-        sourceLang: subject === 'korean' ? 'ko' : 'vi',
+        sourceLang: subject === 'korean' ? 'ko' : partnerLang,
         fields: {},
       });
       setParams({ info: id, mode: 'edit' });
@@ -77,13 +79,25 @@ export default function BackgroundInfoPage() {
           >
             <Plus size={14} />한국인 측 신규
           </button>
-          <button
-            onClick={() => createNew('partner')}
-            disabled={creating}
-            className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
-          >
-            <Plus size={14} />외국인 측 신규
-          </button>
+          <span className="flex items-center gap-1">
+            <select
+              value={partnerLang}
+              onChange={(e) => setPartnerLang(e.target.value as SupportedLang)}
+              aria-label="외국인 측 원본 언어"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
+            >
+              {(Object.keys(LANG_LABEL) as SupportedLang[]).filter((l) => l !== 'ko').map((l) => (
+                <option key={l} value={l}>{LANG_LABEL[l]}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => createNew('partner')}
+              disabled={creating}
+              className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
+            >
+              <Plus size={14} />외국인 측 신규
+            </button>
+          </span>
         </div>
       </div>
 
