@@ -33,7 +33,8 @@ function useUpcomingTimeline() {
     const q = query(
       collectionGroup(db, 'timeline'),
       where('agencyId', '==', agencyId),
-      where('status', 'in', ['pending', 'in_progress', 'warning']),
+      // 3일 넘게 지난 항목(violated)이 빠져 있어 가장 급한 일이 목록에 안 나왔다. 기한순이라 맨 위에 온다.
+      where('status', 'in', ['pending', 'in_progress', 'warning', 'violated']),
       orderBy('dueDate', 'asc'),
       limit(5),
     );
