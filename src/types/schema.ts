@@ -208,9 +208,50 @@ export type AnchorKey =
    */
   | 'stay_expiry';
 
+/** 홈페이지 점검 위젯·업체 사이트에서 들어온 상담 접수의 처리 상태. 접수 → 전화했음 → 상담 중 → 고객 등록 / 종료 */
+export type LeadStatus = 'new' | 'contacted' | 'consulting' | 'converted' | 'closed';
+
+export type LeadCloseReason = 'no_response' | 'not_eligible' | 'other_agency' | 'hold' | 'other';
+
+/** agencies/{aid}/leads/{leadId}. 서버(Admin SDK)가 만들고 업체는 처리 상태와 메모만 바꾼다. */
+export type Lead = {
+  agencyId: string;
+  /** 'quick_check'(weddingCORE 점검 위젯) 또는 'woori_site'처럼 사이트 식별 문자열 */
+  source: string;
+  name: string;
+  phone: string;
+  /** 요건 점검 판정 */
+  level: 'ok' | 'check' | 'stop' | 'unknown' | string;
+  /** 점검 결과·상담 요약 원문. 화면은 parseLeadSummary로 읽어 보고서로 보여 준다 */
+  summary: string;
+  page: string;
+  status: LeadStatus;
+  memo: string;
+  contactedAt?: Timestamp | null;
+  nextActionAt?: Timestamp | null;
+  closedAt?: Timestamp | null;
+  closeReason?: LeadCloseReason | null;
+  clientId?: string | null;
+  convertedAt?: Timestamp | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
+/** 접수에서 고객으로 넘어올 때 함께 따라오는 기록. 같은 질문을 두 번 하지 않기 위해 둔다. */
+export type ClientIntake = {
+  leadId: string;
+  source: string;
+  level: string;
+  summary: string;
+  receivedAt: Timestamp;
+};
+
 export type Client = {
   clientId: string;
   agencyId: string;
+  /** 어디서 온 고객인가. 없으면 직접 등록(manual)으로 본다 */
+  source?: { type: 'lead' | 'manual' | 'referral'; leadId?: string; via?: string };
+  intake?: ClientIntake | null;
   koreanClient: {
     name: string;
     birthDate: Timestamp;

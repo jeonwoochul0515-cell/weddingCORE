@@ -16,6 +16,8 @@ import { useProfileUpdater } from '@/features/matching/useClientProfile';
 import { getMbtiCompat } from '@/features/matching/mbtiCompat';
 import { getSajuCompat } from '@/features/matching/sajuCompat';
 import type { ClientProfile, BirthInfo } from '@/types/schema';
+import LeadReport from '@/features/leads/LeadReport';
+import { LEAD_SOURCE_LABEL } from '@/features/leads/useAgencyLeads';
 
 const STAGE_LABEL: Record<number, string> = {
   1: '계약 전', 2: '계약 체결', 3: '맞선 준비',
@@ -119,6 +121,19 @@ export default function ClientDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* 접수에서 온 고객이면 점검 결과를 보고서로 둔다. 같은 질문을 두 번 하지 않기 위해서다 */}
+      {client.intake && (
+        <details className="app-surface mb-6 rounded-[26px] p-5 sm:p-6" open>
+          <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+            접수에서 온 손님 · {LEAD_SOURCE_LABEL[client.intake.source] ?? client.intake.source}
+            {client.intake.receivedAt?.toDate && <span className="ml-2 text-xs font-normal text-slate-500">{client.intake.receivedAt.toDate().toLocaleDateString('ko-KR')} 접수</span>}
+          </summary>
+          <div className="mt-4">
+            <LeadReport summary={client.intake.summary} level={client.intake.level} source={client.intake.source} receivedAt={client.intake.receivedAt} compact />
+          </div>
+        </details>
+      )}
 
       {/* 탭 */}
       <div className="mb-5 flex gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">

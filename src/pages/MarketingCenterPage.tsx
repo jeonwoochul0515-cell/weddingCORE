@@ -1,17 +1,8 @@
 // 홈페이지·검색노출·콘텐츠 마케팅 상품을 고르고 견적과 함께 상담을 접수하는 화면
 import { useEffect, useMemo, useState } from 'react';
-import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  type Timestamp,
-} from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { Link } from 'react-router-dom';
+import { monthlyFunnel, useAgencyLeads } from '@/features/leads/useAgencyLeads';
 import {
   BarChart3,
   CheckCircle2,
@@ -119,21 +110,7 @@ function embedSnippet(agencyId: string, agencyName: string) {
   ].join('\n');
 }
 
-type Lead = {
-  id: string;
-  name: string;
-  phone: string;
-  level: string;
-  summary: string;
-  status: string;
-  createdAt: Timestamp | null;
-};
 
-const LEAD_LEVEL: Record<string, { label: string; cls: string }> = {
-  ok: { label: '걸림 없음', cls: 'bg-emerald-100 text-emerald-700' },
-  check: { label: '확인 필요', cls: 'bg-amber-100 text-amber-800' },
-  stop: { label: '정리 필요', cls: 'bg-red-100 text-red-700' },
-};
 
 const CHECKLIST = [
   { label: '회사 기본정보와 등록번호 공개', done: true },
@@ -152,7 +129,8 @@ export default function MarketingCenterPage() {
   const checkout = useCheckout();
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [agency, setAgency] = useState<{ name: string; phone: string }>({ name: '', phone: '' });
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const { items: leads } = useAgencyLeads();
+  const funnel = useMemo(() => monthlyFunnel(leads), [leads]);
   const [copied, setCopied] = useState(false);
   const completed = useMemo(() => CHECKLIST.filter((item) => item.done).length, []);
 
@@ -164,12 +142,6 @@ export default function MarketingCenterPage() {
         setAgency({ name: String(data?.name ?? ''), phone: String(data?.phone ?? '') });
       })
       .catch(() => {});
-    const leadsQuery = query(collection(db, 'agencies/' + agencyId + '/leads'), orderBy('createdAt', 'desc'), limit(20));
-    return onSnapshot(
-      leadsQuery,
-      (snap) => setLeads(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Lead, 'id'>) }))),
-      () => setLeads([]),
-    );
   }, [agencyId]);
 
   const snippet = agencyId ? embedSnippet(agencyId, agency.name) : '';
@@ -363,31 +335,24 @@ export default function MarketingCenterPage() {
             </details>
           </div>
           <div>
-            <div className="mb-1.5 text-xs font-semibold text-slate-700">최근 접수 {leads.length}건</div>
-            {leads.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-slate-200 px-3.5 py-6 text-center text-xs leading-5 text-slate-400">아직 접수가 없습니다. 위젯을 심은 뒤 손님이 결과를 보고 접수하면 여기에 나타납니다.</p>
-            ) : (
-              <ul className="space-y-2">
-                {leads.map((lead) => {
-                  const level = LEAD_LEVEL[lead.level] ?? { label: '미확인', cls: 'bg-slate-100 text-slate-600' };
-                  return (
-                    <li key={lead.id} className="rounded-xl border border-slate-100 bg-slate-50/70 px-3.5 py-3">
-                      <div className="flex items-center justify-between gap-2 text-sm">
-                        <span className="font-semibold text-slate-900">{lead.name} <span className="font-normal text-slate-600">{lead.phone}</span></span>
-                        <span className={'rounded-full px-2 py-0.5 text-[10px] font-bold ' + level.cls}>{level.label}</span>
-                      </div>
-                      <div className="mt-0.5 text-[11px] text-slate-400">{lead.createdAt ? lead.createdAt.toDate().toLocaleString('ko-KR') : ''}</div>
-                      {lead.summary && (
-                        <details className="mt-1">
-                          <summary className="cursor-pointer text-xs text-emerald-700">점검 결과 보기</summary>
-                          <pre className="mt-1 whitespace-pre-wrap font-sans text-xs leading-5 text-slate-600">{lead.summary}</pre>
-                        </details>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+            <div className="mb-1.5 text-xs font-semibold text-slate-700">이번 달 성과</div>
+            {/* 접수 처리는 고객 관리의 접수 탭에서 한다. 여기는 마케팅 돈을 낸 사람이 결과를 보는 자리다 */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[
+                { label: '접수', value: funnel.received },
+                { label: '연락함', value: funnel.contacted },
+                { label: '고객 등록', value: funnel.converted },
+                { label: '전환율', value: funnel.rate + '%' },
+              ].map((item) => (
+                <div key={item.label} className="rounded-xl border border-slate-100 bg-slate-50/70 px-3.5 py-3">
+                  <div className="text-[11px] text-slate-500">{item.label}</div>
+                  <div className="mt-0.5 text-xl font-bold text-slate-900">{item.value}</div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] leading-4 text-slate-400">
+              누적 접수 {leads.length}건. 전화·상담·고객 등록은 <Link to="/agency/clients?tab=leads" className="font-semibold text-emerald-700 underline">고객 관리 → 접수 탭</Link>에서 처리합니다. 접수가 들어오면 문자로도 알립니다.
+            </p>
           </div>
         </div>
       </section>

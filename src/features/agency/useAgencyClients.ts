@@ -12,7 +12,10 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
-import type { Client } from '@/types/schema';
+import type { Client, ClientIntake } from '@/types/schema';
+
+/** 접수에서 넘어올 때 고객 문서에 함께 저장되는 기록 */
+export type CreateClientIntake = ClientIntake;
 
 export type ClientListItem = Client & { id: string };
 
@@ -69,9 +72,13 @@ export async function createClient(
     occupation: string;
     maritalHistory: string;
   },
+  origin?: { source: Client['source']; intake: CreateClientIntake },
 ) {
   const ref = await addDoc(collection(db, `agencies/${agencyId}/clients`), {
     agencyId,
+    // 어디서 온 고객인지. 접수에서 오면 점검 결과가 접수 기록으로 따라간다.
+    source: origin?.source ?? { type: 'manual' },
+    intake: origin?.intake ?? null,
     koreanClient: {
       name: data.name,
       birthDate: Timestamp.fromDate(data.birthDate),

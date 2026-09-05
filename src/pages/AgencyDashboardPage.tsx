@@ -9,10 +9,11 @@ import {
   Timestamp,
   where,
 } from 'firebase/firestore';
-import { AlertTriangle, ArrowRight, Bot, CalendarClock, ShieldAlert, Sparkles, Users } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Bot, CalendarClock, Inbox, ShieldAlert, Sparkles, Users } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
+import { isFollowUpDue, isUnanswered, useAgencyLeads } from '@/features/leads/useAgencyLeads';
 import type { TimelineItem } from '@/types/schema';
 
 type UpcomingItem = TimelineItem & { id: string; path: string };
@@ -85,6 +86,11 @@ export default function AgencyDashboardPage() {
   const { items: clients, loading: loadingClients } = useAgencyClients();
   const { items: upcoming, loading: loadingTimeline } = useUpcomingTimeline();
   const { warning, violated, loading: loadingOverdue } = useOverdueCounts(agencyId);
+  const { items: leads, loading: loadingLeads } = useAgencyLeads();
+  // 접수는 영업의 입구다. 연락 전 건수와 24시간 넘게 둔 건수를 법정의무 카드와 같은 줄에 둔다.
+  const newLeads = leads.filter((l) => l.status === 'new').length;
+  const unansweredLeads = leads.filter((l) => isUnanswered(l)).length;
+  const dueLeads = leads.filter((l) => isFollowUpDue(l)).length;
 
   const stageCounts = useMemo(() => {
     const acc: Record<number, number> = {};
@@ -104,7 +110,21 @@ export default function AgencyDashboardPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5 lg:gap-4">
+        <Link to="/agency/clients?tab=leads" className="contents">
+          <StatCard
+            icon={<Inbox size={18} className={unansweredLeads > 0 ? 'text-red-600' : ''} />}
+            label="새 접수"
+            value={loadingLeads ? '…' : String(newLeads)}
+            hint={
+              unansweredLeads > 0 ? `24시간 넘게 연락 전 ${unansweredLeads}건`
+              : dueLeads > 0 ? `다시 연락할 손님 ${dueLeads}명`
+              : newLeads > 0 ? '오늘 전화할 손님' : '접수 없음'
+            }
+            warn={unansweredLeads > 0 || dueLeads > 0}
+            clickable
+          />
+        </Link>
         <StatCard
           icon={<Users size={18} />}
           label="진행 중 고객"

@@ -118,7 +118,8 @@ service cloud.firestore {
       allow read: if isAgencyMember(aid) || isAdmin();
       allow update: if canWriteAgency(aid)
                     && request.resource.data.diff(resource.data).affectedKeys()
-                      .hasOnly(['status', 'memo', 'updatedAt']);
+                      .hasOnly(['status', 'memo', 'updatedAt', 'contactedAt', 'nextActionAt',
+                                'closedAt', 'closeReason', 'clientId', 'convertedAt']);
       allow create, delete: if isAdmin();
     }
 

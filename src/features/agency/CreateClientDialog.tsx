@@ -1,10 +1,15 @@
+// 신규 고객 등록 창 — 직접 등록과 접수에서 넘어온 등록 두 경우를 같은 창으로 처리한다
+//
+// 접수에서 오면 이름·연락처·혼인이력이 채워진 채 열리고, 점검 결과가 고객 문서에 접수 기록으로 따라간다.
+// 생년월일·주소·직업·연소득은 접수에 없으므로 대표가 채운다. 구간 값을 숫자로 짐작해 넣지 않는다.
+
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { X } from 'lucide-react';
-import { createClient } from './useAgencyClients';
+import { Inbox, X } from 'lucide-react';
+import { createClient, type CreateClientIntake } from './useAgencyClients';
 import { useAuthStore } from '@/store/authStore';
 
-type FormValues = {
+export type CreateClientFormValues = {
   name: string;
   birthDate: string;
   gender: 'M' | 'F';
@@ -18,22 +23,29 @@ type FormValues = {
 type Props = {
   onClose: () => void;
   onCreated: (clientId: string) => void;
+  /** 접수에서 넘어올 때 미리 채울 값 */
+  initial?: Partial<CreateClientFormValues>;
+  /** 접수 기록. 있으면 고객 문서에 함께 저장된다 */
+  intake?: CreateClientIntake;
 };
 
-export default function CreateClientDialog({ onClose, onCreated }: Props) {
+export default function CreateClientDialog({ onClose, onCreated, initial, intake }: Props) {
   const user = useAuthStore((s) => s.user);
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>();
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<CreateClientFormValues>({
+    defaultValues: { gender: 'M', maritalHistory: 'none', ...initial },
+  });
   const [error, setError] = useState<string | null>(null);
 
-  async function onSubmit(values: FormValues) {
+  async function onSubmit(values: CreateClientFormValues) {
     if (!user?.agencyId) return;
     setError(null);
     try {
-      const id = await createClient(user.agencyId, user.uid, {
-        ...values,
-        birthDate: new Date(values.birthDate),
-        incomeAnnual: Number(values.incomeAnnual),
-      });
+      const id = await createClient(
+        user.agencyId,
+        user.uid,
+        { ...values, birthDate: new Date(values.birthDate), incomeAnnual: Number(values.incomeAnnual) },
+        intake ? { source: { type: 'lead', leadId: intake.leadId, via: intake.source }, intake } : undefined,
+      );
       onCreated(id);
     } catch (err) {
       setError((err as Error).message);
@@ -42,13 +54,19 @@ export default function CreateClientDialog({ onClose, onCreated }: Props) {
 
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
+      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h2 className="text-lg font-semibold text-slate-900">신규 고객 등록</h2>
-          <button onClick={onClose} className="rounded-md p-1 hover:bg-slate-100">
+          <button onClick={onClose} className="rounded-md p-1 hover:bg-slate-100" aria-label="닫기">
             <X size={18} />
           </button>
         </div>
+        {intake && (
+          <div className="mx-6 mt-4 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-xs leading-5 text-emerald-900">
+            <Inbox size={15} className="mt-0.5 shrink-0" />
+            <span>접수에서 넘어온 손님입니다. 이름·연락처·혼인이력은 채워 두었고, 점검 결과는 고객 화면에 접수 기록으로 함께 저장됩니다. 나머지는 상담에서 확인한 대로 적어 주세요.</span>
+          </div>
+        )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 p-6">
           <Field label="이름" error={errors.name?.message}>
             <input className="input" {...register('name', { required: '필수' })} />
