@@ -39,6 +39,20 @@ export default function DeliverySection({
   const { items, loading } = useDeliveries(clientId, infoId);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // 제공 기록은 법정 증빙이다. 휴지통을 잘못 눌러도 바로 사라지지 않게 한 번 묻는다.
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  async function handleRemove(deliveryId: string) {
+    if (!user?.agencyId) return;
+    setRemoveError(null);
+    try {
+      await removeDelivery({ agencyId: user.agencyId, clientId, infoId, deliveryId });
+      setConfirmId(null);
+    } catch (error) {
+      setRemoveError(`지우지 못했습니다. 잠시 뒤 다시 시도해 주세요. (${(error as Error).message})`);
+    }
+  }
 
   // 이 신상정보는 반대편에게 주는 것이 원칙이다
   const [to, setTo] = useState<BackgroundSubject>(
@@ -266,23 +280,24 @@ export default function DeliverySection({
                 </span>
                 <span className="text-slate-500">{LANG_LABEL[r.lang]}</span>
                 <span className="text-slate-500">{DELIVERY_METHOD_LABEL[r.method]}</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    user?.agencyId &&
-                    removeDelivery({
-                      agencyId: user.agencyId,
-                      clientId,
-                      infoId,
-                      deliveryId: r.id,
-                    })
-                  }
-                  className="ml-auto text-slate-300 hover:text-red-500"
-                  aria-label="기록 삭제"
-                >
-                  <Trash2 size={13} />
-                </button>
+                {confirmId === r.id ? (
+                  <span className="ml-auto flex items-center gap-1.5">
+                    <span className="text-slate-600">이 기록을 지울까요?</span>
+                    <button type="button" onClick={() => void handleRemove(r.id)} className="rounded-lg bg-red-600 px-2.5 py-1.5 font-semibold text-white">지우기</button>
+                    <button type="button" onClick={() => setConfirmId(null)} className="rounded-lg px-2.5 py-1.5 font-semibold text-slate-500 ring-1 ring-slate-200">취소</button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { setConfirmId(r.id); setRemoveError(null); }}
+                    className="ml-auto grid h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    aria-label="이 제공 기록 지우기"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
+              {removeError && confirmId === r.id && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{removeError}</p>}
               <div className="flex flex-wrap gap-3 text-xs text-slate-600">
                 <span>
                   수령확인{' '}

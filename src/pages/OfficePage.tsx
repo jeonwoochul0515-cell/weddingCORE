@@ -160,8 +160,22 @@ export default function OfficePage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
+  // 삭제는 확인을 한 번 거친다. 휴지통을 잘못 눌러 기록이 사라지면 되돌릴 길이 없다.
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   const tab = TABS.find((t) => t.key === tabKey)!;
+
+  async function handleRemove(id: string) {
+    if (!user?.agencyId) return;
+    setRemoveError(null);
+    try {
+      await removeOfficeItem(user.agencyId, tabKey, id);
+      setConfirmId(null);
+    } catch (error) {
+      setRemoveError(`지우지 못했습니다. 잠시 뒤 다시 시도해 주세요. (${(error as Error).message})`);
+    }
+  }
   const { items, loading } = useOfficeCollection(tabKey);
 
   // 경고는 탭과 무관하게 항상 계산한다. 다른 탭의 문제도 한눈에 보여야 한다.
@@ -227,6 +241,8 @@ export default function OfficePage() {
               setTabKey(t.key);
               setOpen(false);
               setForm({});
+              setConfirmId(null);
+              setRemoveError(null);
             }}
             className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition ${
               tabKey === t.key
@@ -326,25 +342,32 @@ export default function OfficePage() {
         </p>
       )}
 
+      {removeError && <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">{removeError}</p>}
+
       <ul className="space-y-2">
         {(items as Array<Record<string, unknown> & { id: string }>).map((row) => {
           const primary = tab.fields.find((f) => f.primary);
+          const title = primary ? fmtValue(primary, row[primary.key]) : '';
           return (
             <li key={row.id} className="rounded-xl border border-slate-200 bg-white p-4">
               <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-sm font-bold text-[#102621]">
-                  {primary ? fmtValue(primary, row[primary.key]) : ''}
-                </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    user?.agencyId && removeOfficeItem(user.agencyId, tabKey, row.id)
-                  }
-                  className="text-slate-300 hover:text-red-500"
-                  aria-label="삭제"
-                >
-                  <Trash2 size={13} />
-                </button>
+                <p className="text-sm font-bold text-[#102621]">{title}</p>
+                {confirmId === row.id ? (
+                  <span className="flex items-center gap-1.5 text-xs">
+                    <span className="text-slate-600">이 기록을 지울까요?</span>
+                    <button type="button" onClick={() => void handleRemove(row.id)} className="rounded-lg bg-red-600 px-2.5 py-1.5 font-semibold text-white">지우기</button>
+                    <button type="button" onClick={() => setConfirmId(null)} className="rounded-lg px-2.5 py-1.5 font-semibold text-slate-500 ring-1 ring-slate-200">취소</button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { setConfirmId(row.id); setRemoveError(null); }}
+                    className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    aria-label={`${title || tab.label} 지우기`}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
                 {tab.fields
