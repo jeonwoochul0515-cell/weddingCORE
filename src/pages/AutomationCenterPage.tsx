@@ -41,6 +41,18 @@ export default function AutomationCenterPage() {
   const [documentType, setDocumentType] = useState<string>(firstDocument(TRACKS.marriage).key);
   const [requestNote, setRequestNote] = useState('');
   const [evidenceReference, setEvidenceReference] = useState('');
+  // 초안 본문 복사. 승인 전에는 제출용이 아니지만, 검토 요청 메일에 붙이거나 인쇄해 읽는 데는 필요하다.
+  const [copiedJobId, setCopiedJobId] = useState<string | null>(null);
+
+  async function copyDraft(jobId: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedJobId(jobId);
+      setTimeout(() => setCopiedJobId((cur) => (cur === jobId ? null : cur)), 2000);
+    } catch {
+      /* 클립보드를 못 쓰는 환경. 본문을 직접 긁어 복사하면 된다. */
+    }
+  }
   const [busy, setBusy] = useState<'consent' | 'generate' | 'order' | null>(null);
   const agencyId = useAuthStore((state) => state.user?.agencyId);
   const uid = useAuthStore((state) => state.user?.uid);
@@ -288,6 +300,12 @@ export default function AutomationCenterPage() {
               {job.reviewNote && <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900"><strong>검토 의견:</strong> {job.reviewNote}</div>}
               {job.riskFlags.length > 0 && <div><strong>위험 신호</strong><ul className="mt-1 list-disc pl-5 text-slate-700">{job.riskFlags.map((item) => <li key={item}>{item}</li>)}</ul></div>}
               <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-2xl border border-slate-200 bg-white p-5 font-sans text-xs leading-6 text-slate-800 shadow-sm">{job.generatedContent || '아직 생성된 본문이 없습니다.'}</pre>
+              {job.generatedContent && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={() => void copyDraft(job.id, job.generatedContent)} className="secondary-button !px-4 !py-2 text-xs">{copiedJobId === job.id ? '복사됐습니다' : '본문 복사'}</button>
+                  <span className="text-[11px] text-slate-500">복사한 글을 한글·워드에 붙여 넣어 인쇄할 수 있습니다. 변호사 승인 전에는 손님에게 주거나 제출하지 마세요.</span>
+                </div>
+              )}
             </div>
           </details>;
         })}
