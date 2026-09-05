@@ -33,12 +33,12 @@ export default function LoginPage() {
         <div className="relative my-auto max-w-xl">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-emerald-200"><Sparkles size={14} />국제결혼중개업 AI 운영체제</div>
           <h1 className="text-5xl font-bold leading-[1.14] tracking-[-0.045em]">반복업무는 줄이고,<br /><span className="text-emerald-300">고객에게 집중하세요.</span></h1>
-          <p className="mt-6 max-w-lg text-base leading-7 text-slate-300">서류·기한·법정의무·변호사 검토를 하나의 안전한 워크스페이스에서 관리합니다.</p>
+          <p className="mt-6 max-w-lg text-base leading-7 text-slate-300">서류·기한·법정의무·변호사 검토를 한 화면에서 관리합니다.</p>
           <div className="mt-10 grid gap-3 sm:grid-cols-2">
-            {['AI 문서 초안 캐럿', '변호사 승인 워크플로', '개인정보 동의 게이트', '업체별 데이터 완전 분리'].map((item) => <div key={item} className="flex items-center gap-2 text-sm text-slate-300"><CheckCircle2 size={16} className="text-emerald-300" />{item}</div>)}
+            {['AI가 서류 초안을 씁니다', '변호사가 검토하고 승인합니다', '고객 동의를 받은 뒤에만 처리합니다', '업체 자료는 다른 업체와 섞이지 않습니다'].map((item) => <div key={item} className="flex items-center gap-2 text-sm text-slate-300"><CheckCircle2 size={16} className="text-emerald-300" />{item}</div>)}
           </div>
         </div>
-        <div className="relative flex items-center gap-2 text-xs text-slate-500"><ShieldCheck size={15} className="text-emerald-400" />Firebase App Check · 역할 기반 접근제어 적용</div>
+        <div className="relative flex items-center gap-2 text-xs text-slate-500"><ShieldCheck size={15} className="text-emerald-400" />로그인한 사람의 권한에 따라 볼 수 있는 자료가 다릅니다</div>
       </section>
       <section className="relative flex min-h-screen items-center justify-center px-5 py-12 sm:px-8">
         <Link to="/" className="absolute left-5 top-5 flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-900 sm:left-8 sm:top-8"><ArrowLeft size={15} />홈으로</Link>
