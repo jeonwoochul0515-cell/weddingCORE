@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
-import type { Match, MatchResult } from '@/types/schema';
+import type { Match, MatchResult, MatchStage } from '@/types/schema';
 
 export type MatchListItem = Match & { id: string };
 
@@ -74,12 +74,16 @@ export async function createMatch(
     partnerName: data.partnerName,
     type: data.type,
     date: Timestamp.fromDate(data.date),
+    stage: 'profile_shared',
     result: null,
     memo: data.memo,
+    feedback: { client: '', partner: '' },
+    nextActionAt: null,
     mbtiScore: data.mbtiScore,
     sajuScore: data.sajuScore,
     createdBy: uid,
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
   return ref.id;
 }
@@ -91,7 +95,33 @@ export async function updateMatchResult(
   memo?: string,
 ) {
   const ref = doc(db, `agencies/${agencyId}/matches/${matchId}`);
-  const update: Record<string, unknown> = { result };
+  const update: Record<string, unknown> = { result, updatedAt: serverTimestamp() };
   if (memo !== undefined) update.memo = memo;
   await updateDoc(ref, update);
+}
+
+export async function updateMatchWorkflow(
+  agencyId: string,
+  matchId: string,
+  data: {
+    stage: MatchStage;
+    result: MatchResult | null;
+    clientFeedback: string;
+    partnerFeedback: string;
+    nextActionAt: Date | null;
+    memo: string;
+  },
+) {
+  const ref = doc(db, `agencies/${agencyId}/matches/${matchId}`);
+  await updateDoc(ref, {
+    stage: data.stage,
+    result: data.result,
+    feedback: {
+      client: data.clientFeedback.trim(),
+      partner: data.partnerFeedback.trim(),
+    },
+    nextActionAt: data.nextActionAt ? Timestamp.fromDate(data.nextActionAt) : null,
+    memo: data.memo.trim(),
+    updatedAt: serverTimestamp(),
+  });
 }

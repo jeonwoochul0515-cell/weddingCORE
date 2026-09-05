@@ -9,12 +9,13 @@ import {
   Timestamp,
   where,
 } from 'firebase/firestore';
-import { AlertTriangle, ArrowRight, Bot, CalendarClock, Inbox, ShieldAlert, Sparkles, Users } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Bot, CalendarClock, CheckCircle2, Inbox, MessageSquareText, RefreshCw, ShieldAlert, Sparkles, Users } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
 import { isFollowUpDue, isUnanswered, useAgencyLeads } from '@/features/leads/useAgencyLeads';
 import type { TimelineItem } from '@/types/schema';
+import { useAllMatches } from '@/features/matching/useMatches';
 
 type UpcomingItem = TimelineItem & { id: string; path: string };
 
@@ -84,6 +85,8 @@ function useOverdueCounts(agencyId: string | null | undefined) {
 export default function AgencyDashboardPage() {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const { items: clients, loading: loadingClients } = useAgencyClients();
+  const { items: closedClients, loading: loadingClosed } = useAgencyClients('closed');
+  const { items: matches, loading: loadingMatches } = useAllMatches();
   const { items: upcoming, loading: loadingTimeline } = useUpcomingTimeline();
   const { warning, violated, loading: loadingOverdue } = useOverdueCounts(agencyId);
   const { items: leads, loading: loadingLeads } = useAgencyLeads();
@@ -99,6 +102,10 @@ export default function AgencyDashboardPage() {
   }, [clients]);
 
   const overdueTotal = warning + violated;
+  const feedbackPending = matches.filter((match) => match.stage === 'feedback_pending' || (!match.stage && match.result === '보류')).length;
+  const rematchNeeded = matches.filter((match) => match.stage === 'rematch_needed' || (!match.stage && ['거절_A', '거절_B', '양측거절'].includes(match.result ?? ''))).length;
+  const successfulMatches = matches.filter((match) => match.stage === 'completed' || match.result === '수락').length;
+  const completedClients = closedClients.filter((client) => client.status === 'completed').length;
 
   return (
     <div className="space-y-6">
@@ -172,6 +179,19 @@ export default function AgencyDashboardPage() {
           />
         </Link>
       </div>
+
+      <section>
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div><div className="eyebrow">영업 흐름</div><h2 className="mt-1 text-base font-bold text-slate-900">소개·피드백 현황</h2></div>
+          <Link to="/agency/matching" className="text-xs font-semibold text-emerald-700 hover:underline">매칭 관리 열기 →</Link>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+          <StatCard icon={<MessageSquareText size={18} />} label="피드백 대기" value={loadingMatches ? '…' : String(feedbackPending)} hint={feedbackPending ? '양측 반응 확인 필요' : '대기 없음'} warn={feedbackPending > 0} />
+          <StatCard icon={<RefreshCw size={18} />} label="재매칭 필요" value={loadingMatches ? '…' : String(rematchNeeded)} hint={rematchNeeded ? '새 후보 제안 필요' : '대기 없음'} warn={rematchNeeded > 0} />
+          <StatCard icon={<CheckCircle2 size={18} />} label="성사 기록" value={loadingMatches ? '…' : String(successfulMatches)} hint="양측 수락 기준" />
+          <StatCard icon={<Users size={18} />} label="완료 고객" value={loadingClosed ? '…' : String(completedClients)} hint="혼인·비자 종료" />
+        </div>
+      </section>
 
       {overdueTotal > 0 && (
         <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 shadow-sm">

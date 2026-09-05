@@ -306,6 +306,15 @@ export type Partner = {
 
 export type MatchResult = '수락' | '거절_A' | '거절_B' | '양측거절' | '보류';
 
+/** 소개 한 건이 지금 어디까지 왔는지 보여 주는 영업 단계. 기존 기록에는 없을 수 있다. */
+export type MatchStage =
+  | 'profile_shared'
+  | 'meeting_scheduled'
+  | 'meeting_completed'
+  | 'feedback_pending'
+  | 'rematch_needed'
+  | 'completed';
+
 export type Match = {
   matchId: string;
   agencyId: string;
@@ -315,12 +324,37 @@ export type Match = {
   partnerName: string;
   type: '맞선' | '프로필교환' | '화상상담';
   date: Timestamp;
+  stage?: MatchStage;
   result: MatchResult | null;
   memo: string;
+  feedback?: {
+    client: string;
+    partner: string;
+  };
+  nextActionAt?: Timestamp | null;
   mbtiScore: number | null;
   sajuScore: number | null;
   createdBy: string;
   createdAt: Timestamp;
+  updatedAt?: Timestamp;
+};
+
+export type ClientActivityType = 'call' | 'message' | 'consultation' | 'visit' | 'note';
+
+/** 고객과 나눈 연락·상담과 다음 약속. 고객 상세의 시간순 업무일지로 쓴다. */
+export type ClientActivity = {
+  activityId: string;
+  agencyId: string;
+  clientId: string;
+  type: ClientActivityType;
+  occurredAt: Timestamp;
+  summary: string;
+  outcome: string;
+  assignedTo: string;
+  nextActionAt: Timestamp | null;
+  createdBy: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 };
 
 export type ClientDocument = {

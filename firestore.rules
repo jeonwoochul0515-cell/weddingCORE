@@ -160,6 +160,15 @@ service cloud.firestore {
       allow read: if isAgencyMember(aid);
       allow write: if canWriteAgency(aid);
     }
+    // 전화·문자·상담·방문 기록. 고객 문서와 같은 업체 권한을 적용한다.
+    match /agencies/{aid}/clients/{clientId}/activities/{activityId} {
+      allow read: if isAgencyMember(aid);
+      allow create, update: if canWriteAgency(aid)
+                            && request.resource.data.agencyId == aid
+                            && request.resource.data.clientId == clientId;
+      // 업무 이력은 실수로 지워 감사 흐름이 끊기지 않도록 화면에서 삭제하지 않는다.
+      allow delete: if isAgencyOwner(aid) || isAdmin();
+    }
     match /agencies/{aid}/clients/{clientId}/partners/{partnerId} {
       allow read: if isAgencyMember(aid);
       allow write: if canWriteAgency(aid);

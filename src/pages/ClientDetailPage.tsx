@@ -1,7 +1,7 @@
 // 고객 상세 — 기본정보·접수 기록·법정의무 타임라인·서류·매칭을 한 화면에 모은다
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Archive, ArrowLeft, Bot, Languages, Heart, Pencil, Plus, RotateCcw } from 'lucide-react';
+import { Archive, ArrowLeft, Bot, Languages, Heart, MessageSquareText, Pencil, Plus, RotateCcw } from 'lucide-react';
 import { setClientStatus, useClient, type ClientListItem } from '@/features/agency/useAgencyClients';
 import CreateClientDialog, { type CreateClientFormValues } from '@/features/agency/CreateClientDialog';
 import DocumentSection from '@/features/documents/DocumentSection';
@@ -21,6 +21,7 @@ import type { Client, ClientProfile, BirthInfo } from '@/types/schema';
 import LeadReport from '@/features/leads/LeadReport';
 import { LEAD_SOURCE_LABEL } from '@/features/leads/useAgencyLeads';
 import { useAuthStore } from '@/store/authStore';
+import ActivitySection from '@/features/activities/ActivitySection';
 
 const STAGE_LABEL: Record<number, string> = {
   1: '계약 전', 2: '계약 체결', 3: '맞선 준비',
@@ -69,7 +70,7 @@ export default function ClientDetailPage() {
   const { client, loading } = useClient(clientId);
   const { items: documents } = useClientDocuments(clientId);
   const { updateClient } = useProfileUpdater();
-  const [tab, setTab] = useState<'compliance' | 'matching'>('compliance');
+  const [tab, setTab] = useState<'compliance' | 'matching' | 'activities'>('compliance');
   const [showMatchDialog, setShowMatchDialog] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -276,6 +277,15 @@ export default function ClientDetailPage() {
           <Heart size={14} className="mr-1 inline text-rose-500" />
           매칭
         </button>
+        <button
+          onClick={() => setTab('activities')}
+          className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+            tab === 'activities' ? 'bg-[#102621] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+          }`}
+        >
+          <MessageSquareText size={14} className="mr-1 inline" />
+          상담·연락
+        </button>
       </div>
 
       {tab === 'compliance' && (
@@ -352,6 +362,8 @@ export default function ClientDetailPage() {
           )}
         </div>
       )}
+
+      {tab === 'activities' && <ActivitySection clientId={client.id} />}
 
       {showEdit && (
         <CreateClientDialog
