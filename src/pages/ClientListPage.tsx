@@ -15,6 +15,7 @@ import LeadsPanel from '@/features/leads/LeadsPanel';
 import { markConverted, useAgencyLeads, type LeadListItem } from '@/features/leads/useAgencyLeads';
 import { parseLeadSummary } from '@/features/leads/parseLeadSummary';
 import { useOverdueClients } from '@/features/timeline/useOverdueClients';
+import { formatPhone } from '@/lib/korean';
 import { useAuthStore } from '@/store/authStore';
 import ImportClientsDialog from '@/features/agency/ImportClientsDialog';
 
@@ -192,7 +193,7 @@ export default function ClientListPage() {
                 <div className="flex min-w-0 items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-sm font-bold text-emerald-700">{c.koreanClient.name.slice(0, 1)}</span><div className="min-w-0">
                   <div className="font-semibold text-slate-900 group-hover:text-emerald-700">{c.koreanClient.name}</div>
                   <div className="text-xs text-slate-500">
-                    {c.koreanClient.gender === 'M' ? '남' : '여'} · {c.koreanClient.occupation} · {c.koreanClient.phone}
+                    {c.koreanClient.gender === 'M' ? '남' : '여'} · {c.koreanClient.occupation} · {formatPhone(c.koreanClient.phone)}
                     {c.source?.type === 'lead' && <span className="ml-2 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">접수에서</span>}
                     {(() => {
                       const od = overdue.get(c.id);

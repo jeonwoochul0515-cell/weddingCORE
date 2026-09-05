@@ -10,6 +10,7 @@ import { db, storage, auth, functions } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import BrokerAutocomplete, { type BrokerHit } from '@/features/registry/BrokerAutocomplete';
 import { usePageMeta } from '@/lib/usePageMeta';
+import { josa } from '@/lib/korean';
 import { signOut } from '@/lib/auth';
 
 type FormValues = {
@@ -117,7 +118,7 @@ export default function AgencySignupPage() {
     } else if (data.confidence === 'low') {
       setScanNote(`${filled.length}개 항목을 채웠지만 인식이 불안정합니다. 값을 꼭 확인해 주세요.`);
     } else {
-      setScanNote(`${filled.join(', ')}을(를) 자동으로 채웠습니다. 실제 문서와 같은지 확인해 주세요.`);
+      setScanNote(`${filled.join(', ')}${josa(filled[filled.length - 1] ?? '', '을/를')} 자동으로 채웠습니다. 실제 문서와 같은지 확인해 주세요.`);
     }
   }
 

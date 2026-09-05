@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import { Building2, Pencil, Plus, Trash2, TriangleAlert, Users } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { josa } from '@/lib/korean';
 import AgencyBasicsSection from '@/features/office/AgencyBasicsSection';
 import {
   addOfficeItem,
@@ -236,11 +237,11 @@ export default function OfficePage() {
       else if (f.type === 'number') data[f.key] = v === '' || v == null ? null : Number(v);
       else if (f.type === 'select') {
         // 첫 값으로 몰래 채우지 않는다. "확인 안 했는데 확인한 것"으로 저장되는 함정을 막는다.
-        if (!v) { setSaveError(`「${f.label}」을 골라 주세요.`); return; }
+        if (!v) { setSaveError(`「${f.label}」${josa(f.label, '을/를')} 골라 주세요.`); return; }
         data[f.key] = v;
       }
       else data[f.key] = String(v ?? '').trim();
-      if (f.primary && f.type === 'text' && !data[f.key]) { setSaveError(`「${f.label}」을 적어 주세요.`); return; }
+      if (f.primary && f.type === 'text' && !data[f.key]) { setSaveError(`「${f.label}」${josa(f.label, '을/를')} 적어 주세요.`); return; }
     }
     setSaving(true);
     try {
@@ -392,7 +393,7 @@ export default function OfficePage() {
 
       {!loading && items.length === 0 && !open && (
         <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
-          아직 등록된 {tab.label}이(가) 없습니다.
+          아직 등록된 {tab.label}{josa(tab.label, '이/가')} 없습니다.
         </p>
       )}
 

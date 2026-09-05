@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { doc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
+import { formatPhone } from '@/lib/korean';
 import type { Agency } from '@/types/schema';
 
 export type AgencyDoc = Agency & { id: string };
@@ -39,14 +40,6 @@ export type AgencyBasics = {
 /** 휴대폰 번호인지. 접수 문자가 이 번호로 가므로 유선번호는 받지 않는다 */
 export function isMobilePhone(value: string) {
   return /^01[016789]-?\d{3,4}-?\d{4}$/.test(value.trim());
-}
-
-/** 010-1234-5678 꼴로 맞춘다. 문자 발송과 화면 표시가 같은 모양을 쓴다 */
-export function formatPhone(value: string) {
-  const d = value.replace(/\D/g, '');
-  if (d.length === 11) return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
-  if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
-  return value.trim();
 }
 
 export async function updateAgencyBasics(agencyId: string, data: AgencyBasics) {
