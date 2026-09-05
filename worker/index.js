@@ -6,7 +6,11 @@
 //    존재하지 않는 URL을 홈과 같은 문서로 색인한다. 앱 라우트가 아닌 경로는 404로 응답하고
 //    robots 메타를 noindex로 바꿔 색인에서 뺀다. 내용은 그대로 넘겨 앱이 안내 화면을 그린다.
 
-import { handleChat } from './chat.js';
+/**
+ * 상담 캐릭터 대화 엔진은 서울 리전 Firebase 함수에 있다. 워커에서 직접 Anthropic을 부르면
+ * 손님이 홍콩 지점으로 붙었을 때 403으로 거절된다(2026-09-05). 워커는 넘겨주기만 한다.
+ */
+const HARAM_CHAT_URL = 'https://asia-northeast3-sungpan2026.cloudfunctions.net/haramChat';
 
 const CANONICAL_HOST = 'weddingcore.net';
 
@@ -53,7 +57,7 @@ export default {
       return Response.redirect(url.toString(), 301);
     }
 
-    // 상담 캐릭터 대화 엔진. 같은 도메인이라 CORS가 필요 없다.
+    // 상담 캐릭터 대화. 같은 도메인이라 CORS가 필요 없고, 실제 엔진은 서울 함수가 돌린다.
     if (url.pathname === '/api/chat') {
       if (request.method !== 'POST') {
         return new Response('Method Not Allowed', { status: 405 });
@@ -62,7 +66,27 @@ export default {
       if (referer && !referer.includes(CANONICAL_HOST) && !referer.includes('localhost')) {
         return new Response('Forbidden', { status: 403 });
       }
-      return handleChat(request, env);
+      try {
+        const upstream = await fetch(HARAM_CHAT_URL, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-visitor-referer': referer,
+            'x-visitor-ip': request.headers.get('CF-Connecting-IP') ?? '',
+          },
+          body: await request.text(),
+        });
+        return new Response(await upstream.text(), {
+          status: upstream.status,
+          headers: { 'content-type': 'application/json; charset=utf-8' },
+        });
+      } catch (error) {
+        console.error('[chat] 함수 호출 실패', String(error).slice(0, 200));
+        return Response.json({
+          reply: '지금 답변을 준비하지 못했어요. 급하시면 무료 워크스페이스를 먼저 만들어 보시거나, 접수를 남겨 주시면 확인 후 연락드려요.',
+          expression: '기본',
+        });
+      }
     }
 
     const response = await env.ASSETS.fetch(request);

@@ -162,6 +162,8 @@ export {
 
 // 상담 접수와 중앙 접수함 연동
 export { submitConsult, submitCheckLead, weddingcoreAdmin } from './consult/index.js';
+// 상담 캐릭터 하람의 대화 엔진 (워커 /api/chat이 넘겨준다)
+export { haramChat } from './consult/haramChat.js';
 
 // 비자 거부·불허 판례·결정례 수집
 export { collectPrecedents, runPrecedentCollectNow } from './regulations/precedents.js';
