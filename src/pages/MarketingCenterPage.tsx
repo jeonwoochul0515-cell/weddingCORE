@@ -347,16 +347,20 @@ export default function MarketingCenterPage() {
         </p>
         <div className="mt-4 grid gap-5 lg:grid-cols-2">
           <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-700">삽입 코드</span>
-              <button type="button" onClick={copySnippet} disabled={!snippet} className="secondary-button !px-3 !py-1.5 text-xs"><Copy size={13} />{copied ? '복사됨' : '복사'}</button>
-            </div>
-            <textarea readOnly value={snippet} className="field-control min-h-40 font-mono text-[11px] leading-5" onFocus={(event) => event.currentTarget.select()} />
-            <p className="mt-1.5 text-[11px] leading-4 text-slate-400">
-              홈페이지의 원하는 자리에 그대로 붙여 넣으면 됩니다.{' '}
-              {agencyId && <a href={embedUrl(agencyId, agency.name)} target="_blank" rel="noreferrer" className="underline">새 창에서 미리 보기</a>}
-              {' '}홈페이지를 저희가 만든 경우에는 말씀만 주시면 넣어 드립니다.
+            <div className="text-xs font-semibold text-slate-700">홈페이지에 넣기</div>
+            <p className="mt-1.5 text-sm leading-6 text-slate-600">
+              홈페이지를 저희가 만들었다면 말씀만 주시면 넣어 드립니다. 직접 관리하는 홈페이지라면 아래 「삽입 코드 복사」를 누른 뒤
+              홈페이지 관리자에게 전달하거나 편집기의 원하는 자리에 붙여 넣으면 됩니다.
             </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" onClick={copySnippet} disabled={!snippet} className="primary-button !px-4 !py-2 text-xs"><Copy size={13} />{copied ? '복사됐습니다' : '삽입 코드 복사'}</button>
+              {agencyId && <a href={embedUrl(agencyId, agency.name)} target="_blank" rel="noreferrer" className="secondary-button !px-4 !py-2 text-xs">새 창에서 미리 보기</a>}
+            </div>
+            {/* 코드는 대표가 읽을 것이 아니라 홈페이지 관리자에게 넘길 것이다. 기본으로 접어 둔다. */}
+            <details className="mt-3">
+              <summary className="cursor-pointer text-[11px] text-slate-400">코드 직접 보기 (홈페이지 관리자용)</summary>
+              <textarea readOnly value={snippet} className="field-control mt-2 min-h-40 font-mono text-[11px] leading-5" onFocus={(event) => event.currentTarget.select()} />
+            </details>
           </div>
           <div>
             <div className="mb-1.5 text-xs font-semibold text-slate-700">최근 접수 {leads.length}건</div>
