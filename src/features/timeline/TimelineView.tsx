@@ -62,7 +62,7 @@ export default function TimelineView({ clientId }: { clientId: string }) {
   if (items.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
-        타임라인이 아직 생성되지 않았습니다. 관리자에게 문의하세요.
+        법정의무 목록을 만드는 중입니다. 고객을 방금 등록했다면 몇 초 안에 자동으로 나타납니다. 계속 비어 있으면 화면을 새로고침해 보세요.
       </div>
     );
   }
@@ -110,6 +110,11 @@ export default function TimelineView({ clientId }: { clientId: string }) {
           );
         })}
       </div>
+
+      {/* 항목마다 경고를 붙이면 42번 겁을 준다. 한 번만, 조용히 알린다 */}
+      <p className="mt-4 text-[11px] leading-5 text-slate-400">
+        기한과 근거 기준은 법률사무소 청송law(담당변호사 김창희)가 검수하는 중이며, 검수 결과에 따라 바뀔 수 있습니다.
+      </p>
 
       {selected && (
         <TimelineDetail
@@ -399,9 +404,6 @@ function TimelineDetail({
           )}
         </div>
 
-        <div className="mt-4 rounded-md bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
-          ⚠ 본 룰은 AI가 작성한 초안이며, 창희 변호사의 법률 검수 후 운영 반영됩니다.
-        </div>
       </div>
     </div>
   );

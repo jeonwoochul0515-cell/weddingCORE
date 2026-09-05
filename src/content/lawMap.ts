@@ -76,7 +76,7 @@ export const LAW_ARTICLES: LawArticle[] = [
     no: '제10조',
     title: '결혼중개계약서의 작성 등',
     gist: '계약은 서면으로 하고 정해진 사항을 담아야 한다. 환불조건도 여기 들어간다.',
-    feature: { label: '고객 관리 · 컴플라이언스', to: '/agency/clients' },
+    feature: { label: '고객 관리 · 법정의무', to: '/agency/clients' },
   },
   {
     no: '제10조의2',

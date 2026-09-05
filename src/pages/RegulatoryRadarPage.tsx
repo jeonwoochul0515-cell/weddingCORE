@@ -75,7 +75,7 @@ export default function RegulatoryRadarPage() {
         <div className="absolute right-0 top-0 h-52 w-52 rounded-full bg-amber-400/10 blur-3xl" />
       <div className="relative flex items-end justify-between">
         <div>
-          <div className="mb-3 flex items-center gap-2 text-[11px] font-bold tracking-[0.15em] text-emerald-300 uppercase"><Sparkles size={14} />Regulatory intelligence</div>
+          <div className="mb-3 flex items-center gap-2 text-[11px] font-bold tracking-[0.15em] text-emerald-300 uppercase"><Sparkles size={14} />법령 변경 살피기</div>
           <h1 className="flex items-center gap-3 text-3xl font-bold tracking-[-0.04em] sm:text-4xl"><Radio />규제 변동 레이더</h1>
           <p className="mt-3 text-sm text-slate-300">
             국가법령정보 기준 매일 03시 변경 사항을 자동 수집합니다.

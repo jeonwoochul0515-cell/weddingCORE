@@ -168,7 +168,7 @@ export default function VisaWorkCenterPage() {
         ].map(({ label, value, icon: Icon }) => <div key={label} className="app-surface rounded-2xl p-4"><div className="flex items-center justify-between"><span className="text-xs font-semibold text-slate-500">{label}</span><Icon className="text-emerald-700" size={18} /></div><div className="mt-2 text-3xl font-bold text-slate-950">{value}</div></div>)}
       </div>
 
-      {showForm && <section className="app-surface rounded-[24px] p-5 sm:p-6"><div className="eyebrow">New case</div><h2 className="mt-1 text-lg font-bold text-slate-950">비자 사건 등록</h2><form onSubmit={createCase} className="mt-5 grid gap-4 md:grid-cols-2">
+      {showForm && <section className="app-surface rounded-[24px] p-5 sm:p-6"><div className="eyebrow">새 사건</div><h2 className="mt-1 text-lg font-bold text-slate-950">비자 사건 등록</h2><form onSubmit={createCase} className="mt-5 grid gap-4 md:grid-cols-2">
         <label className="text-xs font-semibold text-slate-700">고객<select className="field-control mt-1.5" value={clientId} onChange={(event) => setClientId(event.target.value)} required><option value="">고객 선택</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.koreanClient.name}</option>)}</select></label>
         <label className="text-xs font-semibold text-slate-700">사업 종류<select className="field-control mt-1.5" value={trackId} onChange={(event) => { const next = event.target.value as TrackId; setTrackId(next); setVisaType(TRACKS[next].visaTypes[0] ?? ''); }}>{TRACK_LIST.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
         <label className="text-xs font-semibold text-slate-700">비자 유형<select className="field-control mt-1.5" value={visaType} onChange={(event) => setVisaType(event.target.value)}>{track.visaTypes.map((v) => <option key={v} value={v}>{v}</option>)}<option value="기타">기타</option></select></label>
@@ -178,15 +178,16 @@ export default function VisaWorkCenterPage() {
         <div className="flex justify-end gap-2 md:col-span-2"><button type="button" onClick={() => setShowForm(false)} className="secondary-button">취소</button><button disabled={submitting || !clientId || !dueDate} className="primary-button">{submitting ? '등록 중' : '사건 등록'}</button></div>
       </form></section>}
 
-      {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div>}
+      {/* 실패 문구("…못했습니다")를 초록 상자에 담으면 성공처럼 읽힌다. 문구로 색을 가른다 */}
+      {notice && <div className={`rounded-xl border px-4 py-3 text-sm ${/못했습니다/.test(notice) ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>{notice}</div>}
 
       <section className="app-surface rounded-[24px] p-5 sm:p-6">
-        <div className="flex items-center justify-between"><div><div className="eyebrow">Workflow</div><h2 className="mt-1 text-lg font-bold text-slate-950">표준 진행 단계</h2></div><ClipboardCheck className="text-emerald-700" size={21} /></div>
-        <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">{track.stages.map((stage, index) => <div key={stage.id} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4"><div className="text-[10px] font-bold text-emerald-700">STEP {index + 1}</div><div className="mt-2 text-sm font-bold text-slate-900">{stage.label}</div><p className="mt-1 text-[11px] leading-5 text-slate-500">{stage.description}</p></div>)}</div>
+        <div className="flex items-center justify-between"><div><div className="eyebrow">진행 순서</div><h2 className="mt-1 text-lg font-bold text-slate-950">표준 진행 단계</h2></div><ClipboardCheck className="text-emerald-700" size={21} /></div>
+        <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">{track.stages.map((stage, index) => <div key={stage.id} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4"><div className="text-[10px] font-bold text-emerald-700">{index + 1}단계</div><div className="mt-2 text-sm font-bold text-slate-900">{stage.label}</div><p className="mt-1 text-[11px] leading-5 text-slate-500">{stage.description}</p></div>)}</div>
       </section>
 
       {trackId === 'marriage' && <section className="app-surface rounded-[24px] p-5 sm:p-6">
-        <div className="flex items-center justify-between"><div><div className="eyebrow">Service fee</div><h2 className="mt-1 text-lg font-bold text-slate-950">F-6 신청 대행 수임료</h2></div><Wallet className="text-emerald-700" size={21} /></div>
+        <div className="flex items-center justify-between"><div><div className="eyebrow">수임료</div><h2 className="mt-1 text-lg font-bold text-slate-950">F-6 신청 대행 수임료</h2></div><Wallet className="text-emerald-700" size={21} /></div>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <div className="relative rounded-[22px] border-2 border-emerald-500 bg-emerald-50/50 p-5">
             <span className="absolute -top-3 left-5 rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-bold text-white">회원 업체</span>
@@ -224,7 +225,7 @@ export default function VisaWorkCenterPage() {
       </section>}
 
       <section className="app-surface overflow-hidden rounded-[24px]">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6"><div><div className="eyebrow">Cases</div><h2 className="mt-1 text-lg font-bold text-slate-950">비자 사건 목록</h2></div><ShieldCheck className="text-emerald-700" size={21} /></div>
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6"><div><div className="eyebrow">사건 목록</div><h2 className="mt-1 text-lg font-bold text-slate-950">비자 사건 목록</h2></div><ShieldCheck className="text-emerald-700" size={21} /></div>
         {loading && <p className="p-6 text-sm text-slate-500">불러오는 중입니다.</p>}
         {!loading && cases.length === 0 && <div className="p-8 text-center"><p className="text-sm font-semibold text-slate-700">등록된 비자 사건이 없습니다.</p><p className="mt-1 text-xs text-slate-500">첫 사건을 등록하면 진행 단계와 기한을 관리할 수 있습니다.</p></div>}
         <div className="divide-y divide-slate-100">{cases.map((item) => {

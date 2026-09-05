@@ -145,14 +145,19 @@ export default function AutomationCenterPage() {
       </section>
 
       <div className="grid grid-cols-3 gap-2 sm:max-w-xl">
-        {[['1','고객 선택'],['2','동의 확인'],['3','초안 생성']].map(([step, label], index) => <div key={step} className={`rounded-xl border px-3 py-2.5 ${index === 0 ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'}`}><div className={`text-[10px] font-bold ${index === 0 ? 'text-emerald-700' : 'text-slate-400'}`}>STEP {step}</div><div className="mt-0.5 text-xs font-semibold text-slate-700">{label}</div></div>)}
+        {/* 지금 어디까지 왔는지에 따라 켜진다. 고객을 고르면 2단계, 동의가 기록돼 있으면 3단계 */}
+        {[['1','고객 선택'],['2','동의 확인'],['3','초안 생성']].map(([step, label], index) => {
+          const current = !clientId ? 0 : !consentReady ? 1 : 2;
+          const on = index <= current;
+          return <div key={step} className={`rounded-xl border px-3 py-2.5 ${on ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'}`}><div className={`text-[10px] font-bold ${on ? 'text-emerald-700' : 'text-slate-400'}`}>{step}단계</div><div className="mt-0.5 text-xs font-semibold text-slate-700">{label}</div></div>;
+        })}
       </div>
 
       {notice && <div className={`rounded-2xl border p-4 text-sm shadow-sm ${notice.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-800'}`}>{notice.text}</div>}
 
       <section className="app-surface rounded-[26px] p-5 sm:p-7">
         <div className="flex items-center justify-between">
-          <div><div className="eyebrow">Top up</div><h2 className="mt-1 text-lg font-bold text-slate-950">캐럿 충전</h2></div>
+          <div><div className="eyebrow">선불 포인트</div><h2 className="mt-1 text-lg font-bold text-slate-950">캐럿 충전</h2></div>
           <PlusCircle className="text-emerald-700" size={21} />
         </div>
         <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -204,7 +209,7 @@ export default function AutomationCenterPage() {
 
       <section className="app-surface grid overflow-hidden rounded-[26px] lg:grid-cols-[1.08fr_.92fr]">
         <div className="space-y-5 p-5 sm:p-7">
-          <div><div className="eyebrow">Document setup</div><h2 className="mt-1 text-lg font-bold text-slate-900">자동화 작업 설정</h2></div>
+          <div><div className="eyebrow">문서 만들기</div><h2 className="mt-1 text-lg font-bold text-slate-900">자동화 작업 설정</h2></div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">1. 고객 선택</label>
             <select className="field-control" value={clientId} onChange={(event) => setClientId(event.target.value)}>
@@ -249,14 +254,16 @@ export default function AutomationCenterPage() {
         </div>
 
         <div className="space-y-5 border-t border-slate-100 bg-[#f4f8f6] p-5 sm:p-7 lg:border-l lg:border-t-0">
-          <div><div className="eyebrow">Privacy gate</div><div className="mt-1 flex items-center gap-2 text-lg font-bold text-slate-900"><ShieldCheck size={19} className="text-emerald-700" />개인정보·법률검토 동의</div></div>
+          <div><div className="eyebrow">동의 확인</div><div className="mt-1 flex items-center gap-2 text-lg font-bold text-slate-900"><ShieldCheck size={19} className="text-emerald-700" />개인정보·법률검토 동의</div></div>
           {consentReady ? (
             <div className="rounded-2xl border border-emerald-200 bg-white p-4 text-sm leading-6 text-emerald-800 shadow-sm"><span className="mr-2 inline-grid h-7 w-7 place-items-center rounded-full bg-emerald-100"><CheckCircle2 size={16} /></span>AI 처리와 법률사무소 제공 동의가 기록되어 있습니다.</div>
           ) : (
             <>
-              <p className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 text-xs leading-5 text-slate-600"><LockKeyhole className="mb-2 text-emerald-700" size={18} />고객 본인에게 AI 처리 및 법률사무소 청송 제공 범위를 고지하고 서면 또는 전자동의를 받은 경우에만 기록하세요.</p>
-              <input className="field-control" value={evidenceReference} onChange={(event) => setEvidenceReference(event.target.value)} placeholder="예: 고객서명 동의서 문서번호 DOC-2026-104" />
-              <button type="button" disabled={!clientId || evidenceReference.trim().length < 3 || busy !== null} onClick={saveConsent} className="secondary-button w-full">{busy === 'consent' ? '저장 중…' : '동의 증빙 기록'}</button>
+              <p className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 text-xs leading-5 text-slate-600"><LockKeyhole className="mb-2 text-emerald-700" size={18} />고객 본인에게 AI 처리와 법률사무소 청송law 제공 범위를 알리고 동의를 받은 뒤 기록하세요. 따로 정해진 양식은 없습니다. 계약서에 넣은 동의 조항, 손님이 서명한 종이, 문자·카톡 답장 모두 됩니다.</p>
+              <label className="block text-xs font-semibold text-slate-700">동의를 어떻게 받았는지
+                <input className="field-control mt-1.5" value={evidenceReference} onChange={(event) => setEvidenceReference(event.target.value)} placeholder="예: 2026-09-05 계약서 제3조에 서명 / 9월 3일 카톡으로 동의" />
+              </label>
+              <button type="button" disabled={!clientId || evidenceReference.trim().length < 3 || busy !== null} onClick={saveConsent} className="secondary-button w-full">{busy === 'consent' ? '저장 중…' : '동의 받은 내용 기록'}</button>
             </>
           )}
           <div className="border-t border-slate-200 pt-4">
@@ -267,7 +274,7 @@ export default function AutomationCenterPage() {
       </section>
 
       <section className="app-surface overflow-hidden rounded-[26px]">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6"><div><div className="eyebrow">Activity</div><h2 className="mt-1 text-base font-bold text-slate-900">최근 자동화 작업</h2></div><Bot className="text-emerald-600" size={20} /></div>
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6"><div><div className="eyebrow">작업 기록</div><h2 className="mt-1 text-base font-bold text-slate-900">최근 자동화 작업</h2></div><Bot className="text-emerald-600" size={20} /></div>
         {loading && <p className="p-5 text-sm text-slate-500">불러오는 중…</p>}
         {!loading && jobs.length === 0 && <p className="p-5 text-sm text-slate-500">아직 생성한 문서가 없습니다.</p>}
         {jobs.map((job) => {
