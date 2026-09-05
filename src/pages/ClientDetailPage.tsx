@@ -1,7 +1,9 @@
+// 고객 상세 — 기본정보·접수 기록·법정의무 타임라인·서류·매칭을 한 화면에 모은다
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Bot, Languages, Heart, Plus } from 'lucide-react';
-import { useClient } from '@/features/agency/useAgencyClients';
+import { Archive, ArrowLeft, Bot, Languages, Heart, Pencil, Plus, RotateCcw } from 'lucide-react';
+import { setClientStatus, useClient, type ClientListItem } from '@/features/agency/useAgencyClients';
+import CreateClientDialog, { type CreateClientFormValues } from '@/features/agency/CreateClientDialog';
 import DocumentSection from '@/features/documents/DocumentSection';
 import ConsistencyCard from '@/features/documents/ConsistencyCard';
 import StageGuideCard from '@/features/precedents/StageGuideCard';
@@ -15,9 +17,10 @@ import CreateMatchDialog from '@/features/matching/CreateMatchDialog';
 import { useProfileUpdater } from '@/features/matching/useClientProfile';
 import { getMbtiCompat } from '@/features/matching/mbtiCompat';
 import { getSajuCompat } from '@/features/matching/sajuCompat';
-import type { ClientProfile, BirthInfo } from '@/types/schema';
+import type { Client, ClientProfile, BirthInfo } from '@/types/schema';
 import LeadReport from '@/features/leads/LeadReport';
 import { LEAD_SOURCE_LABEL } from '@/features/leads/useAgencyLeads';
+import { useAuthStore } from '@/store/authStore';
 
 const STAGE_LABEL: Record<number, string> = {
   1: '계약 전', 2: '계약 체결', 3: '맞선 준비',
@@ -37,14 +40,45 @@ const MARITAL_LABEL: Record<string, string> = {
 };
 const maritalLabel = (value: string) => MARITAL_LABEL[value] ?? value;
 
+const CLOSED_LABEL: Record<Client['status'], string> = {
+  active: '진행 중',
+  completed: '완료',
+  cancelled: '취소',
+};
+
+/** 저장된 값을 수정 창의 입력값으로 바꾼다 */
+function toFormValues(client: ClientListItem): CreateClientFormValues {
+  const k = client.koreanClient;
+  const birth = k.birthDate?.toDate ? k.birthDate.toDate() : null;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return {
+    name: k.name,
+    birthDate: birth ? `${birth.getFullYear()}-${pad(birth.getMonth() + 1)}-${pad(birth.getDate())}` : '',
+    gender: k.gender,
+    phone: k.phone,
+    address: k.address,
+    incomeAnnual: k.incomeAnnual == null ? '' : String(k.incomeAnnual),
+    occupation: k.occupation,
+    maritalHistory: k.maritalHistory,
+  };
+}
+
 export default function ClientDetailPage() {
   const { clientId } = useParams();
+  const agencyId = useAuthStore((s) => s.user?.agencyId);
   const { client, loading } = useClient(clientId);
   const { items: documents } = useClientDocuments(clientId);
   const { updateClient } = useProfileUpdater();
   const [tab, setTab] = useState<'compliance' | 'matching'>('compliance');
   const [showMatchDialog, setShowMatchDialog] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [savedNotice, setSavedNotice] = useState<string | null>(null);
+  const [closing, setClosing] = useState(false);
+  const [closeStatus, setCloseStatus] = useState<'completed' | 'cancelled'>('completed');
+  const [closeReason, setCloseReason] = useState('');
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   if (loading) return <p className="text-sm text-slate-500">불러오는 중…</p>;
   if (!client) return <p className="text-sm text-slate-500">고객을 찾을 수 없습니다.</p>;
@@ -52,6 +86,7 @@ export default function ClientDetailPage() {
   const k = client.koreanClient;
   const profile = client.profile ?? null;
   const birthInfo = client.birthInfo ?? null;
+  const isClosed = client.status !== 'active';
   // 신상정보를 맞선 전에 갖췄는지 대조하려면 맞선 예정일이 필요하다
   const meetingAnchor = client.anchors?.meeting_scheduled ?? null;
   const meetingAt =
@@ -70,6 +105,27 @@ export default function ClientDetailPage() {
     setTimeout(() => setProfileSaved(false), 2000);
   }
 
+  function flash(text: string) {
+    setSavedNotice(text);
+    setTimeout(() => setSavedNotice(null), 2500);
+  }
+
+  async function changeStatus(status: Client['status'], reason?: string) {
+    if (!agencyId || !client) return;
+    setStatusBusy(true);
+    setStatusError(null);
+    try {
+      await setClientStatus(agencyId, client.id, status, reason);
+      setClosing(false);
+      setCloseReason('');
+      flash(status === 'active' ? '다시 진행 중으로 돌렸습니다.' : `${CLOSED_LABEL[status]}로 정리했습니다. 목록에서는 「종료된 고객」에서 볼 수 있습니다.`);
+    } catch (err) {
+      setStatusError(`처리하지 못했습니다. 잠시 뒤 다시 시도해 주세요. (${(err as Error).message})`);
+    } finally {
+      setStatusBusy(false);
+    }
+  }
+
   // 궁합 점수 계산 (매칭 기록용)
   const mbtiScore = profile?.mbti && partnerMbti
     ? getMbtiCompat(profile.mbti, partnerMbti).score
@@ -84,42 +140,108 @@ export default function ClientDetailPage() {
         <ArrowLeft size={14} />고객 목록으로
       </Link>
 
-      <div className="app-surface mb-6 rounded-[26px] p-5 sm:p-6">
-        <div className="flex items-start justify-between">
+      {savedNotice && (
+        <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{savedNotice}</div>
+      )}
+
+      {isClosed && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-700">
           <div>
-            <div className="eyebrow">Client profile</div><h1 className="mt-1 text-3xl font-bold tracking-[-0.04em] text-slate-900">{k.name}</h1>
+            <span className="font-semibold">{CLOSED_LABEL[client.status]}로 정리된 고객입니다.</span>
+            {client.closedAt?.toDate && <span className="ml-2 text-xs text-slate-500">{client.closedAt.toDate().toLocaleDateString('ko-KR')}</span>}
+            {client.closeReason && <span className="ml-2 text-xs text-slate-500">· {client.closeReason}</span>}
+          </div>
+          <button type="button" disabled={statusBusy} onClick={() => changeStatus('active')} className="secondary-button !py-1.5 text-xs">
+            <RotateCcw size={13} />다시 진행 중으로
+          </button>
+        </div>
+      )}
+
+      <div className="app-surface mb-6 rounded-[26px] p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="eyebrow">고객 정보</div><h1 className="mt-1 text-3xl font-bold tracking-[-0.04em] text-slate-900">{k.name}</h1>
             <p className="mt-1 text-sm text-slate-600">
               {k.gender === 'M' ? '남' : '여'} · {k.occupation}
               {profile?.mbti && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{profile.mbti}</span>}
             </p>
             <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-              <dt className="text-slate-500">연락처</dt><dd>{k.phone}</dd>
+              <dt className="text-slate-500">연락처</dt><dd><a href={`tel:${k.phone.replace(/\D/g, '')}`} className="text-emerald-700 underline underline-offset-2">{k.phone}</a></dd>
               <dt className="text-slate-500">주소</dt><dd>{k.address}</dd>
-              <dt className="text-slate-500">연소득</dt><dd>{k.incomeAnnual.toLocaleString()}원</dd>
+              <dt className="text-slate-500">연소득</dt><dd>{k.incomeAnnual == null ? <span className="text-slate-400">아직 확인 전</span> : `${k.incomeAnnual.toLocaleString()}원`}</dd>
               <dt className="text-slate-500">혼인이력</dt><dd>{maritalLabel(k.maritalHistory)}</dd>
               {profile?.education && <><dt className="text-slate-500">학력</dt><dd>{profile.education}</dd></>}
               {profile?.religion && <><dt className="text-slate-500">종교</dt><dd>{profile.religion}</dd></>}
             </dl>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className="text-right">
+          <div className="flex flex-col gap-2 sm:items-end">
+            <div className="sm:text-right">
               <div className="text-xs text-slate-500">현재 단계</div>
               <div className="text-sm font-medium text-slate-900">{STAGE_LABEL[client.currentStage]}</div>
             </div>
-            <Link
-              to={`/agency/clients/${client.id}/background-info`}
-              className="flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-xs text-white hover:bg-slate-800"
-            >
-              <Languages size={14} />신상정보 교환
-            </Link>
-            <Link
-              to={`/agency/automation?clientId=${client.id}`}
-              className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
-            >
-              <Bot size={14} />AI 문서 자동화
-            </Link>
+            <div className="flex flex-wrap gap-2 sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowEdit(true)}
+                className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+              >
+                <Pencil size={14} />정보 수정
+              </button>
+              <Link
+                to={`/agency/clients/${client.id}/background-info`}
+                className="flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-xs text-white hover:bg-slate-800"
+              >
+                <Languages size={14} />신상정보 교환
+              </Link>
+              <Link
+                to={`/agency/automation?clientId=${client.id}`}
+                className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+              >
+                <Bot size={14} />AI 문서 자동화
+              </Link>
+              {!isClosed && !closing && (
+                <button
+                  type="button"
+                  onClick={() => setClosing(true)}
+                  className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                >
+                  <Archive size={14} />종료 처리
+                </button>
+              )}
+            </div>
           </div>
         </div>
+
+        {closing && (
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-sm font-semibold text-slate-800">이 고객을 종료 처리합니다</div>
+            <p className="mt-1 text-xs leading-5 text-slate-500">기록은 지워지지 않고 「종료된 고객」 목록으로 옮겨집니다. 언제든 다시 진행 중으로 돌릴 수 있습니다.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <label className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm ${closeStatus === 'completed' ? 'border-emerald-400 bg-white' : 'border-slate-200 bg-white/60'}`}>
+                <input type="radio" name="closeStatus" checked={closeStatus === 'completed'} onChange={() => setCloseStatus('completed')} className="accent-emerald-600" />
+                완료 <span className="text-xs text-slate-500">혼인·비자까지 끝남</span>
+              </label>
+              <label className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm ${closeStatus === 'cancelled' ? 'border-emerald-400 bg-white' : 'border-slate-200 bg-white/60'}`}>
+                <input type="radio" name="closeStatus" checked={closeStatus === 'cancelled'} onChange={() => setCloseStatus('cancelled')} className="accent-emerald-600" />
+                취소 <span className="text-xs text-slate-500">계약 해지·중단</span>
+              </label>
+            </div>
+            <input
+              value={closeReason}
+              onChange={(e) => setCloseReason(e.target.value)}
+              className="field-control mt-3"
+              placeholder="사유 (선택) — 예: 환불 후 계약 해지, 비자 발급 완료"
+              maxLength={200}
+            />
+            {statusError && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">{statusError}</p>}
+            <div className="mt-3 flex gap-2">
+              <button type="button" disabled={statusBusy} onClick={() => changeStatus(closeStatus, closeReason)} className="primary-button !py-2">
+                {statusBusy ? '처리 중…' : `${CLOSED_LABEL[closeStatus]}로 정리`}
+              </button>
+              <button type="button" onClick={() => { setClosing(false); setStatusError(null); }} className="secondary-button !py-2">취소</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 접수에서 온 고객이면 점검 결과를 보고서로 둔다. 같은 질문을 두 번 하지 않기 위해서다 */}
@@ -143,7 +265,7 @@ export default function ClientDetailPage() {
             tab === 'compliance' ? 'bg-[#102621] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
           }`}
         >
-          컴플라이언스
+          법정의무·서류
         </button>
         <button
           onClick={() => setTab('matching')}
@@ -162,7 +284,7 @@ export default function ClientDetailPage() {
         <ConsistencyCard documents={documents} meetingAt={meetingAt} />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900">컴플라이언스 타임라인</h2>
+            <h2 className="mb-3 text-lg font-semibold text-slate-900">법정의무 기한</h2>
             <TimelineView clientId={client.id} />
           </div>
           <div className="space-y-6">
@@ -229,6 +351,15 @@ export default function ClientDetailPage() {
             />
           )}
         </div>
+      )}
+
+      {showEdit && (
+        <CreateClientDialog
+          editingClientId={client.id}
+          initial={toFormValues(client)}
+          onClose={() => setShowEdit(false)}
+          onCreated={() => { setShowEdit(false); flash('고객 정보를 저장했습니다.'); }}
+        />
       )}
     </div>
   );

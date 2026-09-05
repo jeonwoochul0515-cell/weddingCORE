@@ -260,7 +260,8 @@ export type Client = {
     phone: string;
     address: string;
     maritalHistory: string;
-    incomeAnnual: number;
+    /** 계약 때 모르는 경우가 많아 비워 둘 수 있다. 0으로 채워 넣지 않는다 */
+    incomeAnnual: number | null;
     occupation: string;
   };
   profile: ClientProfile | null;
@@ -269,6 +270,9 @@ export type Client = {
   currentStage: 1 | 2 | 3 | 4 | 5 | 6;
   overallProgress: number;
   status: 'active' | 'completed' | 'cancelled';
+  /** 종료(완료·취소) 처리한 때와 사유. 진행 중이면 비어 있다 */
+  closedAt?: Timestamp | null;
+  closeReason?: string | null;
   anchors?: Partial<Record<AnchorKey, Timestamp>>;
   automationConsents?: {
     aiProcessing: boolean;

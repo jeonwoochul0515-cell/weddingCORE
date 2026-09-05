@@ -2,12 +2,13 @@
 //
 // 접수와 고객은 다른 서랍이다. 접수는 연락처만 남긴 손님이고, 고객은 42개 법정의무 타임라인이 열린 사람이다.
 // 접수 탭에서 「고객으로 등록」을 누르면 같은 등록 창이 이름·연락처가 채워진 채 열리고, 등록되면 접수는 닫힌다.
+// 고객 탭은 진행 중이 기본이고, 완료·취소한 고객은 「종료된 고객」으로 따로 본다.
 
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Inbox, Plus, Search, UserRound, Users } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
-import { useAgencyClients } from '@/features/agency/useAgencyClients';
+import { useAgencyClients, type ClientScope } from '@/features/agency/useAgencyClients';
 import CreateClientDialog, { type CreateClientFormValues } from '@/features/agency/CreateClientDialog';
 import type { CreateClientIntake } from '@/features/agency/useAgencyClients';
 import LeadsPanel from '@/features/leads/LeadsPanel';
@@ -19,6 +20,8 @@ const STAGE_LABEL: Record<number, string> = {
   1: '계약 전', 2: '계약 체결', 3: '맞선 준비',
   4: '맞선·혼인', 5: '비자 신청', 6: '사후관리',
 };
+
+const CLOSED_LABEL: Record<string, string> = { completed: '완료', cancelled: '취소' };
 
 /** 접수 요약에서 혼인이력을 읽어 등록 폼 값으로 바꾼다. 못 읽으면 미혼으로 두지 않고 비워 대표가 고르게 한다. */
 function maritalFromSummary(summary: string): string | undefined {
@@ -32,11 +35,12 @@ function maritalFromSummary(summary: string): string | undefined {
 }
 
 export default function ClientListPage() {
-  const { items, loading } = useAgencyClients();
-  const { items: leads } = useAgencyLeads();
-  const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [params, setParams] = useSearchParams();
   const tab: 'leads' | 'clients' = params.get('tab') === 'leads' ? 'leads' : 'clients';
+  const scope: ClientScope = params.get('scope') === 'closed' ? 'closed' : 'active';
+  const { items, loading } = useAgencyClients(scope);
+  const { items: leads } = useAgencyLeads();
+  const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [showCreate, setShowCreate] = useState(false);
   const [convertLead, setConvertLead] = useState<LeadListItem | null>(null);
   const [search, setSearch] = useState('');
@@ -47,6 +51,12 @@ export default function ClientListPage() {
   function selectTab(next: 'leads' | 'clients') {
     const nextParams = new URLSearchParams(params);
     if (next === 'leads') nextParams.set('tab', 'leads'); else nextParams.delete('tab');
+    setParams(nextParams, { replace: true });
+  }
+
+  function selectScope(next: ClientScope) {
+    const nextParams = new URLSearchParams(params);
+    if (next === 'closed') nextParams.set('scope', 'closed'); else nextParams.delete('scope');
     setParams(nextParams, { replace: true });
   }
 
@@ -63,10 +73,20 @@ export default function ClientListPage() {
       }
     : undefined;
 
+  const keyword = search.trim().toLowerCase();
+  const digits = keyword.replace(/\D/g, '');
+  const visible = items.filter((c) => {
+    if (!keyword) return true;
+    const text = `${c.koreanClient.name} ${c.koreanClient.occupation}`.toLowerCase();
+    if (text.includes(keyword)) return true;
+    // 전화번호 뒷자리로도 찾는다. 사장은 이름보다 번호를 먼저 기억하는 때가 많다.
+    return digits.length >= 3 && c.koreanClient.phone.replace(/\D/g, '').includes(digits);
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div><div className="eyebrow">Client relationship</div><h1 className="page-title mt-2">고객 관리</h1><p className="mt-1 text-sm text-slate-500">접수된 손님을 고객으로 만들고, 등록부터 혼인·비자·사후관리까지 여정을 관리합니다.</p></div>
+        <div><div className="eyebrow">고객 관리</div><h1 className="page-title mt-2">고객 관리</h1><p className="mt-1 text-sm text-slate-500">접수된 손님을 고객으로 만들고, 등록부터 혼인·비자·사후관리까지 여정을 관리합니다.</p></div>
         <button onClick={() => setShowCreate(true)} className="primary-button">
           <Plus size={16} />신규 고객
         </button>
@@ -86,7 +106,7 @@ export default function ClientListPage() {
           onClick={() => selectTab('clients')}
           className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${tab === 'clients' ? 'bg-[#102621] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
         >
-          <Users size={16} />고객 <span className={tab === 'clients' ? 'text-emerald-300' : 'text-slate-400'}>{items.length}</span>
+          <Users size={16} />고객 {tab === 'clients' && <span className="text-emerald-300">{items.length}</span>}
         </button>
       </div>
 
@@ -94,25 +114,38 @@ export default function ClientListPage() {
 
       {tab === 'clients' && (
         <>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => selectScope('active')} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${scope === 'active' ? 'bg-[#102621] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'}`}>진행 중</button>
+            <button type="button" onClick={() => selectScope('closed')} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${scope === 'closed' ? 'bg-[#102621] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'}`}>종료된 고객</button>
+          </div>
+
           <div className="app-surface flex items-center gap-3 rounded-2xl p-2.5">
-            <Search size={18} className="ml-2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="min-w-0 flex-1 bg-transparent py-2 text-sm placeholder:text-slate-400" placeholder="고객 이름 또는 직업으로 검색" /><span className="hidden rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-500 sm:block">진행 중 {items.length}명</span>
+            <Search size={18} className="ml-2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="min-w-0 flex-1 bg-transparent py-2 text-sm placeholder:text-slate-400" placeholder="이름·직업·전화번호 뒷자리로 검색" /><span className="hidden rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-500 sm:block">{scope === 'active' ? '진행 중' : '종료'} {items.length}명</span>
           </div>
 
           {loading && <p className="text-sm text-slate-500">불러오는 중…</p>}
           {!loading && items.length === 0 && (
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-14 text-center">
               <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><UserRound /></span>
-              <p className="text-sm text-slate-500">등록된 고객이 없습니다.</p>
-              {activeLeads > 0 && (
+              <p className="text-sm text-slate-500">{scope === 'active' ? '진행 중인 고객이 없습니다.' : '종료 처리한 고객이 없습니다.'}</p>
+              {scope === 'active' && activeLeads > 0 && (
                 <p className="mt-1 text-xs text-slate-400">
                   진행 중인 접수가 {activeLeads}건 있습니다. <button type="button" onClick={() => selectTab('leads')} className="text-emerald-700 underline">접수 탭</button>에서 고객으로 등록할 수 있습니다.
                 </p>
               )}
+              {scope === 'active' && activeLeads === 0 && (
+                <p className="mt-1 text-xs text-slate-400">
+                  오른쪽 위 「신규 고객」을 눌러 첫 고객을 등록하세요.
+                </p>
+              )}
             </div>
+          )}
+          {!loading && items.length > 0 && visible.length === 0 && (
+            <p className="text-sm text-slate-500">「{search}」에 맞는 고객이 없습니다.</p>
           )}
 
           <div className="app-surface overflow-hidden rounded-[24px]">
-            {items.filter((c) => `${c.koreanClient.name} ${c.koreanClient.occupation}`.toLowerCase().includes(search.trim().toLowerCase())).map((c) => (
+            {visible.map((c) => (
               <Link
                 key={c.id}
                 to={`/agency/clients/${c.id}`}
@@ -121,15 +154,21 @@ export default function ClientListPage() {
                 <div className="flex min-w-0 items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-sm font-bold text-emerald-700">{c.koreanClient.name.slice(0, 1)}</span><div className="min-w-0">
                   <div className="font-semibold text-slate-900 group-hover:text-emerald-700">{c.koreanClient.name}</div>
                   <div className="text-xs text-slate-500">
-                    {c.koreanClient.gender === 'M' ? '남' : '여'} · {c.koreanClient.occupation}
+                    {c.koreanClient.gender === 'M' ? '남' : '여'} · {c.koreanClient.occupation} · {c.koreanClient.phone}
                     {c.source?.type === 'lead' && <span className="ml-2 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">접수에서</span>}
                   </div>
                 </div></div>
                 <div className="flex items-center gap-4"><div className="text-right">
-                  <div className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                    {STAGE_LABEL[c.currentStage]}
-                  </div>
-                  <div className="mt-1 text-xs text-slate-400">진행률 {c.overallProgress}%</div>
+                  {scope === 'closed' ? (
+                    <div className="inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                      {CLOSED_LABEL[c.status] ?? c.status}
+                    </div>
+                  ) : (
+                    <div className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                      {STAGE_LABEL[c.currentStage]}
+                    </div>
+                  )}
+                  {scope === 'closed' && c.closedAt?.toDate && <div className="mt-1 text-xs text-slate-400">{c.closedAt.toDate().toLocaleDateString('ko-KR')}</div>}
                 </div><ArrowRight size={16} className="text-slate-300 group-hover:translate-x-0.5 group-hover:text-emerald-600" /></div>
               </Link>
             ))}
