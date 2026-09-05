@@ -5,9 +5,11 @@ import { useAuthStore } from '@/store/authStore';
 import { signOut } from '@/lib/auth';
 import NotificationBell from './NotificationBell';
 import BrandMark from '@/components/brand/BrandMark';
+import { useAgencyName } from '@/features/agency/useAgencyName';
 
 export default function TopBar() {
   const user = useAuthStore((s) => s.user);
+  const agencyName = useAgencyName();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -26,7 +28,8 @@ export default function TopBar() {
     : user?.role === 'lawyer'
       ? '변호사 검토 콘솔'
       : user?.agencyId
-        ? `워크스페이스 · ${user.agencyId}`
+        // 내부 ID(ag_…)는 사장에게 아무 뜻이 없다. 상호를 보여 주고, 아직 못 읽었으면 빈칸 대신 일반 이름을 쓴다.
+        ? (agencyName || '우리 업체')
         : '가입 승인 대기 중';
 
   return (
@@ -34,7 +37,7 @@ export default function TopBar() {
       <div className="flex min-w-0 items-center gap-3">
         <div className="lg:hidden"><BrandMark /></div>
         <div className="hidden min-w-0 sm:block">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">Secure workspace</div>
+          <div className="text-[10px] font-bold tracking-[0.14em] text-emerald-700">업무 공간</div>
           <div className="truncate text-xs font-medium text-slate-500">{workspaceLabel}</div>
         </div>
       </div>
