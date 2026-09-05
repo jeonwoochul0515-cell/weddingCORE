@@ -383,7 +383,7 @@ export default function AgencySignupPage() {
               {...register('registrationNumber', { required: '필수 입력입니다.' })}
             />
           </Field>
-          <Field label="연락처 (필수)" error={errors.phone?.message} auto={autoFilled.includes('연락처')}>
+          <Field label="연락처 · 휴대폰 (필수)" error={errors.phone?.message} auto={autoFilled.includes('연락처')}>
             <input
               className="input"
               type="tel"
@@ -392,14 +392,15 @@ export default function AgencySignupPage() {
               placeholder="010-0000-0000"
               {...register('phone', {
                 required: '연락처는 반드시 입력해야 합니다.',
+                // 이 번호로 홈페이지 접수 문자가 간다. 유선번호를 받으면 문자가 조용히 사라진다.
                 pattern: {
-                  value: /^0\d{1,2}-?\d{3,4}-?\d{4}$/,
-                  message: '전화번호 형식이 올바르지 않습니다.',
+                  value: /^01[016789]-?\d{3,4}-?\d{4}$/,
+                  message: '휴대폰 번호(010-0000-0000)로 적어 주세요. 사무실 유선번호는 접수 문자를 받지 못합니다.',
                 },
               })}
             />
             <p className="mt-1 text-xs text-slate-400">
-              고객 상담 연결과 기한 알림에 사용합니다.
+              홈페이지 점검 위젯으로 손님이 접수하면 이 번호로 문자가 옵니다. 등록증의 사무실 번호가 자동으로 들어왔다면 휴대폰 번호로 바꿔 주세요.
             </p>
           </Field>
           <Field label="사업장 주소" error={errors.address?.message} auto={autoFilled.includes('사업장 주소')}>
