@@ -120,10 +120,14 @@ export const DOCUMENT_BY_KEY: Record<string, DocumentSpec> = Object.fromEntries(
   TRACK_LIST.flatMap((track) => track.documents.map((doc) => [doc.key, doc])),
 );
 
-/** 진행 단계를 트랙 구분 없이 찾는다. 사건 목록에서 뱃지를 그릴 때 쓴다. */
-export const STAGE_BY_ID: Record<string, StageSpec> = Object.fromEntries(
-  TRACK_LIST.flatMap((track) => track.stages.map((stage) => [stage.id, stage])),
-);
+/**
+ * 진행 단계를 트랙 안에서 찾는다. 두 트랙이 같은 id(intake)를 쓰므로 트랙 구분 없이
+ * 한 표로 합치면 뒤 트랙이 앞 트랙을 덮어써 결혼 사건이 「만료 확인」으로 보인다.
+ */
+export function stageSpec(trackId: TrackId | string | undefined, stageId: string): StageSpec | undefined {
+  const track = trackId ? TRACKS[trackId as TrackId] : undefined;
+  return track?.stages.find((stage) => stage.id === stageId);
+}
 
 /** 트랙의 기본 문서. 트랙에 문서가 하나도 없으면 정의가 잘못된 것이다. */
 export function firstDocument(track: VisaTrack): DocumentSpec {
