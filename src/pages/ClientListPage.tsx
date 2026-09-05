@@ -6,15 +6,16 @@
 
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Inbox, Plus, Search, UserRound, Users } from 'lucide-react';
+import { ArrowRight, FileSpreadsheet, Inbox, Plus, Search, UserRound, Users } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
-import { useAgencyClients, type ClientScope } from '@/features/agency/useAgencyClients';
+import { useAgencyClientPhones, useAgencyClients, type ClientScope } from '@/features/agency/useAgencyClients';
 import CreateClientDialog, { type CreateClientFormValues } from '@/features/agency/CreateClientDialog';
 import type { CreateClientIntake } from '@/features/agency/useAgencyClients';
 import LeadsPanel from '@/features/leads/LeadsPanel';
 import { markConverted, useAgencyLeads, type LeadListItem } from '@/features/leads/useAgencyLeads';
 import { parseLeadSummary } from '@/features/leads/parseLeadSummary';
 import { useAuthStore } from '@/store/authStore';
+import ImportClientsDialog from '@/features/agency/ImportClientsDialog';
 
 const STAGE_LABEL: Record<number, string> = {
   1: '계약 전', 2: '계약 체결', 3: '맞선 준비',
@@ -39,9 +40,12 @@ export default function ClientListPage() {
   const tab: 'leads' | 'clients' = params.get('tab') === 'leads' ? 'leads' : 'clients';
   const scope: ClientScope = params.get('scope') === 'closed' ? 'closed' : 'active';
   const { items, loading } = useAgencyClients(scope);
+  const existingPhones = useAgencyClientPhones();
   const { items: leads } = useAgencyLeads();
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [showCreate, setShowCreate] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importedNotice, setImportedNotice] = useState<number | null>(null);
   const [convertLead, setConvertLead] = useState<LeadListItem | null>(null);
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
@@ -87,10 +91,21 @@ export default function ClientListPage() {
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div><div className="eyebrow">고객 관리</div><h1 className="page-title mt-2">고객 관리</h1><p className="mt-1 text-sm text-slate-500">접수된 손님을 고객으로 만들고, 등록부터 혼인·비자·사후관리까지 여정을 관리합니다.</p></div>
-        <button onClick={() => setShowCreate(true)} className="primary-button">
-          <Plus size={16} />신규 고객
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setShowImport(true)} className="secondary-button">
+            <FileSpreadsheet size={16} />엑셀 명단 가져오기
+          </button>
+          <button onClick={() => setShowCreate(true)} className="primary-button">
+            <Plus size={16} />신규 고객
+          </button>
+        </div>
       </div>
+
+      {importedNotice != null && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          고객 {importedNotice}명을 등록했습니다. 각 고객의 법정의무 일정은 차례로 자동 생성됩니다.
+        </div>
+      )}
 
       {/* 탭 */}
       <div className="flex gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
@@ -180,6 +195,18 @@ export default function ClientListPage() {
         <CreateClientDialog
           onClose={() => setShowCreate(false)}
           onCreated={(id) => { setShowCreate(false); navigate(`/agency/clients/${id}`); }}
+        />
+      )}
+
+      {showImport && (
+        <ImportClientsDialog
+          existingPhones={existingPhones}
+          onClose={() => setShowImport(false)}
+          onImported={(count) => {
+            setShowImport(false);
+            setImportedNotice(count);
+            setTimeout(() => setImportedNotice(null), 5000);
+          }}
         />
       )}
 
