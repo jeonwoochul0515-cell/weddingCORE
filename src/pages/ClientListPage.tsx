@@ -14,6 +14,7 @@ import type { CreateClientIntake } from '@/features/agency/useAgencyClients';
 import LeadsPanel from '@/features/leads/LeadsPanel';
 import { markConverted, useAgencyLeads, type LeadListItem } from '@/features/leads/useAgencyLeads';
 import { parseLeadSummary } from '@/features/leads/parseLeadSummary';
+import { useOverdueClients } from '@/features/timeline/useOverdueClients';
 import { useAuthStore } from '@/store/authStore';
 import ImportClientsDialog from '@/features/agency/ImportClientsDialog';
 
@@ -39,7 +40,10 @@ export default function ClientListPage() {
   const [params, setParams] = useSearchParams();
   const tab: 'leads' | 'clients' = params.get('tab') === 'leads' ? 'leads' : 'clients';
   const scope: ClientScope = params.get('scope') === 'closed' ? 'closed' : 'active';
+  // 대시보드의 「기한 지남」 카드에서 오면 기한을 넘긴 항목이 있는 고객만 보여 준다.
+  const overdueOnly = params.get('filter') === 'overdue';
   const { items, loading } = useAgencyClients(scope);
+  const { byClient: overdue } = useOverdueClients();
   const existingPhones = useAgencyClientPhones();
   const { items: leads } = useAgencyLeads();
   const agencyId = useAuthStore((s) => s.user?.agencyId);
@@ -64,6 +68,12 @@ export default function ClientListPage() {
     setParams(nextParams, { replace: true });
   }
 
+  function clearOverdueFilter() {
+    const nextParams = new URLSearchParams(params);
+    nextParams.delete('filter');
+    setParams(nextParams, { replace: true });
+  }
+
   const convertInitial: Partial<CreateClientFormValues> | undefined = convertLead
     ? { name: convertLead.name, phone: convertLead.phone, maritalHistory: maritalFromSummary(convertLead.summary) }
     : undefined;
@@ -80,6 +90,7 @@ export default function ClientListPage() {
   const keyword = search.trim().toLowerCase();
   const digits = keyword.replace(/\D/g, '');
   const visible = items.filter((c) => {
+    if (overdueOnly && !overdue.has(c.id)) return false;
     if (!keyword) return true;
     const text = `${c.koreanClient.name} ${c.koreanClient.occupation}`.toLowerCase();
     if (text.includes(keyword)) return true;
@@ -132,6 +143,12 @@ export default function ClientListPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => selectScope('active')} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${scope === 'active' ? 'bg-[#102621] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'}`}>진행 중</button>
             <button type="button" onClick={() => selectScope('closed')} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${scope === 'closed' ? 'bg-[#102621] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'}`}>종료된 고객</button>
+            {overdueOnly && (
+              <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 ring-1 ring-red-200">
+                기한 지난 항목이 있는 고객만 보는 중 ({visible.length}명)
+                <button type="button" onClick={clearOverdueFilter} className="rounded-full bg-white px-2 py-0.5 text-[11px] text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">전체 보기</button>
+              </span>
+            )}
           </div>
 
           <div className="app-surface flex items-center gap-3 rounded-2xl p-2.5">
@@ -156,7 +173,13 @@ export default function ClientListPage() {
             </div>
           )}
           {!loading && items.length > 0 && visible.length === 0 && (
-            <p className="text-sm text-slate-500">「{search}」에 맞는 고객이 없습니다.</p>
+            overdueOnly && !keyword ? (
+              <p className="text-sm text-slate-500">
+                기한 지난 항목이 있는 고객이 없습니다. <button type="button" onClick={clearOverdueFilter} className="text-emerald-700 underline">전체 고객 보기</button>
+              </p>
+            ) : (
+              <p className="text-sm text-slate-500">「{search}」에 맞는 고객이 없습니다.</p>
+            )
           )}
 
           <div className="app-surface overflow-hidden rounded-[24px]">
@@ -171,6 +194,12 @@ export default function ClientListPage() {
                   <div className="text-xs text-slate-500">
                     {c.koreanClient.gender === 'M' ? '남' : '여'} · {c.koreanClient.occupation} · {c.koreanClient.phone}
                     {c.source?.type === 'lead' && <span className="ml-2 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">접수에서</span>}
+                    {(() => {
+                      const od = overdue.get(c.id);
+                      if (!od) return null;
+                      const n = od.warning + od.violated;
+                      return <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${od.violated > 0 ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>기한 지남 {n}건</span>;
+                    })()}
                   </div>
                 </div></div>
                 <div className="flex items-center gap-4"><div className="text-right">

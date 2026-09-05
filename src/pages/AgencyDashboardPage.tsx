@@ -14,6 +14,7 @@ import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
 import { isFollowUpDue, isUnanswered, useAgencyLeads } from '@/features/leads/useAgencyLeads';
+import { STAGE_LABEL, useOverdueClients } from '@/features/timeline/useOverdueClients';
 import type { TimelineItem } from '@/types/schema';
 import { useAllMatches } from '@/features/matching/useMatches';
 
@@ -52,43 +53,14 @@ function useUpcomingTimeline() {
   return { items, loading };
 }
 
-function useOverdueCounts(agencyId: string | null | undefined) {
-  const [warning, setWarning] = useState(0);
-  const [violated, setViolated] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!agencyId) { setLoading(false); return; }
-    const q = query(
-      collectionGroup(db, 'timeline'),
-      where('agencyId', '==', agencyId),
-      where('status', 'in', ['warning', 'violated']),
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      let w = 0;
-      let v = 0;
-      snap.forEach((d) => {
-        const s = (d.data() as TimelineItem).status;
-        if (s === 'warning') w++;
-        else if (s === 'violated') v++;
-      });
-      setWarning(w);
-      setViolated(v);
-      setLoading(false);
-    });
-    return () => unsub();
-  }, [agencyId]);
-
-  return { warning, violated, loading };
-}
-
 export default function AgencyDashboardPage() {
-  const agencyId = useAuthStore((s) => s.user?.agencyId);
   const { items: clients, loading: loadingClients } = useAgencyClients();
   const { items: closedClients, loading: loadingClosed } = useAgencyClients('closed');
   const { items: matches, loading: loadingMatches } = useAllMatches();
   const { items: upcoming, loading: loadingTimeline } = useUpcomingTimeline();
-  const { warning, violated, loading: loadingOverdue } = useOverdueCounts(agencyId);
+  // 기한을 넘긴 항목. 카드를 누르면 고객 목록이 같은 훅으로 그 고객만 걸러 보여 준다.
+  const { byClient: overdueByClient, warning, violated, loading: loadingOverdue } = useOverdueClients();
+  const overdueClientCount = overdueByClient.size;
   const { items: leads, loading: loadingLeads } = useAgencyLeads();
   // 접수는 영업의 입구다. 연락 전 건수와 24시간 넘게 둔 건수를 법정의무 카드와 같은 줄에 둔다.
   const newLeads = leads.filter((l) => l.status === 'new').length;
@@ -112,7 +84,7 @@ export default function AgencyDashboardPage() {
       <section className="relative overflow-hidden rounded-[28px] bg-[#102621] px-6 py-7 text-white shadow-[0_20px_50px_rgba(16,38,33,.16)] sm:px-8 sm:py-9">
         <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl" />
         <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
-          <div><div className="mb-3 flex items-center gap-2 text-[11px] font-bold tracking-[0.15em] text-emerald-300 uppercase"><Sparkles size={14} />Today at weddingCORE</div><h1 className="text-3xl font-bold tracking-[-0.04em] sm:text-4xl">오늘도 영업에<br className="sm:hidden" /> 집중하세요.</h1><p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">기한과 법적 위험은 CORE가 계속 확인하고 있습니다. 아래 조치가 필요한 항목부터 처리하면 됩니다.</p></div>
+          <div><div className="mb-3 flex items-center gap-2 text-[11px] font-bold tracking-[0.15em] text-emerald-300 uppercase"><Sparkles size={14} />오늘의 할 일</div><h1 className="text-3xl font-bold tracking-[-0.04em] sm:text-4xl">오늘도 영업에<br className="sm:hidden" /> 집중하세요.</h1><p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">기한과 법적 위험은 CORE가 계속 확인하고 있습니다. 아래 조치가 필요한 항목부터 처리하면 됩니다.</p></div>
           <Link to="/agency/automation" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-400 px-4 py-3 text-sm font-bold text-[#102621] shadow-lg shadow-emerald-950/20 hover:-translate-y-0.5 hover:bg-emerald-300"><Bot size={17} />AI 문서 만들기 <ArrowRight size={15} /></Link>
         </div>
       </section>
@@ -156,9 +128,9 @@ export default function AgencyDashboardPage() {
                 className={warning > 0 ? 'text-amber-600' : ''}
               />
             }
-            label="기한 경고 (≤3일 경과)"
+            label="기한 지남 · 3일 이내"
             value={loadingOverdue ? '…' : String(warning)}
-            hint={warning > 0 ? '조치 필요' : '없음'}
+            hint={warning > 0 ? '눌러서 해당 고객 보기' : '없음'}
             warn={warning > 0}
             clickable
           />
@@ -171,9 +143,9 @@ export default function AgencyDashboardPage() {
                 className={violated > 0 ? 'text-red-600' : ''}
               />
             }
-            label="법적 위반 (>3일 경과)"
+            label="기한 지남 · 3일 넘김"
             value={loadingOverdue ? '…' : String(violated)}
-            hint={violated > 0 ? '즉시 대응' : '없음'}
+            hint={violated > 0 ? '가장 먼저 처리하세요' : '없음'}
             danger={violated > 0}
             clickable
           />
@@ -198,15 +170,18 @@ export default function AgencyDashboardPage() {
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-red-100 text-red-700"><ShieldAlert size={17} /></span><div>
           <div className="font-medium">기한을 넘긴 항목이 있습니다.</div>
           <div className="mt-1 text-xs">
-            법적 위반 {violated}건, 경고 {warning}건 — 해당 고객 상세 페이지에서 즉시 확인하세요.
+            3일 넘게 지난 항목 {violated}건, 3일 이내 {warning}건. 고객 {overdueClientCount}명에게 걸려 있습니다.
           </div>
+          <Link to="/agency/clients?filter=overdue" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-red-800 underline">
+            해당 고객만 모아 보기 <ArrowRight size={13} />
+          </Link>
           </div>
         </div>
       )}
 
       <section className="app-surface overflow-hidden rounded-[24px]">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
-          <div><div className="eyebrow">Priority queue</div><h2 className="mt-1 text-base font-bold text-slate-900">조치 필요 항목</h2></div>
+          <div><div className="eyebrow">먼저 처리할 것</div><h2 className="mt-1 text-base font-bold text-slate-900">조치 필요 항목</h2></div>
           <Link to="/agency/clients" className="rounded-full bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900">
             전체 고객 보기 →
           </Link>
@@ -216,25 +191,29 @@ export default function AgencyDashboardPage() {
           <p className="px-5 py-4 text-sm text-slate-500">처리할 항목이 없습니다.</p>
         )}
         <ul>
-          {upcoming.map((item) => (
-            <li
-              key={item.path}
-              className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4 last:border-0 hover:bg-[#fafcfb] sm:px-6"
-            >
-              <div className="min-w-0">
-                <Link
-                  to={`/agency/clients/${item.clientId}`}
-                  className="truncate text-sm font-semibold text-slate-900 hover:text-emerald-700"
-                >
-                  {item.title}
-                </Link>
-                <div className="text-xs text-slate-500">
-                  {item.legalBasis} · 단계 {item.stage}
+          {upcoming.map((item) => {
+            // 누구의 일인지가 제목보다 먼저 보여야 한다. 고객 목록은 이미 구독 중이라 추가 조회가 없다.
+            const clientName = clients.find((c) => c.id === item.clientId)?.koreanClient.name;
+            return (
+              <li
+                key={item.path}
+                className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4 last:border-0 hover:bg-[#fafcfb] sm:px-6"
+              >
+                <div className="min-w-0">
+                  <Link
+                    to={`/agency/clients/${item.clientId}`}
+                    className="block truncate text-sm font-semibold text-slate-900 hover:text-emerald-700"
+                  >
+                    {clientName ? `${clientName} · ` : ''}{item.title}
+                  </Link>
+                  <div className="text-xs text-slate-500">
+                    {STAGE_LABEL[item.stage] ?? `단계 ${item.stage}`} · {item.legalBasis}
+                  </div>
                 </div>
-              </div>
-              <DueBadge due={item.dueDate} />
-            </li>
-          ))}
+                <DueBadge due={item.dueDate} />
+              </li>
+            );
+          })}
         </ul>
       </section>
     </div>
