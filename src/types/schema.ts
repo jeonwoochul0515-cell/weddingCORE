@@ -338,6 +338,8 @@ export type ClientDocument = {
     | 'other';
   subject: 'korean' | 'partner' | 'both';
   storageUrl: string;
+  /** Storage 안의 경로. 지울 때 쓴다. 예전 기록에는 없을 수 있다 */
+  storagePath?: string;
   fileName: string;
   mimeType: string;
   issuedAt: Timestamp | null;

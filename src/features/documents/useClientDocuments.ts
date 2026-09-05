@@ -1,14 +1,17 @@
+// 고객 서류 목록 구독과 업로드·삭제 — 파일은 Storage에, 기록은 Firestore에 둔다
 import { useEffect, useState } from 'react';
 import {
-  addDoc,
   collection,
+  deleteDoc,
+  doc,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   Timestamp,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import type { ClientDocument } from '@/types/schema';
@@ -37,6 +40,12 @@ export function useClientDocuments(clientId: string | undefined) {
   return { items, loading };
 }
 
+/** 파일명에서 경로 문자와 공백을 걷어낸다. Storage 경로에 그대로 들어간다 */
+function safeFileName(name: string) {
+  const cleaned = name.replace(/[\\/:*?"<>|#%]/g, '_').replace(/\s+/g, '_');
+  return cleaned.length > 0 ? cleaned.slice(-120) : 'file';
+}
+
 export async function uploadClientDocument(params: {
   agencyId: string;
   clientId: string;
@@ -49,14 +58,13 @@ export async function uploadClientDocument(params: {
 }) {
   const { agencyId, clientId, uid, file, type, subject, issuedAt, validUntilOverride } = params;
 
+  // 기록 id를 먼저 정해 파일 경로에 넣는다. 저장 규칙이 documents/{문서id}/{파일명} 두 칸을 본다.
+  const docRef = doc(collection(db, `agencies/${agencyId}/clients/${clientId}/documents`));
+  const storagePath = `agencies/${agencyId}/clients/${clientId}/documents/${docRef.id}/${safeFileName(file.name)}`;
+
   // 1) Storage 업로드
-  const ext = file.name.split('.').pop();
-  const fileKey = `${type}_${Date.now()}.${ext}`;
-  const storageRef = ref(
-    storage,
-    `agencies/${agencyId}/clients/${clientId}/documents/${fileKey}`,
-  );
-  await uploadBytes(storageRef, file);
+  const storageRef = ref(storage, storagePath);
+  await uploadBytes(storageRef, file, { contentType: file.type || 'application/octet-stream' });
   const url = await getDownloadURL(storageRef);
 
   // 2) 유효기간 계산
@@ -65,21 +73,44 @@ export async function uploadClientDocument(params: {
     (issuedAt ? computeValidUntil(type, issuedAt) : null);
 
   // 3) Firestore 메타데이터
-  await addDoc(
-    collection(db, `agencies/${agencyId}/clients/${clientId}/documents`),
-    {
-      agencyId,
-      type,
-      subject,
-      storageUrl: url,
-      fileName: file.name,
-      mimeType: file.type,
-      issuedAt: issuedAt ? Timestamp.fromDate(issuedAt) : null,
-      validUntil: validUntil ? Timestamp.fromDate(validUntil) : null,
-      ocrExtracted: null,
-      uploadedBy: uid,
-      uploadedAt: serverTimestamp(),
-      replaces: null,
-    },
-  );
+  await setDoc(docRef, {
+    agencyId,
+    type,
+    subject,
+    storageUrl: url,
+    storagePath,
+    fileName: file.name,
+    mimeType: file.type,
+    issuedAt: issuedAt ? Timestamp.fromDate(issuedAt) : null,
+    validUntil: validUntil ? Timestamp.fromDate(validUntil) : null,
+    ocrExtracted: null,
+    uploadedBy: uid,
+    uploadedAt: serverTimestamp(),
+    replaces: null,
+  });
+  return docRef.id;
+}
+
+/**
+ * 서류를 지운다. 파일부터 지우고 기록을 지운다. 파일이 이미 없으면(예전 경로 불일치로
+ * 올라가지 못한 경우) 기록만 지운다. 기록이 남으면 화면에 유령 서류가 계속 보이기 때문이다.
+ */
+export async function deleteClientDocument(params: {
+  agencyId: string;
+  clientId: string;
+  documentId: string;
+  storagePath?: string | null;
+  storageUrl?: string | null;
+}) {
+  const { agencyId, clientId, documentId, storagePath, storageUrl } = params;
+  const target = storagePath || storageUrl;
+  if (target) {
+    try {
+      await deleteObject(ref(storage, target));
+    } catch (err) {
+      const code = (err as { code?: string }).code ?? '';
+      if (code !== 'storage/object-not-found') throw err;
+    }
+  }
+  await deleteDoc(doc(db, `agencies/${agencyId}/clients/${clientId}/documents/${documentId}`));
 }
