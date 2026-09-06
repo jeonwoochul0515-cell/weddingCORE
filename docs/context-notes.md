@@ -456,3 +456,33 @@ FUNCTIONS_DISCOVERY_TIMEOUT=120 npx firebase deploy --only functions:이름
 **비자·시간제취업** 기준은 iBT 71이다. KoAdmit의 변경대조 문서가 이 둘을 합치라고
 적고 있었으나 원문을 다시 읽어 별개임을 확인했다. 자세한 내용은
 `koadmit/docs/sources/지침_변경대조.md` §8.
+
+## 2026-09-06 · 해외 SaaS 대비 빠진 다섯 가지를 붙이며 알게 된 것
+
+### 팝업이 화면 밖에 뜨면 애니메이션부터 의심한다
+`position: fixed`는 조상 중에 이동·확대·회전·흐림 값을 가진 것이 하나라도 있으면
+화면이 아니라 그 조상을 기준으로 놓인다. **0만큼 움직인다는 값도 「없음」이 아니다.**
+`animation: ... both`로 끝 장면을 붙들어 두면 `translateY(0)`이 계속 남아 있어
+그 요소가 기준 상자가 된다. 채움 방식을 `backwards`로 두면 끝난 뒤 원래 값으로 돌아간다.
+
+판별법 — 팝업 요소의 `getBoundingClientRect()`를 재 본다. `inset-0`인데 화면 크기와
+다르면 조상 중에 범인이 있다. 조상을 거슬러 올라가며 `transform`·`filter`·`translate`가
+`none`이 아닌 것을 찾으면 된다.
+
+### 저장 전에 사진을 올리려면 id를 먼저 만들어야 한다
+사진 경로에 대상 id가 들어가므로, 새로 만드는 고객·후보도 등록 창을 열 때 id를 먼저 잡는다
+(`newClientId`, `newPartnerId`). 창을 열었다가 그냥 닫으면 올린 사진이 주인 없이 남는데,
+지금은 그대로 둔다. 나중에 청소가 필요해지면 하루 지난 주인 없는 사진을 지우는 함수를 둘 것.
+
+### 옛 구성원 문서에는 이메일이 없다
+`claimStaffInvite`가 생긴 뒤에 만들어진 구성원만 `email`을 갖는다. 그 전에 만들어진
+대표 문서는 없어서 목록에 내부 ID가 그대로 나왔다. 화면에서 나면 내 이메일로 채우고,
+남이면 「이메일이 적히지 않은 구성원」으로 적는다.
+
+### 배포는 전역 §15-2 토큰으로
+`wrangler`의 로그인 토큰이 만료돼 `npm run deploy:cloudflare`가 그냥은 실패한다.
+```
+export CLOUDFLARE_API_TOKEN=$(tr -d ' \r\n' < /c/Users/jeonw/.cf-token)
+export CLOUDFLARE_ACCOUNT_ID=da5ae1edf94b850d8ab9e6042d7236b3
+npm run deploy:cloudflare
+```
