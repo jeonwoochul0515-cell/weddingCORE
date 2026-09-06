@@ -33,6 +33,19 @@ export default function LawArticlePage() {
   // 질문 문장을 아래 화면 소제목으로 그대로 쓰므로 스키마와 화면이 어긋나지 않는다.
   const faqQuestion = `${a.label} ${a.title}는 무엇을 요구하나`;
 
+  // 「쉽게 말하면」 한 줄만으로는 답이 짧아 문맥 없이 읽히지 않는 조문이 있다.
+  // 답변엔진은 이 문장만 떼어 가므로 홀로 읽혀야 한다. 화면의 「어기면 어떻게 되나」와
+  // 「현장에서 무엇을 챙기나」를 어절 30개가 될 때까지 이어 붙인다. 전부 화면에 있는 문장이다.
+  const faqAnswer = (() => {
+    const parts = [a.plain, ...(a.consequence ? [a.consequence] : []), ...a.practice];
+    const out: string[] = [];
+    for (const part of parts) {
+      out.push(part);
+      if (out.join(' ').trim().split(/\s+/).length >= 30) break;
+    }
+    return out.join(' ');
+  })();
+
   // 이동경로와 글 정보. 조문 원문·해설이 화면에 그대로 있는 내용만 담는다.
   const schemas = [
     {
@@ -41,7 +54,7 @@ export default function LawArticlePage() {
       mainEntity: [{
         '@type': 'Question',
         name: faqQuestion,
-        acceptedAnswer: { '@type': 'Answer', text: a.plain },
+        acceptedAnswer: { '@type': 'Answer', text: faqAnswer },
       }],
     },
     breadcrumbSchema([
