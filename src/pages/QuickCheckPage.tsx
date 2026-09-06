@@ -38,7 +38,7 @@ const CHECK_FAQ = [
 
 export default function QuickCheckPage() {
   usePageMeta({
-    title: '국제결혼 요건 빠른 점검 · 2분 7문항',
+    title: '나도 국제결혼을 진행할 수 있나 · 2분 7문항',
     description: '혼인 상태·나이·소득·주거·범죄경력·초청 이력·진행 나라 7문항으로 국제결혼(F-6 결혼이민) 진행에 걸리는 점이 있는지 이름 없이 먼저 확인합니다.',
     path: '/check',
   });
@@ -132,6 +132,8 @@ export default function QuickCheckPage() {
 
       <footer className="border-t border-slate-200 bg-white px-6 py-8 text-center text-xs text-slate-500">
         <span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-600" />본 결과는 준비도 점검이며 법률자문이나 심사 결과 예측이 아닙니다.</span>
+      
+        <p className="mt-2 text-[11px] leading-5 text-slate-400">weddingCORE는 국제결혼중개업체의 고객·서류·법정기한을 한곳에서 관리하는 업무 시스템입니다.</p>
       </footer>
     </div>
   );

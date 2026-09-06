@@ -29,8 +29,21 @@ export default function LawArticlePage() {
 
   const others = LAW_ARTICLE_DETAILS.filter((x) => x.slug !== a.slug).slice(0, 3);
 
+  // 이 조문을 찾아온 사람이 묻는 것은 하나다 — 이 조문이 무엇을 요구하나.
+  // 질문 문장을 아래 화면 소제목으로 그대로 쓰므로 스키마와 화면이 어긋나지 않는다.
+  const faqQuestion = `${a.label} ${a.title}는 무엇을 요구하나`;
+
   // 이동경로와 글 정보. 조문 원문·해설이 화면에 그대로 있는 내용만 담는다.
   const schemas = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: [{
+        '@type': 'Question',
+        name: faqQuestion,
+        acceptedAnswer: { '@type': 'Answer', text: a.plain },
+      }],
+    },
     breadcrumbSchema([
       { name: 'weddingCORE', path: '/' },
       { name: '결혼중개업법 조문 지도', path: '/law' },
@@ -98,12 +111,12 @@ export default function LawArticlePage() {
         </section>
 
         <section className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 sm:p-6">
-          <h2 className="mb-2 text-sm font-bold text-emerald-800">쉽게 말하면</h2>
+          <h2 className="mb-2 text-sm font-bold text-emerald-800">{faqQuestion}</h2>
           <p className="text-[15px] font-semibold leading-relaxed text-[#102621]">{a.plain}</p>
         </section>
 
         <section className="mt-8">
-          <h2 className="mb-3 text-lg font-bold text-[#102621]">현장에서 챙길 것</h2>
+          <h2 className="mb-3 text-lg font-bold text-[#102621]">현장에서 무엇을 챙기나</h2>
           <ul className="space-y-3">
             {a.practice.map((t) => (
               <li key={t} className="flex gap-2.5 text-[15px] leading-relaxed text-slate-700">
@@ -116,7 +129,7 @@ export default function LawArticlePage() {
 
         {a.consequence && (
           <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
-            <h2 className="mb-2 text-sm font-bold text-amber-900">어기면</h2>
+            <h2 className="mb-2 text-sm font-bold text-amber-900">어기면 어떻게 되나</h2>
             <p className="text-[15px] leading-relaxed text-amber-900">{a.consequence}</p>
           </section>
         )}

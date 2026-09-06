@@ -195,6 +195,9 @@ export default function MbtiTestPage() {
       </div>
 
       <p className="mt-6 text-center text-[10px] text-slate-400">{mt('disclaimer', lang)}</p>
+      {lang === 'ko' && (
+        <p className="mt-2 text-center text-[10px] leading-4 text-slate-400">weddingCORE는 국제결혼중개업체의 고객·서류·법정기한을 한곳에서 관리하는 업무 시스템입니다.</p>
+      )}
     </main>
     {/* 진단이 무엇을 보는지 글로도 둔다. 문항은 자바스크립트로 그려져 검색·AI가 읽을 게 없다.
         한국어로만 쓰여 있어 다른 언어를 고른 사람에게는 보여주지 않는다. */}

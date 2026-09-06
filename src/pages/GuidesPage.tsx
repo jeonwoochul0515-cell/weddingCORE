@@ -115,6 +115,8 @@ export default function GuidesPage() {
           <ShieldCheck size={14} className="text-emerald-600" />
           출처. 법제처 국가법령정보센터 법령해석례·행정심판 재결례
         </span>
+      
+        <p className="mt-2 text-[11px] leading-5 text-slate-400">weddingCORE는 국제결혼중개업체의 고객·서류·법정기한을 한곳에서 관리하는 업무 시스템입니다.</p>
       </footer>
     </div>
   );

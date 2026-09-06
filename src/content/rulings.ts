@@ -147,7 +147,7 @@ export const RULINGS: Interpretation[] = [
   {
     kind: 'ruling',
     slug: 'prohibited-brokerage-acts',
-    title: '해서는 안 되는 중개 행위로 처분받은 사례',
+    title: '어떤 중개 행위가 처분을 받았나',
     summary:
       '18세 미만 소개와 한 번의 맞선에서 2명 이상 소개는 금지 행위입니다. 실제로 영업정지 처분이 나왔습니다.',
     question: '맞선 자리에서 여러 명을 보여주거나 어린 상대를 소개하면 어떻게 되나요?',
@@ -185,7 +185,7 @@ export const RULINGS: Interpretation[] = [
     kind: 'ruling',
     slug: 'third-party-complaint-limit',
     title: '다른 업체를 처분해 달라고 신고할 수 있나',
-    summary: '제3자가 다른 업체에 대한 행정처분을 요구한 청구는 각하됐습니다.',
+    summary: '제3자가 다른 업체에 대한 행정처분을 요구한 청구는 각하됐습니다. 행정심판은 자신에게 이뤄진 처분을 다투는 절차라, 남을 처분해 달라는 요구는 대상이 아니라고 보았습니다.',
     question:
       '경쟁 업체가 법을 어기는 것 같은데, 그 업체를 처분해 달라고 행정심판을 낼 수 있나요?',
     answer: '그런 청구는 각하됐습니다. 처분을 요구할 법적 지위가 인정되지 않았습니다.',

@@ -138,6 +138,7 @@ async function main() {
         await page.close();
       }
     }
+    await makeOgImages(browser, rendered);
   } finally {
     await browser.close();
     server.close();
@@ -157,6 +158,56 @@ async function main() {
   writeFeeds(rendered);
 
   console.log(`\n프리렌더 ${rendered.length}개 라우트 완료`);
+}
+
+/**
+ * 글마다 고유 공유 이미지를 만든다.
+ *
+ * 전부 같은 그림이면 카톡·슬랙으로 여러 편을 보냈을 때 어느 글인지 구분이 안 된다.
+ * 제목을 그대로 그려 넣으므로 링크만 보고도 무슨 글인지 안다. 이미 띄워 둔 브라우저를
+ * 다시 쓰므로 추가 도구가 필요 없다.
+ */
+async function makeOgImages(browser, rendered) {
+  const targets = rendered.filter((r) => /^\/(guides|law)\/.+/.test(r.route));
+  if (!targets.length) return;
+  const outDir = path.join(DIST, 'og');
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1200, height: 630, deviceScaleFactor: 1 });
+  let made = 0;
+  for (const r of targets) {
+    const title = r.title.split(/[|—]/)[0].trim();
+    const kind = r.route.startsWith('/law/') ? '결혼중개업법 조문' : '결혼중개업법 해설';
+    const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    await page.setContent(
+      `<!doctype html><meta charset="utf-8"><style>
+        *{margin:0;box-sizing:border-box}
+        body{width:1200px;height:630px;background:#102621;color:#fff;
+          font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+          padding:72px 80px;display:flex;flex-direction:column;justify-content:space-between}
+        .kind{font-size:26px;font-weight:700;color:#6ee7b7;letter-spacing:.02em}
+        h1{font-size:${title.length > 34 ? 56 : 68}px;line-height:1.25;font-weight:800;
+          letter-spacing:-.03em;word-break:keep-all}
+        .foot{display:flex;align-items:center;gap:14px;font-size:28px;color:#cbd5e1}
+        .dot{width:14px;height:14px;border-radius:99px;background:#34d399}
+      </style>
+      <div class="kind">${esc(kind)}</div>
+      <h1>${esc(title)}</h1>
+      <div class="foot"><span class="dot"></span>weddingCORE · weddingcore.net</div>`,
+      { waitUntil: 'domcontentloaded' },
+    );
+    const name = r.route.replace(/^\//, '').replace(/\//g, '-') + '.png';
+    await page.screenshot({ path: path.join(outDir, name), type: 'png' });
+    // 저장 전 HTML의 og:image를 이 글 것으로 바꾼다. 트위터 카드도 같은 그림을 쓴다.
+    const url = `https://weddingcore.net/og/${name}`;
+    r.html = r.html
+      .replace(/(<meta[^>]+property="og:image"[^>]+content=")[^"]*(")/i, `$1${url}$2`)
+      .replace(/(<meta[^>]+name="twitter:image"[^>]+content=")[^"]*(")/i, `$1${url}$2`);
+    made += 1;
+  }
+  await page.close();
+  console.log(`  공유 이미지 ${made}장 생성 (dist/og/)`);
 }
 
 /**

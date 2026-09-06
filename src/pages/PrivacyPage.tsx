@@ -12,7 +12,7 @@ const UPDATED_AT = '2026-08-28';
 export default function PrivacyPage() {
   usePageMeta({
     title: '개인정보처리방침',
-    description: 'weddingCORE가 수집·이용하는 개인정보의 항목과 처리 방법을 안내합니다.',
+    description: 'weddingCORE가 수집·이용하는 개인정보의 항목과 보유 기간, 처리 위탁과 국외 이전, 이용자가 행사할 수 있는 권리를 안내합니다.',
     path: '/privacy',
   });
 

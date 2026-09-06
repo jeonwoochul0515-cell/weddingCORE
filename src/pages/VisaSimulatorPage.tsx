@@ -13,7 +13,7 @@ import { CURRENT_RULE_YEAR } from '@/features/visaSimulator/rules';
 
 export default function VisaSimulatorPage() {
   usePageMeta({
-    title: 'F-6 결혼이민 비자 준비도 점검',
+    title: '나도 F-6 결혼이민 비자를 받을 수 있나',
     description: '2026년 공식 소득기준으로 F-6 결혼이민 비자의 필수요건 충족 여부와 서류 준비도를 신청 전에 점검합니다.',
     path: '/visa-simulator',
   });
@@ -100,6 +100,8 @@ export default function VisaSimulatorPage() {
 
       <footer className="mt-16 border-t border-slate-200 bg-white px-6 py-8 text-center text-xs text-slate-500 print:hidden">
         <span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-600" />본 결과는 준비도 점검이며 법률자문이나 승인 예측이 아닙니다.</span>
+      
+        <p className="mt-2 text-[11px] leading-5 text-slate-400">weddingCORE는 국제결혼중개업체의 고객·서류·법정기한을 한곳에서 관리하는 업무 시스템입니다.</p>
       </footer>
 
       {/* 인쇄 최적화 */}

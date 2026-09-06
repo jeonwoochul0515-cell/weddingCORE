@@ -113,7 +113,10 @@ area('1. 크롤링·색인', (c) => {
   c('사이트맵에 lastmod', 1, sitemap && /<lastmod>/.test(sitemap) ? 1 : 0)
   c('모든 공개 페이지에 canonical', 3, ratio(pages, (p) => !!canonical(p.html)))
   c('canonical이 자기 주소', 3, ratio(pages, (p) => canonical(p.html) === ORIGIN + (p.url === '/' ? '/' : p.url)))
-  c('404 문서 존재', 1, existsSync(join(DIST, '404.html')) ? 1 : 0)
+  // 404를 정적 파일로 두는 사이트도 있고 서버가 상태코드로 내는 사이트도 있다.
+  // 이 사이트는 Worker가 낸다(wrangler.jsonc). 파일만 찾으면 없다고 잘못 읽는다.
+  c('404 처리', 1, existsSync(join(DIST, '404.html')) ||
+    /not_found_handling/.test(readIf('wrangler.jsonc') || readIf('wrangler.toml') || '') ? 1 : 0)
   // 이 사이트의 비공개 화면(/agency /lawyer /admin /login)은 프리렌더 대상이 아니라
   // dist에 파일 자체가 없다. 파일을 찾아 noindex를 보는 판정은 여기선 성립하지 않는다.
   // 대신 robots.txt가 막고 사이트맵에도 없는지를 본다 — 그것이 실제로 색인을 막는 것이다.
@@ -257,10 +260,10 @@ area('8. 네이버 특화', (c) => {
 area('9. AEO 질문형 헤딩', (c) => {
   const h2sOf = (h) => all(h, /<h2[^>]*>([\s\S]*?)<\/h2>/gi).map((x) => x.replace(/<[^>]+>/g, '').trim())
   // 제목 뒤에 브랜드가 붙는다(" — 결혼중개업법 · weddingCORE"). 줄표·막대 앞만 본다.
-  const bare = (t) => (t || '').split(/[|—]/)[0].trim()
+  const bare = (t) => (t || '').split(/[|—·]/)[0].trim()
   // 우리말 의문문은 물음표 없이 "~받나 / ~되나 / ~인가 / ~할까"로 끝나는 일이 흔하다.
   // 물음표만 찾으면 "벌금형을 받으면 등록이 취소되나"를 평서문으로 잘못 읽는다.
-  const q = (t) => /[?？]$|(나|인가|는가|은가|을까|ㄹ까)$|나요|까요|어쩌죠|무엇|어떻게|어디|언제|왜|얼마/.test(bare(t))
+  const q = (t) => /[?？]$|(나|인가|닌가|는가|은가|을까|ㄹ까)$|나요|까요|어쩌죠|무엇|어떻게|어디|언제|왜|얼마/.test(bare(t))
   c('해설 H2의 절반 이상이 질문형', 4, ratio(guides, (p) => {
     const hs = h2sOf(p.html).filter(Boolean)
     return hs.length >= 2 && hs.filter(q).length / hs.length >= 0.5
@@ -330,7 +333,7 @@ area('12. GEO 인용 가능성', (c) => {
   // 전역 GEO 가이드가 말하는 "통계·수치·인용문·출처" — 판례번호도 인용 가능한 구체적 근거다.
   c('구체적 근거(수치·기간 또는 판례번호)', 2, ratio(columns, (p) => {
     const t = bodyText(p.html)
-    return /\d+\s?(년|개월|주|일|시간|분|회|건|명|가지|번|미터|만원|배|%)/.test(t) || /\d{4}[도누다허]\d+/.test(t)
+    return /\d+\s?(년|개월|주|일|시간|분|회|건|명|가지|번|미터|억원|억|만원|원|세|배|%)/.test(t) || /\d{4}[도누다허]\d+/.test(t)
   }))
   c('문단이 자기완결(평균 60자↑)', 2, ratio(columns, (p) => {
     const ps = all(p.html, /<p[^>]*>([\s\S]*?)<\/p>/gi).map((x) => x.replace(/<[^>]+>/g, '').trim()).filter((x) => x.length > 10)
