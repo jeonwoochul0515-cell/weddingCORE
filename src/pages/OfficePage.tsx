@@ -9,6 +9,7 @@ import { Building2, Pencil, Plus, Trash2, TriangleAlert, Users } from 'lucide-re
 import { useAuthStore } from '@/store/authStore';
 import { josa } from '@/lib/korean';
 import AgencyBasicsSection from '@/features/office/AgencyBasicsSection';
+import StaffSection from '@/features/office/StaffSection';
 import {
   addOfficeItem,
   officeWarnings,
@@ -171,7 +172,7 @@ const toFormValue = (f: FieldDef, v: unknown): unknown => {
   return String(v ?? '');
 };
 
-type TabKey = 'basic' | TabDef['key'];
+type TabKey = 'basic' | 'staff' | TabDef['key'];
 
 export default function OfficePage() {
   const user = useAuthStore((s) => s.user);
@@ -187,7 +188,8 @@ export default function OfficePage() {
   const [removeError, setRemoveError] = useState<string | null>(null);
 
   // 「기본 정보」는 컬렉션이 아니라 업체 문서 자체다. 훅은 조건부로 못 부르니 자리만 채운다.
-  const collectionKey: TabDef['key'] = tabKey === 'basic' ? 'interpreters' : tabKey;
+  const collectionKey: TabDef['key'] =
+    tabKey === 'basic' || tabKey === 'staff' ? 'interpreters' : tabKey;
   const tab = TABS.find((t) => t.key === collectionKey)!;
 
   function closeForm() {
@@ -283,7 +285,7 @@ export default function OfficePage() {
       )}
 
       <div className="mb-4 flex flex-wrap gap-1.5">
-        {[{ key: 'basic' as const, label: '기본 정보' }, ...TABS].map((t) => (
+        {[{ key: 'basic' as const, label: '기본 정보' }, { key: 'staff' as const, label: '직원' }, ...TABS].map((t) => (
           <button
             key={t.key}
             type="button"
@@ -305,8 +307,9 @@ export default function OfficePage() {
       </div>
 
       {tabKey === 'basic' && <AgencyBasicsSection />}
+      {tabKey === 'staff' && <StaffSection />}
 
-      {tabKey !== 'basic' && (<>
+      {tabKey !== 'basic' && tabKey !== 'staff' && (<>
       <p className="mb-4 rounded-xl bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-600">
         {tab.hint}
       </p>

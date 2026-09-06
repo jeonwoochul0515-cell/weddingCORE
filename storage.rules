@@ -16,6 +16,22 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*|application/pdf');
     }
 
+    // 사람 사진 — 고객과 후보. 종류는 clients | partners, 그 아래 대상 id.
+    // 서류함과 경로를 나눈 이유는 사진은 화면에 늘 보이고 서류는 증빙이라 다루는 규칙이 다르기 때문이다.
+    match /agencies/{aid}/photos/{kind}/{targetId}/{file} {
+      allow read: if request.auth != null
+                  && request.auth.token.agencyId == aid;
+      allow create, update: if request.auth != null
+                   && request.auth.token.agencyId == aid
+                   && request.auth.token.role in ['owner', 'manager', 'staff']
+                   && kind in ['clients', 'partners']
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null
+                    && request.auth.token.agencyId == aid
+                    && request.auth.token.role in ['owner', 'manager', 'staff'];
+    }
+
     // 고객 서류. 경로는 documents/{문서id}/{파일명} 두 칸이지만, 예전 업로드가
     // documents/{파일명} 한 칸으로 남아 있을 수 있어 하위 경로 전체를 받는다.
     // 삭제는 따로 열어야 한다. write 규칙에 request.resource 조건이 있으면
