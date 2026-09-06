@@ -98,13 +98,29 @@ textarea:focus {
   }
 }
 
+/*
+ * ⚠ 애니메이션이 끝난 뒤 이동값을 남기면 안 된다. 채움 방식이 both 면 안 된다.
+ *
+ *   0 만큼 움직인다는 값도 「없음」이 아니다. 그런 값이 남아 있는 요소는
+ *   position: fixed 자식들의 기준 상자가 되어 버린다. 이 애니메이션은 AppLayout 의
+ *   본문 겉틀에 걸려 있으므로, 업무 공간의 모든 팝업이 화면이 아니라 문서 전체를
+ *   기준으로 놓인다. 짧은 화면에서는 우연히 맞아 보이지만 고객 상세처럼 긴 화면에서는
+ *   보이지 않는 곳에 떠서 아무리 눌러도 창이 안 나온다.
+ *   (2026-09-06 실측. 「정보 수정」을 눌렀더니 팝업 크기가 화면 1707×842 가 아니라
+ *    문서 전체인 1365×3810 으로 잡혔다.)
+ *
+ *   그래서 두 가지를 같이 한다.
+ *   ① transform 대신 translate 속성을 쓴다 (transform 은 끝나도 단위행렬이 남는다).
+ *   ② 채움 방식을 backwards 로 둔다. 시작 전 모습은 그대로 잡아 두면서,
+ *      끝난 뒤에는 원래 값(없음)으로 돌아가 기준 상자가 사라진다.
+ */
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; translate: 0 12px; }
+  to { opacity: 1; translate: none; }
 }
 
 .animate-rise {
-  animation: rise-in 480ms cubic-bezier(.2,.8,.2,1) both;
+  animation: rise-in 480ms cubic-bezier(.2,.8,.2,1) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
