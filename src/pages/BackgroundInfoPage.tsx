@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Printer } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import {
   createBackgroundInfo,
@@ -12,6 +12,7 @@ import {
 import BackgroundInfoForm from '@/features/sideBySide/BackgroundInfoForm';
 import ParallelView from '@/features/sideBySide/ParallelView';
 import DeliverySection from '@/features/sideBySide/DeliverySection';
+import BackgroundInfoPrint from '@/features/sideBySide/BackgroundInfoPrint';
 import { useClient } from '@/features/agency/useAgencyClients';
 import { LANG_LABEL, type SupportedLang } from '@/features/sideBySide/fields';
 
@@ -34,6 +35,8 @@ export default function BackgroundInfoPage() {
   const [targetLang, setTargetLang] = useState<SupportedLang>('vi');
   // 외국인 측 원본 언어. 예전엔 무조건 베트남어로 박혀 캄보디아·우즈베키스탄 손님도 베트남어 문서가 됐다.
   const [partnerLang, setPartnerLang] = useState<SupportedLang>('vi');
+  // 인쇄할 때 함께 찍을 번역본. 없으면 원본만 나온다.
+  const [printing, setPrinting] = useState(false);
 
   const { info, translations, loading } = useBackgroundInfo(clientId, activeInfoId ?? undefined);
 
@@ -153,6 +156,13 @@ export default function BackgroundInfoPage() {
                 >
                   제공 기록
                 </button>
+                {/* 법 제10조의2는 서면 제공을 요구한다. 화면에만 있으면 건넬 것이 없다. */}
+                <button
+                  onClick={() => setPrinting(true)}
+                  className="inline-flex items-center gap-1 rounded px-3 py-1 text-slate-600 hover:bg-slate-100"
+                >
+                  <Printer size={14} />서면 인쇄
+                </button>
               </div>
 
               {activeMode === 'edit' && (
@@ -186,6 +196,14 @@ export default function BackgroundInfoPage() {
           )}
         </main>
       </div>
+          {printing && info && (
+        <BackgroundInfoPrint
+          info={info}
+          translation={translations.find((t) => t.lang !== info.sourceLang) ?? null}
+          clientName={client?.koreanClient?.name}
+          onClose={() => setPrinting(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 // 고객 상세 — 기본정보·접수 기록·법정의무 타임라인·서류·매칭을 한 화면에 모은다
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Archive, ArrowLeft, Bot, Languages, Heart, MessageSquareText, Pencil, Plus, RotateCcw } from 'lucide-react';
+import { Archive, ArrowLeft, Bot, FileSignature, Languages, Heart, MessageSquareText, Pencil, Plus, RotateCcw } from 'lucide-react';
 import { setClientStatus, useClient, type ClientListItem } from '@/features/agency/useAgencyClients';
 import CreateClientDialog, { type CreateClientFormValues } from '@/features/agency/CreateClientDialog';
 import DocumentSection from '@/features/documents/DocumentSection';
@@ -22,6 +22,7 @@ import LeadReport from '@/features/leads/LeadReport';
 import { LEAD_SOURCE_LABEL } from '@/features/leads/useAgencyLeads';
 import { useAuthStore } from '@/store/authStore';
 import ActivitySection from '@/features/activities/ActivitySection';
+import ContractDraft from '@/features/contract/ContractDraft';
 
 const STAGE_LABEL: Record<number, string> = {
   1: '계약 전', 2: '계약 체결', 3: '맞선 준비',
@@ -74,6 +75,7 @@ export default function ClientDetailPage() {
   const [showMatchDialog, setShowMatchDialog] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showContract, setShowContract] = useState(false);
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   const [closeStatus, setCloseStatus] = useState<'completed' | 'cancelled'>('completed');
@@ -187,6 +189,14 @@ export default function ClientDetailPage() {
                 className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
               >
                 <Pencil size={14} />정보 수정
+              </button>
+              {/* 서면계약은 법 제10조 의무다. 알려 주면서 만들어 주지 않으면 반쪽이다. */}
+              <button
+                type="button"
+                onClick={() => setShowContract(true)}
+                className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+              >
+                <FileSignature size={14} />계약서 초안
               </button>
               <Link
                 to={`/agency/clients/${client.id}/background-info`}
@@ -364,6 +374,8 @@ export default function ClientDetailPage() {
       )}
 
       {tab === 'activities' && <ActivitySection clientId={client.id} />}
+
+      {showContract && <ContractDraft client={client} onClose={() => setShowContract(false)} />}
 
       {showEdit && (
         <CreateClientDialog
