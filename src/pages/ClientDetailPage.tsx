@@ -162,7 +162,12 @@ export default function ClientDetailPage() {
 
       <div className="app-surface mb-6 rounded-[26px] p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+          <div className="flex gap-4">
+            {/* 사진이 있으면 이름 옆에 둔다. 전화를 걸기 전에 얼굴을 먼저 보는 편이 낫다. */}
+            {client.photoUrl && (
+              <img src={client.photoUrl} alt="" className="h-32 w-24 shrink-0 rounded-xl border border-slate-200 object-cover" />
+            )}
+            <div>
             <div className="eyebrow">고객 정보</div><h1 className="mt-1 text-3xl font-bold tracking-[-0.04em] text-slate-900">{k.name}</h1>
             <p className="mt-1 text-sm text-slate-600">
               {k.gender === 'M' ? '남' : '여'} · {k.occupation}
@@ -176,6 +181,7 @@ export default function ClientDetailPage() {
               {profile?.education && <><dt className="text-slate-500">학력</dt><dd>{profile.education}</dd></>}
               {profile?.religion && <><dt className="text-slate-500">종교</dt><dd>{profile.religion}</dd></>}
             </dl>
+            </div>
           </div>
           <div className="flex flex-col gap-2 sm:items-end">
             <div className="sm:text-right">
@@ -381,6 +387,7 @@ export default function ClientDetailPage() {
         <CreateClientDialog
           editingClientId={client.id}
           initial={toFormValues(client)}
+          initialPhotoUrl={client.photoUrl ?? null}
           onClose={() => setShowEdit(false)}
           onCreated={() => { setShowEdit(false); flash('고객 정보를 저장했습니다.'); }}
         />

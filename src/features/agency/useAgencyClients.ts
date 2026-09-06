@@ -43,12 +43,14 @@ function clientDocument(
   data: ClientBasics,
   source: Client['source'] = { type: 'manual' },
   intake: CreateClientIntake | null = null,
+  photoUrl: string | null = null,
 ) {
   return {
     clientId,
     agencyId,
     source,
     intake,
+    photoUrl,
     koreanClient: {
       name: data.name,
       birthDate: Timestamp.fromDate(data.birthDate),
@@ -129,13 +131,24 @@ export function useAgencyClientPhones() {
   return phones;
 }
 
+/**
+ * 등록 창이 저장 전에 사진을 올릴 수 있게 id를 미리 만든다.
+ * 사진은 Storage 경로에 고객 id가 들어가므로 id 없이는 올릴 곳이 없다.
+ */
+export const newClientId = (agencyId: string) =>
+  doc(collection(db, `agencies/${agencyId}/clients`)).id;
+
 export async function createClient(
   agencyId: string,
   uid: string,
   data: ClientBasics,
   origin?: { source: Client['source']; intake: CreateClientIntake },
+  /** 등록 창이 미리 잡아 둔 id와 먼저 올린 사진 */
+  preset?: { clientId?: string; photoUrl?: string | null },
 ) {
-  const ref = doc(collection(db, `agencies/${agencyId}/clients`));
+  const ref = preset?.clientId
+    ? doc(db, `agencies/${agencyId}/clients/${preset.clientId}`)
+    : doc(collection(db, `agencies/${agencyId}/clients`));
   await setDoc(
     ref,
     clientDocument(
@@ -145,6 +158,7 @@ export async function createClient(
       data,
       origin?.source ?? { type: 'manual' },
       origin?.intake ?? null,
+      preset?.photoUrl ?? null,
     ),
   );
   return ref.id;
@@ -174,9 +188,16 @@ export async function importClients(agencyId: string, uid: string, clients: Clie
  * 기본정보만 고친다. 필드 경로로 써서 nationalIdMasked 같은 나머지 값은 건드리지 않는다.
  * 규칙상 agencyId·automationConsents 외에는 업체 구성원이 바꿀 수 있다.
  */
-export async function updateClientBasics(agencyId: string, clientId: string, data: ClientBasics) {
+export async function updateClientBasics(
+  agencyId: string,
+  clientId: string,
+  data: ClientBasics,
+  /** 넘기지 않으면 지금 사진을 그대로 둔다. null이면 사진을 뗀다 */
+  photoUrl?: string | null,
+) {
   const ref = doc(db, `agencies/${agencyId}/clients/${clientId}`);
   await updateDoc(ref, {
+    ...(photoUrl === undefined ? {} : { photoUrl }),
     'koreanClient.name': data.name,
     'koreanClient.birthDate': Timestamp.fromDate(data.birthDate),
     'koreanClient.gender': data.gender,

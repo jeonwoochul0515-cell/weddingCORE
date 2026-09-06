@@ -7,7 +7,8 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Inbox, X } from 'lucide-react';
-import { createClient, updateClientBasics, type ClientBasics, type CreateClientIntake } from './useAgencyClients';
+import PhotoField from '@/features/photos/PhotoField';
+import { createClient, newClientId, updateClientBasics, type ClientBasics, type CreateClientIntake } from './useAgencyClients';
 import { useAuthStore } from '@/store/authStore';
 
 export type CreateClientFormValues = {
@@ -33,6 +34,8 @@ type Props = {
   intake?: CreateClientIntake;
   /** 있으면 새로 만들지 않고 이 고객의 기본정보를 고친다 */
   editingClientId?: string;
+  /** 수정일 때 지금 걸려 있는 사진 */
+  initialPhotoUrl?: string | null;
 };
 
 function toBasics(values: CreateClientFormValues): ClientBasics {
@@ -49,9 +52,12 @@ function toBasics(values: CreateClientFormValues): ClientBasics {
   };
 }
 
-export default function CreateClientDialog({ onClose, onCreated, initial, intake, editingClientId }: Props) {
+export default function CreateClientDialog({ onClose, onCreated, initial, intake, editingClientId, initialPhotoUrl }: Props) {
   const user = useAuthStore((s) => s.user);
   const editing = Boolean(editingClientId);
+  // 사진을 저장 전에 올려야 하므로 새 고객도 id를 먼저 잡아 둔다
+  const [clientId] = useState(() => editingClientId ?? (user?.agencyId ? newClientId(user.agencyId) : ''));
+  const [photoUrl, setPhotoUrl] = useState<string | null>(initialPhotoUrl ?? null);
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<CreateClientFormValues>({
     defaultValues: { gender: '', maritalHistory: '', incomeAnnual: '', ...initial },
   });
@@ -69,7 +75,7 @@ export default function CreateClientDialog({ onClose, onCreated, initial, intake
     try {
       const basics = toBasics(values);
       if (editingClientId) {
-        await updateClientBasics(user.agencyId, editingClientId, basics);
+        await updateClientBasics(user.agencyId, editingClientId, basics, photoUrl);
         onCreated(editingClientId);
         return;
       }
@@ -78,6 +84,7 @@ export default function CreateClientDialog({ onClose, onCreated, initial, intake
         user.uid,
         basics,
         intake ? { source: { type: 'lead', leadId: intake.leadId, via: intake.source }, intake } : undefined,
+        { clientId, photoUrl },
       );
       onCreated(id);
     } catch (err) {
@@ -101,6 +108,14 @@ export default function CreateClientDialog({ onClose, onCreated, initial, intake
           </div>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 p-6">
+          <PhotoField
+            agencyId={user?.agencyId}
+            kind="clients"
+            targetId={clientId}
+            url={photoUrl}
+            onChange={setPhotoUrl}
+            size="sm"
+          />
           <Field label="이름" error={errors.name?.message}>
             <input className="input" autoComplete="off" {...register('name', { required: '이름을 적어 주세요.' })} />
           </Field>

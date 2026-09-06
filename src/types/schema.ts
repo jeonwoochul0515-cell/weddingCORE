@@ -252,6 +252,8 @@ export type Client = {
   /** 어디서 온 고객인가. 없으면 직접 등록(manual)으로 본다 */
   source?: { type: 'lead' | 'manual' | 'referral'; leadId?: string; via?: string };
   intake?: ClientIntake | null;
+  /** 프로필 사진 한 장. 후보와 같은 규칙으로 Storage에 올린다 */
+  photoUrl?: string | null;
   koreanClient: {
     name: string;
     birthDate: Timestamp;
