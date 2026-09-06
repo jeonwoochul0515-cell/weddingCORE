@@ -1,0 +1,143 @@
+// 후보 등록·수정 창 — 사진을 먼저 올리고 나머지를 채운다
+import { useState } from 'react';
+import { X } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import PhotoField from '@/features/photos/PhotoField';
+import {
+  EMPTY_PARTNER,
+  newPartnerId,
+  PARTNER_STATUS_LABEL,
+  savePartner,
+  type PartnerForm,
+  type PartnerItem,
+  type PartnerStatus,
+} from './usePartners';
+
+type Props = {
+  editing?: PartnerItem | null;
+  onClose: () => void;
+  onSaved: (id: string) => void;
+};
+
+const toForm = (p: PartnerItem): PartnerForm => ({
+  name: p.name ?? '',
+  nationality: p.nationality ?? '',
+  birthDate: p.birthDate?.toDate?.().toISOString().slice(0, 10) ?? '',
+  gender: p.gender ?? '',
+  region: p.region ?? '',
+  occupation: p.occupation ?? '',
+  education: p.education ?? '',
+  religion: p.religion ?? '',
+  maritalHistory: p.maritalHistory ?? '',
+  languages: p.languages ?? '',
+  height: p.height != null ? String(p.height) : '',
+  localPartner: p.localPartner ?? '',
+  memo: p.memo ?? '',
+  status: p.status ?? 'available',
+});
+
+export default function PartnerDialog({ editing, onClose, onSaved }: Props) {
+  const agencyId = useAuthStore((s) => s.user?.agencyId);
+  // 사진을 저장 전에 올려야 하므로 새 후보도 id를 먼저 만든다
+  const [id] = useState(() => editing?.id ?? (agencyId ? newPartnerId(agencyId) : ''));
+  const [form, setForm] = useState<PartnerForm>(editing ? toForm(editing) : EMPTY_PARTNER);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(editing?.photoUrl ?? null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const set = (k: keyof PartnerForm) => (v: string) => setForm((s) => ({ ...s, [k]: v }));
+
+  async function save() {
+    if (!agencyId) return;
+    setError(null);
+    if (!form.name.trim()) { setError('이름을 적어 주세요.'); return; }
+    if (!form.nationality.trim()) { setError('국적을 적어 주세요.'); return; }
+    setSaving(true);
+    try {
+      await savePartner(agencyId, id, form, photoUrl, !editing);
+      onSaved(id);
+    } catch (e) {
+      setError(`저장하지 못했습니다. 잠시 뒤 다시 해 보세요. (${(e as Error).message})`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const Field = ({ label, k, placeholder, type = 'text' }: { label: string; k: keyof PartnerForm; placeholder?: string; type?: string }) => (
+    <label className="text-xs font-semibold text-slate-600">{label}
+      <input
+        type={type}
+        value={String(form[k])}
+        placeholder={placeholder}
+        onChange={(e) => set(k)(e.target.value)}
+        className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-sm"
+      />
+    </label>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/30 p-4">
+      <div className="my-8 w-full max-w-2xl rounded-2xl bg-white p-5 shadow-xl sm:p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-[#102621]">{editing ? '후보 고치기' : '후보 등록'}</h2>
+          <button type="button" onClick={onClose} aria-label="닫기" className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-slate-100">
+            <X size={18} />
+          </button>
+        </div>
+
+        <PhotoField
+          agencyId={agencyId}
+          kind="partners"
+          targetId={id}
+          url={photoUrl}
+          onChange={setPhotoUrl}
+        />
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <Field label="이름" k="name" placeholder="여권에 적힌 이름" />
+          <Field label="국적" k="nationality" placeholder="베트남" />
+          <Field label="생년월일" k="birthDate" type="date" />
+          <label className="text-xs font-semibold text-slate-600">성별
+            <select value={form.gender} onChange={(e) => set('gender')(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-sm">
+              <option value="">선택</option>
+              <option value="F">여</option>
+              <option value="M">남</option>
+            </select>
+          </label>
+          <Field label="현지 거주지" k="region" placeholder="하노이" />
+          <Field label="직업" k="occupation" />
+          <Field label="학력" k="education" placeholder="고졸" />
+          <Field label="종교" k="religion" />
+          <Field label="혼인 이력" k="maritalHistory" placeholder="미혼 / 이혼 / 사별" />
+          <Field label="가능한 언어" k="languages" placeholder="베트남어, 한국어 초급" />
+          <Field label="키(cm)" k="height" type="number" />
+          <Field label="소개해 준 현지 업체" k="localPartner" />
+          <label className="text-xs font-semibold text-slate-600">상태
+            <select value={form.status} onChange={(e) => set('status')(e.target.value as PartnerStatus)} className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-sm">
+              {(Object.keys(PARTNER_STATUS_LABEL) as PartnerStatus[]).map((s) => (
+                <option key={s} value={s}>{PARTNER_STATUS_LABEL[s]}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs font-semibold text-slate-600 sm:col-span-2">메모
+            <textarea
+              value={form.memo}
+              onChange={(e) => set('memo')(e.target.value)}
+              className="mt-1 min-h-20 w-full resize-y rounded-lg border border-slate-200 px-2.5 py-2 text-sm"
+              placeholder="성격, 원하는 조건, 주의할 점"
+            />
+          </label>
+        </div>
+
+        {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-500">취소</button>
+          <button type="button" onClick={() => void save()} disabled={saving} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            {saving ? '저장 중…' : '저장'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

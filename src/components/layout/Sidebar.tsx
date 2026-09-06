@@ -1,7 +1,7 @@
 // 왼쪽 메뉴(PC)와 하단 메뉴(휴대폰). 휴대폰은 자주 쓰는 4개만 두고 나머지는 「더보기」로 접는다
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Bot, Building2, Gavel, Heart, Landmark, LayoutDashboard, LayoutGrid, Megaphone, Radio, Scale, Users, X } from 'lucide-react';
+import { Bot, Building2, Gavel, Heart, Landmark, LayoutDashboard, LayoutGrid, Megaphone, Radio, Scale, Users, UsersRound, X } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import BrandMark from '@/components/brand/BrandMark';
 
@@ -9,6 +9,7 @@ const agencyLinks = [
   { to: '/agency', label: '대시보드', shortLabel: '홈', icon: LayoutDashboard },
   { to: '/agency/clients', label: '고객 관리', shortLabel: '고객', icon: Users },
   { to: '/agency/matching', label: '매칭 관리', shortLabel: '매칭', icon: Heart },
+  { to: '/agency/partners', label: '후보 명부', shortLabel: '후보', icon: UsersRound },
   { to: '/agency/visa', label: '비자업무 센터', shortLabel: '비자', icon: Landmark },
   { to: '/agency/marketing', label: '마케팅 센터', shortLabel: '마케팅', icon: Megaphone },
   { to: '/agency/automation', label: 'AI 업무 자동화', shortLabel: 'AI', icon: Bot },

@@ -23,6 +23,7 @@ const AdminAgenciesPage = lazy(() => import('./pages/AdminAgenciesPage'));
 const RegulatoryRadarPage = lazy(() => import('./pages/RegulatoryRadarPage'));
 const BackgroundInfoPage = lazy(() => import('./pages/BackgroundInfoPage'));
 const MatchingPage = lazy(() => import('./pages/MatchingPage'));
+const PartnersPage = lazy(() => import('./pages/PartnersPage'));
 const AutomationCenterPage = lazy(() => import('./pages/AutomationCenterPage'));
 const LawyerWorkbenchPage = lazy(() => import('./pages/LawyerWorkbenchPage'));
 const MarketingCenterPage = lazy(() => import('./pages/MarketingCenterPage'));
@@ -75,6 +76,7 @@ export default function AppRoutes() {
             <Route path="/agency/clients/:clientId/background-info" element={<BackgroundInfoPage />} />
             <Route path="/agency/regulatory" element={<RegulatoryRadarPage />} />
             <Route path="/agency/matching" element={<MatchingPage />} />
+            <Route path="/agency/partners" element={<PartnersPage />} />
             <Route path="/agency/automation" element={<AutomationCenterPage />} />
             <Route path="/agency/marketing" element={<MarketingCenterPage />} />
             <Route path="/agency/visa" element={<VisaWorkCenterPage />} />

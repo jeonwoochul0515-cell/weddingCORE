@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { X } from 'lucide-react';
 import { createMatch } from './useMatches';
 import { useAuthStore } from '@/store/authStore';
+import { ageOf, usePartners } from '@/features/partners/usePartners';
 import type { Match } from '@/types/schema';
 
 type FormValues = {
@@ -29,7 +30,7 @@ export default function CreateMatchDialog({
   mbtiScore, sajuScore, onClose, onCreated,
 }: Props) {
   const user = useAuthStore((s) => s.user);
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, formState: { isSubmitting } } = useForm<FormValues>({
     defaultValues: {
       clientName: defaultClientName ?? '',
       partnerName: defaultPartnerName ?? '',
@@ -39,6 +40,9 @@ export default function CreateMatchDialog({
     },
   });
   const [error, setError] = useState<string | null>(null);
+  // 후보 명부에서 고른다. 이름을 손으로 치면 오타가 나고 나중에 그 사람을 못 찾는다.
+  const { items: partners } = usePartners();
+  const [pickedId, setPickedId] = useState(partnerId);
 
   async function onSubmit(v: FormValues) {
     if (!user?.agencyId) return;
@@ -46,7 +50,7 @@ export default function CreateMatchDialog({
     try {
       await createMatch(user.agencyId, user.uid, {
         clientId,
-        partnerId,
+        partnerId: pickedId,
         clientName: v.clientName,
         partnerName: v.partnerName,
         type: v.type,
@@ -76,6 +80,35 @@ export default function CreateMatchDialog({
             <Fd label="외국측 이름">
               <input className="input" {...register('partnerName', { required: true })} />
             </Fd>
+          </div>
+          <div>
+            <Fd label="후보 명부에서 고르기">
+              <select
+                className="input"
+                value={pickedId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setPickedId(id);
+                  const p = partners.find((x) => x.id === id);
+                  if (p) setValue('partnerName', p.name);
+                }}
+              >
+                <option value="">직접 입력</option>
+                {partners.map((p) => {
+                  const age = ageOf(p.birthDate);
+                  return (
+                    <option key={p.id} value={p.id}>
+                      {p.name}{p.nationality ? ` · ${p.nationality}` : ''}{age != null ? ` · ${age}세` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </Fd>
+            {partners.length === 0 && (
+              <p className="mt-1 text-xs text-slate-400">
+                후보 명부가 비어 있습니다. 왼쪽 메뉴 「후보 명부」에서 먼저 등록하면 여기서 고를 수 있습니다.
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Fd label="유형">
