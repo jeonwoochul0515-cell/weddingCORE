@@ -113,7 +113,11 @@ export default function StaffSection() {
             return (
               <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-100 px-3 py-2.5">
                 <span className="min-w-0 text-sm">
-                  <span className="font-semibold text-slate-800">{m.email ?? m.uid}</span>
+                  {/* 옛 구성원 문서에는 email이 없다. 내부 ID를 그대로 보여 주면 누구인지 모른다.
+                      나면 내 이메일을 쓰고, 남이면 이메일이 안 적혔다고 말한다. */}
+                  <span className="font-semibold text-slate-800">
+                    {m.email ?? (me ? user?.email ?? '나' : '이메일이 적히지 않은 구성원')}
+                  </span>
                   {me && <span className="ml-1.5 text-xs text-slate-400">(나)</span>}
                 </span>
                 <span className="flex items-center gap-1.5">
