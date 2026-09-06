@@ -2,7 +2,7 @@ export type UiLang = 'ko' | 'en' | 'vi';
 
 export const UI = {
   title: {
-    ko: 'F-6 결혼이민 비자 시뮬레이터',
+    ko: '나도 F-6 결혼이민 비자를 받을 수 있나',
     en: 'F-6 Marriage Visa Simulator',
     vi: 'Trình mô phỏng thị thực F-6 (Kết hôn)',
   },

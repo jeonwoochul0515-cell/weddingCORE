@@ -76,10 +76,10 @@ export default function QuickCheckPage() {
         <Link to="/login" className="secondary-button !px-3.5 !py-2">업체 로그인</Link>
       </header>
 
-      <section className="mx-auto max-w-3xl px-5 py-12 sm:px-6 sm:py-16">
+      <main className="mx-auto max-w-3xl px-5 py-12 sm:px-6 sm:py-16">
         <div className="mb-8 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><Timer size={14} />2분 · 7문항 · 이름 없이</div>
-          <h1 className="text-4xl font-bold tracking-[-0.045em] text-[#102621] sm:text-5xl">국제결혼 요건 빠른 점검</h1>
+          <h1 className="text-4xl font-bold tracking-[-0.045em] text-[#102621] sm:text-5xl">나도 국제결혼을 진행할 수 있나</h1>
           <p className="mt-4 text-base leading-7 text-slate-600">
             상담 전에 실제로 진행할 수 있는 조건인지 먼저 확인해 보세요. 답은 이 화면에만 있고 저장되지 않습니다.
             {agencyName && <> 결과는 원하실 때만 {agencyName}에 전달됩니다.</>}
@@ -87,7 +87,7 @@ export default function QuickCheckPage() {
         </div>
 
         <QuickCheck agencyId={agencyId} agencyName={agencyName} />
-      </section>
+      </main>
 
       {/* 도구는 자바스크립트로 그려져 검색·AI가 읽을 글이 적다. 무엇을 보는지 글로도 둔다. */}
       <section className="mx-auto max-w-3xl px-5 pb-16 sm:px-6">

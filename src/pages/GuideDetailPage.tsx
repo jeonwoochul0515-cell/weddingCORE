@@ -11,6 +11,7 @@ import { usePageMeta } from '@/lib/usePageMeta';
 import { findGuide, sourceUrl, GUIDES } from '@/content/guides';
 import { matchLawArticle } from '@/content/lawArticles';
 import { matchLawMapEntry } from '@/content/lawMap';
+import ContentTrust from '@/components/content/ContentTrust';
 import { breadcrumbSchema, articleSchema } from '@/lib/schema';
 import NotFoundPage from './NotFoundPage';
 
@@ -72,7 +73,7 @@ export default function GuideDetailPage() {
         <Link to="/login" className="secondary-button !px-3.5 !py-2">업체 로그인</Link>
       </header>
 
-      <article className="mx-auto max-w-3xl px-5 py-10 sm:px-6 sm:py-14">
+      <main className="mx-auto max-w-3xl px-5 py-10 sm:px-6 sm:py-14">
         <Link
           to="/guides"
           className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-700"
@@ -98,13 +99,13 @@ export default function GuideDetailPage() {
         </div>
 
         <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-          <h2 className="mb-2 text-sm font-bold text-slate-500">이런 상황입니다</h2>
+          <h2 className="mb-2 text-sm font-bold text-slate-500">어떤 상황인가</h2>
           <p className="text-[15px] leading-relaxed text-slate-700">{item.question}</p>
         </section>
 
-        <section className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 sm:p-6">
+        <section className="lead-box mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 sm:p-6">
           <h2 className="mb-2 text-sm font-bold text-emerald-800">
-            {item.kind === 'interpretation' ? '법제처는 이렇게 답했습니다' : '이렇게 판단됐습니다'}
+            {item.kind === 'interpretation' ? '법제처는 어떻게 답했나' : '어떻게 판단됐나'}
           </h2>
           <p className="text-lg font-semibold leading-relaxed text-[#102621]">{item.answer}</p>
         </section>
@@ -135,7 +136,7 @@ export default function GuideDetailPage() {
 
         {item.cases && item.cases.length > 0 && (
           <section className="mt-8">
-            <h2 className="mb-3 text-lg font-bold text-[#102621]">근거가 된 사건</h2>
+            <h2 className="mb-3 text-lg font-bold text-[#102621]">어떤 사건이 근거인가</h2>
             <div className="space-y-2.5">
               {item.cases.map((c) => (
                 <div key={c.name + c.decidedOn} className="rounded-xl border border-slate-200 bg-white p-4">
@@ -163,7 +164,7 @@ export default function GuideDetailPage() {
         )}
 
         <section className="mt-8 rounded-2xl bg-white p-5 sm:p-6">
-          <h2 className="mb-3 text-sm font-bold text-slate-500">관련 조문</h2>
+          <h2 className="mb-3 text-sm font-bold text-slate-500">어느 조문이 걸리나</h2>
           {/* 조문 이름만 적어두면 읽는 사람이 그 조문을 다시 찾아야 한다.
               조문 지도에 페이지가 있으면 그리로 잇고, 무엇을 요구하는 조문인지도 함께 보여준다. */}
           <ul className="space-y-2.5">
@@ -249,7 +250,9 @@ export default function GuideDetailPage() {
             </div>
           </section>
         )}
-      </article>
+
+        <ContentTrust className="mt-8" />
+      </main>
 
       <footer className="mt-10 border-t border-slate-200 bg-white px-6 py-8 text-center text-xs text-slate-500">
         <span className="inline-flex items-center gap-1.5">

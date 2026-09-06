@@ -39,7 +39,7 @@ export default function GuidesPage() {
         <Link to="/login" className="secondary-button !px-3.5 !py-2">업체 로그인</Link>
       </header>
 
-      <section className="mx-auto max-w-3xl px-5 py-12 sm:px-6 sm:py-16">
+      <main className="mx-auto max-w-3xl px-5 py-12 sm:px-6 sm:py-16">
         <div className="mb-10">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
             <ScrollText size={14} />판례 {COURT_COUNT}편 · 재결례 {RULING_COUNT}편 · 법령해석 {INTERPRETATION_COUNT}건
@@ -108,7 +108,7 @@ export default function GuidesPage() {
           사실관계가 다르면 결론도 달라질 수 있고, 이후 법이 개정된 부분이 있을 수 있으니
           날짜를 함께 확인해 주세요. 개별 사건의 판단은 변호사 검토를 거쳐야 합니다.
         </p>
-      </section>
+      </main>
 
       <footer className="mt-10 border-t border-slate-200 bg-white px-6 py-8 text-center text-xs text-slate-500">
         <span className="inline-flex items-center gap-1.5">

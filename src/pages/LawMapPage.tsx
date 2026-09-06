@@ -53,7 +53,7 @@ export default function LawMapPage() {
         <Link to="/login" className="secondary-button !px-3.5 !py-2">업체 로그인</Link>
       </header>
 
-      <section className="mx-auto max-w-3xl px-5 py-12 sm:px-6 sm:py-16">
+      <main className="mx-auto max-w-3xl px-5 py-12 sm:px-6 sm:py-16">
         <div className="mb-8">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600">
             <ScrollText size={14} />{LAW_NAME} · {LAW_ENFORCED_ON} 시행
@@ -188,7 +188,7 @@ export default function LawMapPage() {
           조문의 요지를 실무 기준으로 옮긴 것이며 원문이 아닙니다. 정확한 문언과 개정 여부는
           국가법령정보센터에서 확인해 주세요. 개별 사안의 판단은 변호사 검토를 거쳐야 합니다.
         </p>
-      </section>
+      </main>
 
       <footer className="mt-10 border-t border-slate-200 bg-white px-6 py-8 text-center text-xs text-slate-500">
         <span className="inline-flex flex-wrap items-center justify-center gap-1.5">

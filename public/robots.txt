@@ -37,3 +37,18 @@ User-agent: Claude-User
 Allow: /
 
 Sitemap: https://weddingcore.net/sitemap.xml
+
+# 학습(training) 크롤러 정책
+# 본문을 그대로 학습 자료로 가져가는 크롤러는 막는다. 위의 AI 검색·응답 크롤러는
+# 인용을 위해 열어 두었으므로, 답변에 인용되는 길은 그대로 남는다.
+User-agent: GPTBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /

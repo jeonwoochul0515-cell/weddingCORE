@@ -55,7 +55,7 @@ export default function MbtiTestPage() {
   if (result) {
     const desc = MBTI_DESCRIPTIONS[result.type];
     return (
-      <div className="mx-auto max-w-lg px-4 py-8">
+      <main className="mx-auto max-w-lg px-4 py-8">
         <LangSelector lang={lang} onChange={setLang} />
 
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
@@ -95,14 +95,14 @@ export default function MbtiTestPage() {
         <div className="mt-4 text-center">
           <Link to="/visa-simulator" className="text-xs text-slate-500 hover:text-slate-700">← weddingCORE</Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   // 질문 화면
   return (
     <>
-    <div className="mx-auto max-w-lg px-4 py-8">
+    <main className="mx-auto max-w-lg px-4 py-8">
       {lang === 'ko' && (
         <script
           type="application/ld+json"
@@ -195,7 +195,7 @@ export default function MbtiTestPage() {
       </div>
 
       <p className="mt-6 text-center text-[10px] text-slate-400">{mt('disclaimer', lang)}</p>
-    </div>
+    </main>
     {/* 진단이 무엇을 보는지 글로도 둔다. 문항은 자바스크립트로 그려져 검색·AI가 읽을 게 없다.
         한국어로만 쓰여 있어 다른 언어를 고른 사람에게는 보여주지 않는다. */}
     {lang === 'ko' && <AboutTest />}

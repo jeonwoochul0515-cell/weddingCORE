@@ -11,6 +11,7 @@ import { usePageMeta } from '@/lib/usePageMeta';
 import { findLawArticle, LAW_ARTICLE_DETAILS } from '@/content/lawArticles';
 import { findGuide } from '@/content/guides';
 import { LAW_ENFORCED_ON, LAW_NAME, LAW_SOURCE_URL } from '@/content/lawMap';
+import ContentTrust from '@/components/content/ContentTrust';
 import { breadcrumbSchema, articleSchema } from '@/lib/schema';
 import NotFoundPage from './NotFoundPage';
 
@@ -50,7 +51,7 @@ export default function LawArticlePage() {
         <Link to="/login" className="secondary-button !px-3.5 !py-2">업체 로그인</Link>
       </header>
 
-      <article className="mx-auto max-w-3xl px-5 py-10 sm:px-6 sm:py-14">
+      <main className="mx-auto max-w-3xl px-5 py-10 sm:px-6 sm:py-14">
         <Link
           to="/law"
           className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-700"
@@ -170,7 +171,9 @@ export default function LawArticlePage() {
             </div>
           </section>
         )}
-      </article>
+
+        <ContentTrust className="mt-8" />
+      </main>
 
       <footer className="mt-10 border-t border-slate-200 bg-white px-6 py-8 text-center text-xs text-slate-500">
         <span className="inline-flex flex-wrap items-center justify-center gap-1.5">

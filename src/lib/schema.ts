@@ -51,6 +51,13 @@ export function articleSchema(args: {
     ...(args.sourceDate ? { datePublished: args.sourceDate } : {}),
     author: { '@type': 'Organization', name: 'weddingCORE', url: ORIGIN },
     publisher: { '@type': 'Organization', name: 'weddingCORE', url: ORIGIN },
+    // 화면 아래 신뢰 블록에 적힌 감수자와 같은 사람이다. 화면에 없는 사람을 넣지 않는다.
+    reviewedBy: {
+      '@type': 'Person',
+      name: '김창희',
+      jobTitle: '변호사',
+      worksFor: { '@type': 'Organization', name: '법률사무소 청송law', url: 'https://chang-hee.kim' },
+    },
   };
 }
 

@@ -154,7 +154,79 @@ async function main() {
     console.log(`  저장 ${path.relative(ROOT, outPath)} (${(html.length / 1024).toFixed(1)}KB)`);
   }
 
+  writeFeeds(rendered);
+
   console.log(`\n프리렌더 ${rendered.length}개 라우트 완료`);
+}
+
+/**
+ * RSS와 llms.txt를 렌더 결과에서 만든다.
+ *
+ * 손으로 관리하면 글을 늘릴 때마다 빠뜨린다. 실제로 렌더된 페이지의 제목·설명을 그대로
+ * 쓰므로 화면과 어긋날 일이 없다. 네이버는 RSS 제출을 받고, AI 크롤러는 llms.txt를 본다.
+ */
+function writeFeeds(rendered) {
+  const ORIGIN = 'https://weddingcore.net';
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const metaDesc = (html) =>
+    (html.match(/<meta[^>]+name="description"[^>]+content="([^"]*)"/i) || [])[1] || '';
+  const bodyText = (html) =>
+    (html.split(/<main[^>]*>/i)[1] || '')
+      .split(/<\/main>/i)[0]
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  // 글다운 페이지만 싣는다. 목록·도구 화면은 갱신되는 글이 아니다.
+  const posts = rendered.filter((r) => /^\/(guides|law)\/.+/.test(r.route));
+  const now = new Date().toUTCString();
+
+  const items = posts
+    .map((r) => {
+      const title = r.title.split(/[|—]/)[0].trim();
+      return [
+        '    <item>',
+        `      <title>${esc(title)}</title>`,
+        `      <link>${ORIGIN}${r.route}</link>`,
+        `      <guid isPermaLink="true">${ORIGIN}${r.route}</guid>`,
+        `      <description>${esc(metaDesc(r.html))}</description>`,
+        // 본문 전체를 담는다. 네이버 가이드가 요구하는 형태다.
+        `      <content:encoded><![CDATA[${bodyText(r.html)}]]></content:encoded>`,
+        `      <pubDate>${now}</pubDate>`,
+        '    </item>',
+      ].join('\n');
+    })
+    .join('\n');
+
+  const rss = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>weddingCORE 결혼중개업법 해설</title>
+    <link>${ORIGIN}/guides</link>
+    <description>국제결혼중개업체가 실제로 부딪히는 법령 질문을 조문과 해석으로 정리합니다.</description>
+    <language>ko</language>
+    <lastBuildDate>${now}</lastBuildDate>
+${items}
+  </channel>
+</rss>
+`;
+  fs.writeFileSync(path.join(DIST, 'rss.xml'), rss, 'utf-8');
+  console.log(`  저장 dist/rss.xml (${posts.length}건)`);
+
+  // llms.txt — 정적 머리말은 public/llms.txt에 두고, 글 목록만 여기서 붙인다.
+  const llmsPath = path.join(DIST, 'llms.txt');
+  if (fs.existsSync(llmsPath)) {
+    const base = fs.readFileSync(llmsPath, 'utf-8').split('## 주의')[0].trimEnd();
+    const tail = fs.readFileSync(llmsPath, 'utf-8').includes('## 주의')
+      ? '\n\n## 주의' + fs.readFileSync(llmsPath, 'utf-8').split('## 주의')[1]
+      : '\n';
+    const list = posts
+      .map((r) => `- [${r.title.split(/[|—]/)[0].trim()}](${ORIGIN}${r.route})`)
+      .join('\n');
+    fs.writeFileSync(llmsPath, `${base}\n\n## 결혼중개업법 해설 전체\n\n${list}\n${tail}`, 'utf-8');
+    console.log(`  갱신 dist/llms.txt (해설 ${posts.length}건 목록)`);
+  }
 }
 
 main().catch((error) => {

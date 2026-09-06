@@ -79,7 +79,7 @@ export default function VisaSimulatorPage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-3xl px-5 py-12 sm:px-6 sm:py-16">
+      <main className="mx-auto max-w-3xl px-5 py-12 sm:px-6 sm:py-16">
         <div className="mb-10 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><Sparkles size={14} />2026년 공식 소득기준 반영</div>
           <h1 className="text-4xl font-bold tracking-[-0.045em] text-[#102621] sm:text-5xl">
@@ -92,7 +92,7 @@ export default function VisaSimulatorPage() {
 
         {!result && <InputForm lang={lang} onSubmit={handleSubmit} />}
         {result && <ResultView result={result} lang={lang} onReset={handleReset} />}
-      </section>
+      </main>
 
       {/* 요건 설명. 도구는 자바스크립트로 그려져 검색·AI가 읽을 내용이 없으므로 글로도 둔다.
           한국어로만 쓰여 있어 다른 언어를 고른 사람에게는 보여주지 않는다. */}
