@@ -12,6 +12,7 @@ import { findGuide, sourceUrl, GUIDES } from '@/content/guides';
 import { matchLawArticle } from '@/content/lawArticles';
 import { matchLawMapEntry } from '@/content/lawMap';
 import ContentTrust from '@/components/content/ContentTrust';
+import { buildLeadAnswer } from '@/lib/leadAnswer';
 import { breadcrumbSchema, articleSchema } from '@/lib/schema';
 import NotFoundPage from './NotFoundPage';
 
@@ -29,13 +30,11 @@ export default function GuideDetailPage() {
 
   const others = GUIDES.filter((i) => i.slug !== item.slug).slice(0, 3);
 
-  // 화면에 보이는 질문·답과 같은 내용만 담는다. 화면에 없는 것을 스키마에 넣지 않는다.
-  //
-  // 결론만 담으면 안 된다. 화면에서는 질문 바로 밑이라 "대한민국 외의 국가를 뜻한다고
-  // 보았습니다" 한 줄로 통하지만, 검색 답변이나 AI 답변은 이 문장만 떼어 가므로
-  // 무엇에 대한 답인지 알 수 없게 된다. 결론에 근거 두 줄을 붙여 홀로 읽히게 한다.
-  // 둘 다 화면에 있는 문장이라 스키마와 화면이 어긋나지 않는다.
-  const standaloneAnswer = [item.answer, ...item.reasoning.slice(0, 2)].join(' ');
+  // 답변엔진이 이 문장만 떼어 가므로 홀로 읽혀야 하고, 길이도 맞아야 한다.
+  // 결론 → 요약 → 근거 순으로 40어절이 될 때까지 잇는다(buildLeadAnswer 주석 참조).
+  // 화면의 답 상자에 이 문장을 그대로 그리므로 스키마와 화면이 한 글자도 어긋나지 않는다.
+  const lead = buildLeadAnswer([item.answer, item.summary, ...item.reasoning]);
+  const standaloneAnswer = lead.text;
   const faqSchema = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -107,7 +106,10 @@ export default function GuideDetailPage() {
           <h2 className="mb-2 text-sm font-bold text-emerald-800">
             {item.kind === 'interpretation' ? '법제처는 어떻게 답했나' : '어떻게 판단됐나'}
           </h2>
-          <p className="text-lg font-semibold leading-relaxed text-[#102621]">{item.answer}</p>
+          <p className="text-lg font-semibold leading-relaxed text-[#102621]">{lead.head}</p>
+          {lead.rest.map((line) => (
+            <p key={line} className="mt-2 text-[15px] leading-relaxed text-slate-700">{line}</p>
+          ))}
         </section>
 
         <section className="mt-8">

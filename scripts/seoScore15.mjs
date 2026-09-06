@@ -132,10 +132,28 @@ area('1. 크롤링·색인', (c) => {
 area('2. 렌더링·프리렌더', (c) => {
   c('모든 라우트가 정적 HTML', 3, pages.length >= 30 ? 1 : pages.length / 30, `${pages.length}개`)
   c('본문이 HTML에 들어 있음(1200자↑)', 4, ratio(indexable, (p) => bodyText(p.html).length > 1200))
-  // 길이는 한 줄로 자르지 않고 3000자를 만점으로 한 등급으로 본다(임의의 문턱을 두지 않기 위함)
-  c('칼럼 본문 깊이(3000자 만점)', 3,
-    columns.length ? columns.reduce((s, p) => s + Math.min(1, bodyText(p.html).length / 3000), 0) / columns.length : 0,
-    `평균 ${Math.round(columns.reduce((s, p) => s + bodyText(p.html).length, 0) / (columns.length || 1))}자`)
+  // 예전에는 "3000자를 만점"으로 두었는데, 그 문턱에는 근거가 없었다.
+  // 구글 AI 개요 인용과 글자 수의 상관은 0.04로 사실상 무관하고 인용의 53%가 1,000단어 미만
+  // 글에서 나온다. 반면 실제로 인용된 문단은 거의 항상 35~65단어(한국어 어절) 구간이었다.
+  // 그래서 "글이 긴가"가 아니라 "홀로 읽히는 단위를 갖췄나"를 본다.
+  // 출처는 docs/검색최적화-2026-09-06.md 「AI가 인용하는 길이」.
+  const eoj = (t) => (t.trim() ? t.trim().split(/\s+/).length : 0)
+  const leadOf = (h) => {
+    const m = h.match(/class="[^"]*lead-box[^"]*"[^>]*>([\s\S]*?)<\/(section|div)>/)
+    return m ? m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : ''
+  }
+  const unitsOf = (h) => {
+    const main = (h.split(/<main[^>]*>/i)[1] || h).split(/<\/main>/i)[0]
+    return [...main.matchAll(/<(p|li)[^>]*>([\s\S]*?)<\/(?:p|li)>/gi)]
+      .map((m) => m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim())
+      .filter((t) => t.length > 8)
+  }
+  c('두괄식 답이 40~65어절', 3, ratio(columns, (p) => {
+    const n = eoj(leadOf(p.html))
+    return n >= 40 && n <= 65
+  }), `평균 ${Math.round(columns.reduce((s, p) => s + eoj(leadOf(p.html)), 0) / (columns.length || 1))}어절`)
+  c('인용 가능 문단(25~70어절) 3개 이상', 2, ratio(columns, (p) =>
+    unitsOf(p.html).filter((t) => eoj(t) >= 25 && eoj(t) <= 70).length >= 3))
   c('내부 링크가 표준 a href', 3, ratio(pages, (p) => (p.html.match(/<a\s[^>]*href="\//g) || []).length >= 3))
   c('fragment(#) 라우팅 없음', 2, ratio(pages, (p) => !/href="#!?\//.test(p.html)))
   c('javascript: 링크 없음', 1, ratio(pages, (p) => !/href="javascript:/i.test(p.html)))
