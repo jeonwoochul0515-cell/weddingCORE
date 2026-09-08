@@ -15,6 +15,7 @@ import ContentTrust from '@/components/content/ContentTrust';
 import { buildLeadAnswer } from '@/lib/leadAnswer';
 import { breadcrumbSchema, articleSchema } from '@/lib/schema';
 import NotFoundPage from './NotFoundPage';
+import BusinessInfo from '@/components/layout/BusinessInfo';
 
 export default function GuideDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -265,6 +266,7 @@ export default function GuideDetailPage() {
               ? '출처. 국가법령정보센터 행정심판 재결례'
               : `출처. 법제처 국가법령정보센터 법령해석례 (일련번호 ${item.sourceId})`}
         </span>
+        <BusinessInfo className="mt-2" />
       </footer>
     </div>
   );

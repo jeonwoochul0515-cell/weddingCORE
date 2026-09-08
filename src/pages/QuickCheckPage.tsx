@@ -12,6 +12,7 @@ import { QUESTIONS } from '@/features/quickCheck/questions';
 import { COUNTRY_SPONSOR_RULES, CURRENT_RULE_YEAR, INCOME_THRESHOLDS, RULE_SOURCE_URL } from '@/features/visaSimulator/rules';
 import { usePageMeta } from '@/lib/usePageMeta';
 import { breadcrumbSchema, webPageSchema } from '@/lib/schema';
+import BusinessInfo from '@/components/layout/BusinessInfo';
 
 const AGENCY_ID_RE = /^ag_[A-Za-z0-9_-]{6,40}$/;
 const KH = COUNTRY_SPONSOR_RULES.KH!;
@@ -134,6 +135,7 @@ export default function QuickCheckPage() {
         <span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-600" />본 결과는 준비도 점검이며 법률자문이나 심사 결과 예측이 아닙니다.</span>
       
         <p className="mt-2 text-[11px] leading-5 text-slate-400">weddingCORE는 국제결혼중개업체의 고객·서류·법정기한을 한곳에서 관리하는 업무 시스템입니다.</p>
+        <BusinessInfo className="mt-2" />
       </footer>
     </div>
   );

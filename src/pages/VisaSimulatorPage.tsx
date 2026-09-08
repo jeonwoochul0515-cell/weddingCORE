@@ -10,6 +10,7 @@ import { usePageMeta } from '@/lib/usePageMeta';
 import { breadcrumbSchema, webPageSchema } from '@/lib/schema';
 import AboutF6, { F6_FAQ } from '@/features/visaSimulator/AboutF6';
 import { CURRENT_RULE_YEAR } from '@/features/visaSimulator/rules';
+import BusinessInfo from '@/components/layout/BusinessInfo';
 
 export default function VisaSimulatorPage() {
   usePageMeta({
@@ -102,6 +103,7 @@ export default function VisaSimulatorPage() {
         <span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-600" />본 결과는 준비도 점검이며 법률자문이나 승인 예측이 아닙니다.</span>
       
         <p className="mt-2 text-[11px] leading-5 text-slate-400">weddingCORE는 국제결혼중개업체의 고객·서류·법정기한을 한곳에서 관리하는 업무 시스템입니다.</p>
+        <BusinessInfo className="mt-2" />
       </footer>
 
       {/* 인쇄 최적화 */}

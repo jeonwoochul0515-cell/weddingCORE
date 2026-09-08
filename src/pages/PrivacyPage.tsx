@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
 import { breadcrumbSchema, webPageSchema } from '@/lib/schema';
+import BusinessInfo from '@/components/layout/BusinessInfo';
 
 const UPDATED_AT = '2026-08-28';
 
@@ -136,6 +137,7 @@ export default function PrivacyPage() {
             홈으로 돌아가기
           </Link>
         </div>
+        <BusinessInfo className="mt-8 border-t border-slate-200 pt-6" />
       </main>
     </div>
   );

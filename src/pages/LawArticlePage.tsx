@@ -15,6 +15,7 @@ import ContentTrust from '@/components/content/ContentTrust';
 import { buildLeadAnswer } from '@/lib/leadAnswer';
 import { breadcrumbSchema, articleSchema } from '@/lib/schema';
 import NotFoundPage from './NotFoundPage';
+import BusinessInfo from '@/components/layout/BusinessInfo';
 
 export default function LawArticlePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -211,6 +212,7 @@ export default function LawArticlePage() {
             원문 보기 <ExternalLink size={11} />
           </a>
         </span>
+        <BusinessInfo className="mt-2" />
       </footer>
     </div>
   );

@@ -7,6 +7,7 @@ import { mt, type MbtiLang } from '@/features/matching/mbtiTest/i18n';
 import { usePageMeta } from '@/lib/usePageMeta';
 import { breadcrumbSchema, webPageSchema } from '@/lib/schema';
 import AboutTest, { TEST_FAQ } from '@/features/matching/mbtiTest/AboutTest';
+import BusinessInfo from '@/components/layout/BusinessInfo';
 
 const LANGS: { code: MbtiLang; label: string }[] = [
   { code: 'ko', label: '한국어' },
@@ -202,6 +203,7 @@ export default function MbtiTestPage() {
     {/* 진단이 무엇을 보는지 글로도 둔다. 문항은 자바스크립트로 그려져 검색·AI가 읽을 게 없다.
         한국어로만 쓰여 있어 다른 언어를 고른 사람에게는 보여주지 않는다. */}
     {lang === 'ko' && <AboutTest />}
+    <BusinessInfo className="px-6 pb-8 text-center" />
     </>
   );
 }
