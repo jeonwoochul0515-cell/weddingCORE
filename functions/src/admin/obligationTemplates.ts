@@ -162,7 +162,10 @@ const MARRIAGE_BROKERAGE_OBLIGATIONS: ObligationTemplateSeed[] = [
     disputeRisk:
       '서면계약 부존재는 소비자 주장대로 사실인정(민사소송법 §288 입증책임). ' +
       '구두 약정만 존재 시 환불 소송에서 업체 거의 전패. 실무상 최고빈도 분쟁 유형.',
-    dueDateRule: { type: 'relative', anchor: 'client_created', offsetDays: 7 },
+    // 계약을 언제까지 맺어야 한다는 기한은 법에 없다. 예전에는 「고객 등록 + 7일」이라
+    // 적혀 있어서, 상담 온 날 등록해 두고 3주 뒤 계약하면 열리자마자 「위반」이 찍혔다.
+    // 계약일을 기록하기 전까지는 기한을 두지 않는다(점검 04-3).
+    dueDateRule: { type: 'relative', anchor: 'contract_signed', offsetDays: 0 },
     requiredEvidence: ['양측 서명·날인 계약서 원본 스캔본', '계약서 교부 확인서'],
     checkRule: { type: 'document_uploaded', params: { docType: 'contract' } },
     severity: 'critical', order: 201,

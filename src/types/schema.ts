@@ -425,7 +425,8 @@ export type TimelineItem = {
   title: string;
   legalBasis: string;
   status: TimelineItemStatus;
-  dueDate: Timestamp;
+  /** 기준일(맞선일·혼인신고일 등)을 아직 기록하지 않은 항목은 기한이 없다. */
+  dueDate: Timestamp | null;
   completedAt: Timestamp | null;
   completedBy: string | null;
   evidence: Array<{ docId: string; addedAt: Timestamp }>;

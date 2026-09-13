@@ -138,9 +138,10 @@ function TimelineRow({
 }) {
   const meta = STATUS_META[item.status];
   const Icon = meta.icon;
-  const due = item.dueDate.toDate();
-  const daysLeft = Math.ceil((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  const overdue = daysLeft < 0 && item.status !== 'done';
+  // 기준일을 아직 안 적은 항목은 기한이 없다. 없는 기한을 지어내 D-일수로 보여 주지 않는다.
+  const due = item.dueDate?.toDate() ?? null;
+  const daysLeft = due ? Math.ceil((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+  const overdue = daysLeft !== null && daysLeft < 0 && item.status !== 'done';
 
   return (
     <button
@@ -162,6 +163,8 @@ function TimelineRow({
         <div className={overdue ? 'font-medium text-red-600' : 'text-slate-500'}>
           {item.status === 'done'
             ? '완료'
+            : daysLeft === null
+            ? '기한 미정'
             : overdue
             ? `기한 ${-daysLeft}일 경과`
             : `D-${daysLeft}`}
@@ -269,7 +272,9 @@ function TimelineDetail({
         <div>
           <div className="text-xs font-medium text-slate-500">기한</div>
           <div className="text-sm text-slate-900">
-            {item.dueDate.toDate().toLocaleDateString('ko-KR')}
+            {item.dueDate
+              ? item.dueDate.toDate().toLocaleDateString('ko-KR')
+              : `아직 정해지지 않았습니다 — 아래에서 ${anchor ? ANCHOR_LABEL[anchor] : '기준일'}을 적으면 기한이 정해집니다`}
           </div>
           {anchor && (
             <div className="mt-0.5 text-xs text-slate-400">

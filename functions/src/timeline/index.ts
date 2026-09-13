@@ -28,7 +28,8 @@ type TimelineDoc = {
   title: string;
   legalBasis: string;
   status: 'pending' | 'in_progress' | 'done' | 'warning' | 'violated' | 'blocked';
-  dueDate: Timestamp;
+  /** 기준일(맞선일·혼인신고일 등)을 아직 기록하지 않은 항목은 기한이 없다. 지어내지 않는다. */
+  dueDate: Timestamp | null;
   completedAt: Timestamp | null;
   completedBy: string | null;
   evidence: Array<{ docId: string; addedAt: Timestamp }>;
@@ -87,7 +88,7 @@ export const onClientCreated = onDocumentCreated(
         title: tpl.title,
         legalBasis: tpl.legalBasis,
         status,
-        dueDate: Timestamp.fromDate(dueDate),
+        dueDate: dueDate ? Timestamp.fromDate(dueDate) : null,
         completedAt: null,
         completedBy: null,
         evidence: [],
@@ -191,12 +192,22 @@ async function cascadeStageUnblock(
       .where('stage', '==', nextStage)
       .where('status', '==', 'blocked')
       .get();
+    const unblockedAt = new Date();
     for (const d of blockedNext.docs) {
-      batch.update(d.ref, {
+      const item = d.data() as TimelineDoc;
+      // 잠겨 있던 동안에도 시계가 돌아, 앞 단계가 늦게 끝나면 열리자마자 「위반」이 되던 것을
+      // 막는다. 고객 등록일 기준 항목은 잠금이 풀리는 시점에서 다시 센다(점검 02-3·04-3).
+      const patch: Record<string, unknown> = {
         status: 'pending',
         blockedReason: null,
         updatedAt: FieldValue.serverTimestamp(),
-      });
+      };
+      if (item.dueDateRule?.anchor === 'client_created') {
+        const recomputed = new Date(unblockedAt);
+        recomputed.setDate(recomputed.getDate() + item.dueDateRule.offsetDays);
+        patch.dueDate = Timestamp.fromDate(recomputed);
+      }
+      batch.update(d.ref, patch);
     }
   }
 
@@ -302,6 +313,9 @@ export const checkTimelineOverdue = onSchedule(
 
     for (const d of snap.docs) {
       const data = d.data() as TimelineDoc;
+      // 기한이 없는 항목(기준일 미기록)은 넘긴다. Firestore 정렬에서 null이 Timestamp보다
+      // 앞이라 「dueDate < 지금」 조회에 딸려 오기 때문에 여기서 반드시 걸러야 한다.
+      if (!data.dueDate) continue;
       const overdueDays = Math.floor(
         (now.getTime() - data.dueDate.toDate().getTime()) / (1000 * 60 * 60 * 24),
       );
@@ -319,17 +333,21 @@ export const checkTimelineOverdue = onSchedule(
   },
 );
 
-function computeInitialDueDate(anchor: string, offsetDays: number, now: Date): Date {
-  // Phase 1: client_created만 즉시 계산. 나머지 anchor는 발생 시점 이후 markAnchorEvent에서 재계산.
+/**
+ * 고객을 등록할 때 정할 수 있는 기한만 정한다.
+ *
+ * 예전에는 기준일(맞선일·혼인신고일·입국일)을 모르면 「등록일 + |일수| + 60일」이라는
+ * 임시 날짜를 넣었다. 화면에는 그 값이 「D-67」처럼 진짜 기한으로 보여서, 맞선을 잡지도
+ * 않은 고객의 항목이 두 달 뒤 한꺼번에 경고·위반으로 바뀌었다. 실제로는 아무 법도
+ * 어기지 않은 상태다. 그래서 기준일이 없으면 기한을 비워 둔다(점검 02-3·04-2).
+ */
+function computeInitialDueDate(anchor: string, offsetDays: number, now: Date): Date | null {
   if (anchor === 'client_created') {
     const d = new Date(now);
     d.setDate(d.getDate() + offsetDays);
     return d;
   }
-  // 임시로 현재 기준 offsetDays만큼 + 60일 버퍼 (anchor 기록 전까지의 placeholder)
-  const d = new Date(now);
-  d.setDate(d.getDate() + Math.abs(offsetDays) + 60);
-  return d;
+  return null;
 }
 
 function isStageBlocked(stage: number): boolean {

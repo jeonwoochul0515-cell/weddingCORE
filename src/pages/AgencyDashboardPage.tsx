@@ -35,6 +35,9 @@ function useUpcomingTimeline() {
       where('agencyId', '==', agencyId),
       // 3일 넘게 지난 항목(violated)이 빠져 있어 가장 급한 일이 목록에 안 나왔다. 기한순이라 맨 위에 온다.
       where('status', 'in', ['pending', 'in_progress', 'warning', 'violated']),
+      // 기준일을 아직 안 적어 기한이 없는 항목은 뺀다. Firestore 정렬에서 null이 날짜보다
+      // 앞이라, 그냥 기한순으로 뽑으면 기한 미정 항목이 목록 다섯 자리를 다 차지한다.
+      where('dueDate', '>', Timestamp.fromMillis(0)),
       orderBy('dueDate', 'asc'),
       limit(5),
     );
@@ -211,7 +214,7 @@ export default function AgencyDashboardPage() {
                     {STAGE_LABEL[item.stage] ?? `단계 ${item.stage}`} · {item.legalBasis}
                   </div>
                 </div>
-                <DueBadge due={item.dueDate} />
+                {item.dueDate && <DueBadge due={item.dueDate} />}
               </li>
             );
           })}
