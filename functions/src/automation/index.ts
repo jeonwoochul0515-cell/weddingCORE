@@ -93,19 +93,30 @@ async function consumeCredits(agencyId: string, cost: number) {
     }
 
     const fromMonthly = Math.min(cost, monthlyRemaining);
+    const fromPurchased = cost - fromMonthly;
     const credits = {
       monthlyAllowance: allowance,
       used: used + fromMonthly,
       resetAt: shouldReset ? nextMonth(now) : stored!.resetAt,
-      purchased: purchased - (cost - fromMonthly),
+      purchased: purchased - fromPurchased,
     };
     tx.update(ref, { aiCredits: credits, updatedAt: FieldValue.serverTimestamp() });
-    return { ...credits, remaining: monthlyRemaining + purchased - cost };
+    // 어디서 얼마를 뺐는지 그대로 넘긴다. 실패해서 되돌릴 때 이 숫자가 없으면 무료분과
+    // 충전분이 뒤바뀐다(아래 restoreCredits 주석).
+    return { ...credits, remaining: monthlyRemaining + purchased - cost, fromMonthly, fromPurchased };
   });
 }
 
-/** 생성 실패 시 차감한 순서의 역순으로 되돌린다. 월 무료분을 먼저 회복시킨다. */
-async function restoreCredits(agencyId: string, cost: number) {
+/**
+ * 생성 실패 시 뺀 곳으로 그대로 돌려준다.
+ *
+ * 예전에는 cost 한 덩어리만 받아 「무료분부터」 되돌렸다. 그러면 이번 달 무료 20캐럿을 이미
+ * 다 쓴 뒤 110캐럿짜리를 전액 충전분에서 차감하고 실패했을 때, 복구가 무료 사용량을 20→0으로
+ * 되돌리고 충전분에는 90만 돌려줬다. 업체가 돈 주고 산 20캐럿이 월말에 사라지는 무료분으로
+ * 바뀌는 셈이라, 차감할 때 나눠 뺀 숫자를 그대로 받아 되돌린다.
+ */
+async function restoreCredits(agencyId: string, fromMonthly: number, fromPurchased: number) {
+  if (fromMonthly <= 0 && fromPurchased <= 0) return;
   const db = getFirestore();
   const ref = db.doc(`agencies/${agencyId}`);
   await db.runTransaction(async (tx) => {
@@ -113,10 +124,12 @@ async function restoreCredits(agencyId: string, cost: number) {
     if (!snap.exists) return;
     const stored = snap.get('aiCredits') as StoredCredits | undefined;
     const used = stored?.used ?? 0;
-    const toMonthly = Math.min(cost, used);
+    // 되돌리는 사이에 달이 바뀌어 사용량이 이미 0으로 초기화됐으면 음수로 내려가지 않게 막는다.
+    // 그때 못 돌려주는 무료분은 어차피 월말에 소멸하는 몫이고, 돈을 낸 충전분은 전액 돌아간다.
+    const backToMonthly = Math.min(fromMonthly, used);
     tx.update(ref, {
-      'aiCredits.used': used - toMonthly,
-      'aiCredits.purchased': (stored?.purchased ?? 0) + (cost - toMonthly),
+      'aiCredits.used': used - backToMonthly,
+      'aiCredits.purchased': (stored?.purchased ?? 0) + fromPurchased,
       updatedAt: FieldValue.serverTimestamp(),
     });
   });
@@ -274,11 +287,14 @@ export const generateLegalDocument = onCall(
       lawyerChecklist: [],
       requestNote: String(requestNote),
       creditCost: cost,
+      // 무료분·충전분에서 각각 얼마를 뺐는지. 실패 복구와 나중에 쓸 사용 내역이 이 숫자를 본다.
+      creditBreakdown: { monthly: credits.fromMonthly, purchased: credits.fromPurchased },
       modelTokenUsage: null,
       version: 1,
       generatedBy: uid,
       reviewedBy: null,
       reviewNote: null,
+      failureNote: null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       approvedAt: null,
@@ -344,12 +360,25 @@ export const generateLegalDocument = onCall(
       return { ok: true, jobId: jobRef.id, remainingCredits: credits.remaining };
     } catch (error) {
       logger.error('AI 문서 생성 실패', { agencyId, clientId, documentType, error });
+      // 돌려준 다음에 돌려줬다고 적는다. 순서가 반대면 복구가 실패해도 화면에는
+      // 돌려준 것처럼 뜬다.
+      let restored = true;
+      try {
+        await restoreCredits(agencyId, credits.fromMonthly, credits.fromPurchased);
+      } catch (restoreError) {
+        restored = false;
+        logger.error('캐럿 복구 실패', { agencyId, jobId: jobRef.id, cost, error: restoreError });
+      }
+      // 실패 안내를 reviewNote에 넣지 않는다. 화면이 그 칸을 「검토 의견」으로 보여 줘서
+      // 변호사가 쓴 말처럼 읽힌다. 실패 사유는 failureNote로 따로 둔다.
       await jobRef.update({
         status: 'failed',
-        reviewNote: 'AI 문서 생성에 실패했습니다. 캐럿 복구는 관리자에게 문의해 주세요.',
+        creditRestored: restored,
+        failureNote: restored
+          ? `초안을 만들지 못했습니다. 차감된 ${cost}캐럿은 자동으로 돌려드렸습니다. 다시 눌러 주세요.`
+          : `초안을 만들지 못했고 ${cost}캐럿을 돌려드리는 데도 실패했습니다. 사무실(1660-4452)로 알려 주세요.`,
         updatedAt: FieldValue.serverTimestamp(),
       });
-      await restoreCredits(agencyId, cost);
       throw error instanceof HttpsError
         ? error
         : new HttpsError('internal', 'AI 문서 생성 중 오류가 발생했습니다.');

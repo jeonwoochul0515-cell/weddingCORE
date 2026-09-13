@@ -515,11 +515,15 @@ export type AutomationJob = {
   lawyerChecklist: string[];
   requestNote: string;
   creditCost: number;
+  /** 무료분·충전분에서 각각 뺀 캐럿. 실패해서 되돌릴 때 이 숫자대로 돌려준다. */
+  creditBreakdown?: { monthly: number; purchased: number };
   modelTokenUsage: { input: number; output: number } | null;
   version: number;
   generatedBy: string;
   reviewedBy: string | null;
   reviewNote: string | null;
+  /** 생성 실패 사유. 변호사가 쓰는 reviewNote와 섞지 않는다. */
+  failureNote?: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   approvedAt: Timestamp | null;

@@ -28,7 +28,11 @@ const STATUS: Record<AutomationJobStatus, { label: string; tone: string }> = {
 };
 
 function errorMessage(error: unknown) {
-  const value = error as { message?: string };
+  const value = error as { message?: string; code?: string };
+  // 기다리다 시간이 다 된 경우. 서버는 계속 만들고 있을 수 있으므로 다시 누르라고 하지 않는다.
+  if (value.code === 'functions/deadline-exceeded' || value.message?.includes('deadline-exceeded')) {
+    return '시간이 오래 걸리고 있습니다. 아래 「최근 자동화 작업」 목록을 잠시 뒤 확인해 주세요. 다시 누르면 같은 문서가 두 번 만들어집니다.';
+  }
   return value.message?.replace(/^Firebase:\s*/i, '') ?? '처리 중 오류가 발생했습니다.';
 }
 
@@ -126,7 +130,10 @@ export default function AutomationCenterPage() {
     setBusy('generate');
     setNotice(null);
     try {
-      await httpsCallable(functions, 'generateLegalDocument')({ clientId, documentType, requestNote });
+      // 기다리는 시간을 서버(timeoutSeconds 180)와 맞춘다. 기본값은 70초라서, 긴 문서를
+      // 쓰느라 70초를 넘기면 화면에만 실패로 뜨고 서버는 초안을 완성해 캐럿을 뺐다.
+      // 사장이 실패한 줄 알고 다시 누르면 같은 문서가 두 번 만들어지고 두 번 차감됐다.
+      await httpsCallable(functions, 'generateLegalDocument', { timeout: 180_000 })({ clientId, documentType, requestNote });
       setRequestNote('');
       setNotice({ ok: true, text: '초안을 생성해 변호사 검토 큐로 보냈습니다.' });
     } catch (error) {
@@ -297,6 +304,7 @@ export default function AutomationCenterPage() {
               <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${state.tone}`}>{state.label}</span>
             </summary>
             <div className="space-y-3 border-t border-slate-100 bg-[#f8faf9] px-5 py-5 text-sm sm:px-6">
+              {job.failureNote && <div className="rounded-md border border-slate-300 bg-white p-3 text-slate-700">{job.failureNote}</div>}
               {job.reviewNote && <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900"><strong>검토 의견:</strong> {job.reviewNote}</div>}
               {job.riskFlags.length > 0 && <div><strong>위험 신호</strong><ul className="mt-1 list-disc pl-5 text-slate-700">{job.riskFlags.map((item) => <li key={item}>{item}</li>)}</ul></div>}
               <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-2xl border border-slate-200 bg-white p-5 font-sans text-xs leading-6 text-slate-800 shadow-sm">{job.generatedContent || '아직 생성된 본문이 없습니다.'}</pre>
