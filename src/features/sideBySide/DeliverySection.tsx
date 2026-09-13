@@ -61,13 +61,20 @@ export default function DeliverySection({
   const [lang, setLang] = useState<SupportedLang>('ko');
   const [method, setMethod] = useState<DeliveryMethod>('in_person');
   const [deliveredAt, setDeliveredAt] = useState(todayInput());
-  const [receiptConfirmed, setReceiptConfirmed] = useState(true);
+  // 법정 증빙이라 미리 켜 두지 않는다. 급히 날짜만 보고 저장하면 확인도 설명도 안 한 일이
+  // 「수령확인 있음 · 설명 함」으로 남아, 나중에 조사에서 사실과 달라 더 불리해진다(점검 06-8).
+  const [receiptConfirmed, setReceiptConfirmed] = useState(false);
   const [receiptSignerName, setReceiptSignerName] = useState('');
-  const [explained, setExplained] = useState(true);
+  const [explained, setExplained] = useState(false);
   const [explainedBy, setExplainedBy] = useState('');
   const [note, setNote] = useState('');
 
   const check = checkDelivery({ records: items, meetingAt });
+
+  // 켰으면 누가 했는지 적어야 한다. 이름 없는 「확인함」은 증빙이 되지 않는다.
+  const missingWitness =
+    (receiptConfirmed && receiptSignerName.trim().length === 0) ||
+    (explained && explainedBy.trim().length === 0);
 
   async function handleAdd() {
     if (!user?.agencyId) return;
@@ -89,7 +96,9 @@ export default function DeliverySection({
         recordedBy: user.uid,
       });
       setOpen(false);
+      setReceiptConfirmed(false);
       setReceiptSignerName('');
+      setExplained(false);
       setExplainedBy('');
       setNote('');
     } finally {
@@ -233,6 +242,12 @@ export default function DeliverySection({
             className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-sm"
           />
 
+          {missingWitness && (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              확인을 받았거나 설명을 했다면 그 사람 이름을 적어 주세요. 이름 없이는 증빙이 되지 않습니다.
+            </p>
+          )}
+
           <div className="flex justify-end gap-2">
             <button
               type="button"
@@ -244,7 +259,7 @@ export default function DeliverySection({
             <button
               type="button"
               onClick={handleAdd}
-              disabled={saving}
+              disabled={saving || missingWitness}
               className="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
             >
               {saving ? '저장 중…' : '저장'}

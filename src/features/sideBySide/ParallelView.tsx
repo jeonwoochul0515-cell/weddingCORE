@@ -35,13 +35,22 @@ export default function ParallelView({
   const targetTranslation = translations.find((t) => t.lang === targetLang) ?? null;
   const [translating, setTranslating] = useState(false);
   const [translateError, setTranslateError] = useState<string | null>(null);
+  const [confirmingOverwrite, setConfirmingOverwrite] = useState(false);
 
-  async function handleTranslate() {
+  // 이미 서명을 받았거나 사람이 손본 번역인지. 이 경우 다시 만들면 그 내용이 사라진다.
+  const willLoseWork = Boolean(targetTranslation?.signedAt) || targetTranslation?.translatedBy === 'human';
+
+  async function handleTranslate(overwriteSigned = false) {
+    if (willLoseWork && !overwriteSigned) {
+      setConfirmingOverwrite(true);
+      return;
+    }
+    setConfirmingOverwrite(false);
     setTranslating(true);
     setTranslateError(null);
     try {
       const fn = httpsCallable<
-        { agencyId: string; clientId: string; infoId: string; targetLang: SupportedLang },
+        { agencyId: string; clientId: string; infoId: string; targetLang: SupportedLang; overwriteSigned?: boolean },
         { ok: boolean; fields: Record<string, string> }
       >(functions, 'translateBackgroundInfo');
       const res = await fn({
@@ -49,6 +58,7 @@ export default function ParallelView({
         clientId: info.clientId,
         infoId: info.id,
         targetLang,
+        overwriteSigned,
       });
       if (!res.data.ok) throw new Error('번역 실패');
     } catch (err) {
@@ -97,7 +107,7 @@ export default function ParallelView({
               </select>
             </div>
             <button
-              onClick={handleTranslate}
+              onClick={() => void handleTranslate()}
               disabled={translating}
               className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
             >
@@ -107,6 +117,30 @@ export default function ParallelView({
           </div>
           <ParityIndicator pct={parityPct} missing={missingFields.length} />
         </div>
+        {confirmingOverwrite && (
+          <div className="mt-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+            <p className="font-medium">
+              {targetTranslation?.signedAt
+                ? `${targetTranslation.signedByName ?? '담당자'} 님의 서명이 지워집니다.`
+                : '사람이 고친 번역이 사라집니다.'}
+            </p>
+            <p className="mt-1 text-xs">AI가 처음부터 다시 번역하므로 지금 내용은 남지 않습니다. 계속할까요?</p>
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={() => void handleTranslate(true)}
+                className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+              >
+                지우고 다시 만들기
+              </button>
+              <button
+                onClick={() => setConfirmingOverwrite(false)}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                그만두기
+              </button>
+            </div>
+          </div>
+        )}
         {translateError && <p className="mt-2 text-sm text-red-600">{translateError}</p>}
         {targetTranslation?.translatedBy === 'ai' && !isStale && (
           <p className="mt-2 rounded-md bg-amber-50 border border-amber-200 p-2 text-xs text-amber-800">

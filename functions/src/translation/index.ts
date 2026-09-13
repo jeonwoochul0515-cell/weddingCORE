@@ -50,8 +50,8 @@ export const translateBackgroundInfo = onCall(
     }
     const callerAgencyId = request.auth?.token?.agencyId as string | undefined;
 
-    const { agencyId, clientId, infoId, targetLang } = request.data as {
-      agencyId?: string; clientId?: string; infoId?: string; targetLang?: string;
+    const { agencyId, clientId, infoId, targetLang, overwriteSigned } = request.data as {
+      agencyId?: string; clientId?: string; infoId?: string; targetLang?: string; overwriteSigned?: boolean;
     };
     if (!agencyId || !clientId || !infoId || !targetLang) {
       throw new HttpsError('invalid-argument', '필수 파라미터 누락');
@@ -86,6 +86,25 @@ export const translateBackgroundInfo = onCall(
 
     if (sourceLang === targetLang) {
       throw new HttpsError('invalid-argument', '원본과 동일한 언어로 번역 불가');
+    }
+
+    // 이미 서명을 받았거나 사람이 손본 번역은 말없이 덮지 않는다.
+    // 직원이 한 시간 들여 고치고 양쪽 서명까지 받은 번역이 버튼 한 번에 AI 초안으로
+    // 바뀌고 서명 칸이 비워지던 일을 막는다(점검 06-5). 덮으려면 화면이 먼저 묻고
+    // overwriteSigned를 보내야 하며, 그때는 무엇을 덮었는지 감사기록에 남긴다.
+    const translationRef = db.doc(
+      `agencies/${agencyId}/clients/${clientId}/backgroundInfo/${infoId}/translations/${targetLang}`,
+    );
+    const previousSnap = await translationRef.get();
+    const previous = previousSnap.exists ? previousSnap.data()! : null;
+    const previousProtected = Boolean(previous?.signedAt) || previous?.translatedBy === 'human';
+    if (previousProtected && overwriteSigned !== true) {
+      throw new HttpsError(
+        'failed-precondition',
+        previous?.signedAt
+          ? '이미 서명을 받은 번역입니다. 다시 만들면 서명이 지워집니다.'
+          : '사람이 고친 번역입니다. 다시 만들면 고친 내용이 사라집니다.',
+      );
     }
 
     const targetLangName = LANG_NAMES[targetLang] ?? targetLang;
@@ -146,18 +165,54 @@ export const translateBackgroundInfo = onCall(
       throw new HttpsError('internal', 'AI 응답 파싱 실패');
     }
 
-    // Firestore에 저장
-    await db
-      .doc(`agencies/${agencyId}/clients/${clientId}/backgroundInfo/${infoId}/translations/${targetLang}`)
-      .set({
+    // AI 번역에 수십 초가 걸린다. 위에서 본 뒤 지금까지 사이에 다른 사람이 서명을 받았을 수
+    // 있으므로, 저장 직전에 트랜잭션 안에서 한 번 더 확인한다. 확인과 저장이 떨어져 있으면
+    // 그 틈에 들어온 서명을 말없이 덮는다. 덮어쓰기와 감사기록도 같은 트랜잭션에 넣어,
+    // 기록 없이 서명만 지워지는 일이 없게 한다.
+    await db.runTransaction(async (tx) => {
+      const currentSnap = await tx.get(translationRef);
+      const current = currentSnap.exists ? currentSnap.data()! : null;
+      const currentProtected = Boolean(current?.signedAt) || current?.translatedBy === 'human';
+      if (currentProtected && overwriteSigned !== true) {
+        throw new HttpsError(
+          'failed-precondition',
+          current?.signedAt
+            ? '번역을 만드는 사이에 서명이 등록됐습니다. 화면을 새로 고쳐 확인해 주세요.'
+            : '번역을 만드는 사이에 사람이 고친 내용이 저장됐습니다. 화면을 새로 고쳐 확인해 주세요.',
+        );
+      }
+
+      tx.set(translationRef, {
         lang: targetLang,
         fields: translated,
         translatedBy: 'ai',
         translationQuality: 'draft',
         signedAt: null,
         signedByName: null,
+        signedByUid: null,
         translatedAt: FieldValue.serverTimestamp(),
       }, { merge: true });
+
+      // 서명본이나 사람이 고친 번역을 덮었으면 누가 무엇을 지웠는지 남긴다.
+      if (currentProtected) {
+        tx.set(db.collection('auditLogs').doc(), {
+          actorUid: request.auth!.uid,
+          agencyId,
+          action: 'background_info.translation_overwritten',
+          targetPath: translationRef.path,
+          before: {
+            translatedBy: current?.translatedBy ?? null,
+            signedByName: current?.signedByName ?? null,
+            signedAt: current?.signedAt ?? null,
+            translatedFieldKeys: Object.keys((current?.fields ?? {}) as Record<string, unknown>),
+          },
+          after: { translatedBy: 'ai', translatedFieldKeys: Object.keys(translated) },
+          ip: request.rawRequest.ip ?? '',
+          userAgent: request.rawRequest.headers['user-agent'] ?? '',
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      }
+    });
 
     return { ok: true, fields: translated };
   },
