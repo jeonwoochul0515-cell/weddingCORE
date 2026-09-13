@@ -20,9 +20,9 @@ const TOSS_SECRET_KEY = defineSecret('TOSS_SECRET_KEY');
 const CONFIRM_URL = 'https://api.tosspayments.com/v1/payments/confirm';
 /** 캐럿 팩. 1캐럿 = 1,000원이고 대량 구매에만 할인을 준다. */
 export const CARAT_PACKS = {
-    pack_50: { label: '50캐럿', carats: 50, amount: 50_000 },
-    pack_200: { label: '200캐럿', carats: 200, amount: 180_000 },
-    pack_500: { label: '500캐럿', carats: 500, amount: 400_000 },
+    pack_110: { label: '110캐럿', carats: 110, amount: 110_000 },
+    pack_330: { label: '330캐럿', carats: 330, amount: 300_000 },
+    pack_550: { label: '550캐럿', carats: 550, amount: 480_000 },
 };
 /**
  * 마케팅 서비스. 화면(MarketingCenterPage)과 금액이 같아야 한다.
@@ -30,7 +30,10 @@ export const CARAT_PACKS = {
  */
 export const MARKETING_SERVICES = {
     'naver-seo': { label: '네이버 검색노출·플레이스 광고 최적화', amount: 500_000, billing: 'once' },
-    'local-content': { label: '블로그 글 자동 발행', amount: 100_000, billing: 'monthly' },
+    // 월 10만원짜리다. 이름에 기간을 넣지 않으면 토스 결제창과 영수증에 그냥
+    // "블로그 글 자동 발행 100,000원"으로만 떠서 1회성으로 오해한다.
+    // 정기결제(빌링)는 아직 없어서 매달 다시 결제해야 한다.
+    'local-content': { label: '블로그 글 자동 발행 (월 8건 · 1개월분)', amount: 100_000, billing: 'monthly' },
     'aeo-geo': { label: 'AEO·GEO 콘텐츠 설계', amount: 500_000, billing: 'once' },
     // website(홈페이지 제작)는 회원 무료라 결제 대상이 아니다.
 };

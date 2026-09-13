@@ -702,7 +702,6 @@ const MARRIAGE_BROKERAGE_OBLIGATIONS = [
 /** 사업별 의무 세트. 키는 트랙 정의(domain/visaTracks.ts)의 obligationSet과 같아야 한다. */
 export const OBLIGATION_SETS = {
     marriage_brokerage_act: MARRIAGE_BROKERAGE_OBLIGATIONS,
-    // study_agency_act: 유학원 관련 법령 조사 후 추가
     // extension_immigration_act: 체류 연장 관련 의무 조사 후 추가
 };
 /** 시드 대상 전체. 각 항목에 소속 세트를 붙여 어느 사업 의무인지 남긴다. */

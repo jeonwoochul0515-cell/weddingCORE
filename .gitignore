@@ -32,3 +32,6 @@ functions/.secret.local
 
 # 업체 접촉 명부 — 공시 자료지만 상호·대표자·번호가 묶여 있어 저장소에 넣지 않는다
 data/outreach-list.csv
+
+# 운영 중 한 번씩 쓰는 관리자 스크립트 — 실계정 uid·비밀번호가 박혀 있어 저장소에 넣지 않는다
+functions/*.mjs
