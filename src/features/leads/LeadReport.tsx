@@ -113,7 +113,15 @@ export default function LeadReport({ summary, level, source, receivedAt, page, c
       {/* 5. 다음 행동 — 첫 통화에서 할 일 */}
       <SectionTitle n={p.judgments.length > 0 ? 5 : 4}>다음 행동</SectionTitle>
       {actions.length === 0 ? (
-        <p className="mt-1 text-sm text-slate-600">걸리는 항목이 없습니다. 전화해서 진행 의사와 희망 시기를 묻습니다.</p>
+        // 판정이 빨강·노랑인데 「걸리는 항목이 없습니다」라고 하면 바로 위 배지와 어긋난다.
+        // 뽑아낸 할 일이 없을 때도 판정을 먼저 따른다(점검 07-1).
+        <p className="mt-1 text-sm text-slate-600">
+          {shownLevel === 'stop'
+            ? '요약에서 걸리는 항목을 따로 뽑지 못했습니다. 위 판정과 원문을 보고 무엇이 걸리는지 확인한 뒤 전화해 주세요.'
+            : shownLevel === 'check'
+            ? '확인이 필요한 항목이 있습니다. 원문을 보고 무엇을 확인할지 정한 뒤 전화해 주세요.'
+            : '걸리는 항목이 없습니다. 전화해서 진행 의사와 희망 시기를 묻습니다.'}
+        </p>
       ) : (
         <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-700">
           {actions.map((a, i) => <li key={i}>{a}</li>)}

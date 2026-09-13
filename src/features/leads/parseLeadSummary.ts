@@ -27,7 +27,10 @@ export type ParsedLeadSummary = {
 };
 
 const UNKNOWN_WORDS = ['미확인', '미응답', '답변 안 함', '답변 없음', '지금은 답하지 않겠다'];
-const FLAG_WORDS = ['확인 필요', '진행 불가', '정리 필요', '제한', '불가', '없다(확인', '증빙이 어렵다', '잘 모르겠다', '아직 없다', '있다'];
+// 판정 표시가 붙기 전(2026-09-13 이전)에 들어온 접수도 읽을 수 있게 낱말 목록을 남긴다.
+// 「혼인 중」·「이혼 절차 진행 중」은 그 자체가 걸리는 답인데 아래 낱말에 안 걸려서
+// 초록으로 나왔다(점검 07-1). 그 두 가지를 여기에 더한다.
+const FLAG_WORDS = ['확인 필요', '진행 불가', '정리 필요', '제한', '불가', '없다(확인', '증빙이 어렵다', '잘 모르겠다', '아직 없다', '있다', '혼인 중', '이혼 절차 진행 중', '이혼 진행 중'];
 
 const REQUIREMENT_LABELS = [
   '본인/가족', '혼인상태', '혼인 상태', '연령', '나이대', '자녀', '거주', '직업·소득', '연소득', '주거', '집',
@@ -36,6 +39,8 @@ const REQUIREMENT_LABELS = [
 
 function classify(label: string, value: string): ReportItem['state'] {
   const v = value.trim();
+  // 위젯이 답 옆에 실어 보낸 판정이 있으면 그것을 그대로 따른다. 낱말 짐작보다 정확하다.
+  if (/\[(진행 불가|확인 필요)\]/.test(v)) return 'flag';
   // "동거 여부 미확인"처럼 값 안에 미확인이 섞인 것은 일부라도 확인된 것이다. 값 전체가 미확인일 때만 미확인.
   if (!v || UNKNOWN_WORDS.some((w) => v === w || v.startsWith(w))) return 'unknown';
   if (FLAG_WORDS.some((w) => v.includes(w)) && !/^없다$|^없음$/.test(v)) {
@@ -98,7 +103,10 @@ export function parseLeadSummary(raw: string): ParsedLeadSummary {
       continue;
     }
 
-    const item: ReportItem = { label: kv.label, value: kv.value, state: classify(kv.label, kv.value) };
+    // 판정 표시([진행 불가] 등)는 상태를 정하는 데만 쓰고, 화면에 보이는 값에서는 뗀다.
+    const state = classify(kv.label, kv.value);
+    const shownValue = kv.value.replace(/\s*\[(진행 불가|확인 필요)\]\s*$/, '').trim();
+    const item: ReportItem = { label: kv.label, value: shownValue, state };
 
     if (section === 'followup') {
       // 이어진 대화는 새로 확인된 것만 의미가 있다. 여전히 미확인이면 버린다.

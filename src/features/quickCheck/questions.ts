@@ -162,7 +162,13 @@ export const LEVEL_LABEL: Record<Verdict, string> = {
 
 /** 접수 문자와 업체 화면에 붙이는 요약. 답하지 않은 항목은 "미응답"으로 남긴다. */
 export function summarize(ev: Evaluation): string {
-  const lines = ev.rows.map((r) => `${r.q.title.replace(/\?$/, '')}: ${r.opt?.label ?? '미응답'}`);
+  // 답 옆에 그 답의 판정을 같이 적는다. 예전에는 답만 보냈더니, 업체 화면의 보고서가
+  // 「혼인 중」·「연 2,500만원 미만」을 확인된 값(초록)으로 읽고 「걸리는 항목이 없습니다」
+  // 라고 했다. 낱말만 보고 판단하던 쪽을 고치는 대신, 판정을 실어 보낸다(점검 07-1).
+  const lines = ev.rows.map((r) => {
+    const mark = r.opt?.verdict === 'stop' ? ' [진행 불가]' : r.opt?.verdict === 'check' ? ' [확인 필요]' : '';
+    return `${r.q.title.replace(/\?$/, '')}: ${r.opt?.label ?? '미응답'}${mark}`;
+  });
   ev.cross.forEach((c) => lines.push(`${c.title}: ${c.verdict === 'stop' ? '진행 불가' : '확인 필요'}`));
   lines.push(`판정: ${LEVEL_LABEL[ev.level]}${ev.checks ? ` (확인 ${ev.checks}건)` : ''}`);
   return lines.join('\n');
