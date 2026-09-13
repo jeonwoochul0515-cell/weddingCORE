@@ -311,7 +311,7 @@ export default function ClientDetailPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <h2 className="mb-3 text-lg font-semibold text-slate-900">법정의무 기한</h2>
-            <TimelineView clientId={client.id} />
+            <TimelineView clientId={client.id} anchors={client.anchors} />
           </div>
           <div className="space-y-6">
             <DocumentSection clientId={client.id} />

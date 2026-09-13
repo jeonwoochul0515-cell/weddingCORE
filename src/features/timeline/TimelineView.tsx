@@ -18,6 +18,13 @@ const STAGE_LABEL: Record<number, string> = {
   4: '맞선·혼인', 5: '비자 신청', 6: '사후관리',
 };
 
+/** 서류가 누구 것인지. 화면 곳곳에서 같은 말을 쓴다. */
+const SUBJECT_LABEL: Record<string, string> = {
+  korean: '한국인 측',
+  partner: '외국인 측',
+  both: '양측',
+};
+
 const ANCHOR_LABEL: Record<AnchorKey, string> = {
   client_created: '고객 등록',
   contract_signed: '계약 체결일',
@@ -39,7 +46,14 @@ const STATUS_META: Record<
   blocked:     { label: '차단',     icon: Lock,           tone: 'text-slate-400 bg-slate-100' },
 };
 
-export default function TimelineView({ clientId }: { clientId: string }) {
+export default function TimelineView({
+  clientId,
+  anchors,
+}: {
+  clientId: string;
+  /** 고객 문서에 이미 기록된 기준일. 기록 칸에 그 값을 보여 주기 위해 받는다. */
+  anchors?: Partial<Record<AnchorKey, Timestamp>>;
+}) {
   const { items, loading } = useClientTimeline(clientId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -120,6 +134,7 @@ export default function TimelineView({ clientId }: { clientId: string }) {
         <TimelineDetail
           item={selected}
           clientId={clientId}
+          anchors={anchors}
           onClose={() => setSelectedId(null)}
         />
       )}
@@ -174,13 +189,22 @@ function TimelineRow({
   );
 }
 
+/** 날짜 입력칸(YYYY-MM-DD)용. toISOString은 UTC라 하루 밀릴 수 있어 쓰지 않는다. */
+function toDateInput(date: Date) {
+  const m = `${date.getMonth() + 1}`.padStart(2, '0');
+  const d = `${date.getDate()}`.padStart(2, '0');
+  return `${date.getFullYear()}-${m}-${d}`;
+}
+
 function TimelineDetail({
   item,
   clientId,
+  anchors,
   onClose,
 }: {
   item: TimelineItemView;
   clientId: string;
+  anchors?: Partial<Record<AnchorKey, Timestamp>>;
   onClose: () => void;
 }) {
   const user = useAuthStore((s) => s.user);
@@ -190,13 +214,25 @@ function TimelineDetail({
 
   const anchor = item.dueDateRule?.anchor;
   const canRecordAnchor = anchor && anchor !== 'client_created';
+  // 이미 적어 둔 기준일이 있으면 그 값을 보여 준다. 없으면 빈칸으로 둔다.
+  // 예전에는 오늘 날짜가 미리 채워져 있어서, 항목이 무슨 뜻인지 보려다 「기록」을 누르면
+  // 맞선 예정일이 오늘로 저장되고 「맞선 7일 전」 항목 일곱 개가 그 자리에서 기한을
+  // 넘긴 상태가 됐다(점검 04-14).
+  const savedAnchorDate = anchor ? anchors?.[anchor] ?? null : null;
   const [anchorDate, setAnchorDate] = useState<string>(() =>
-    new Date().toISOString().slice(0, 10),
+    savedAnchorDate ? toDateInput(savedAnchorDate.toDate()) : '',
   );
+  const [confirmingAnchor, setConfirmingAnchor] = useState(false);
 
   const requiredDocType =
     item.checkRule?.type === 'document_uploaded'
       ? (item.checkRule.params?.docType as string | undefined)
+      : undefined;
+  // 한국인 측·외국인 측 중 누구 서류를 요구하는 항목인가. 목록을 이걸로도 걸러야
+  // 한국인 건강진단서로 「외국인 측 건강상태 확인」을 끝내는 일이 없다(점검 04-16).
+  const requiredSubject =
+    item.checkRule?.type === 'document_uploaded'
+      ? (item.checkRule.params?.subject as 'korean' | 'partner' | undefined)
       : undefined;
 
   async function setStatus(status: TimelineItemView['status']) {
@@ -220,7 +256,8 @@ function TimelineDetail({
   }
 
   async function handleMarkAnchor() {
-    if (!user?.agencyId || !anchor) return;
+    if (!user?.agencyId || !anchor || !anchorDate) return;
+    setConfirmingAnchor(false);
     setSaving(true);
     try {
       await markAnchorEvent({
@@ -252,9 +289,11 @@ function TimelineDetail({
     }
   }
 
-  const linkableDocs = requiredDocType
-    ? documents.filter((d) => d.type === requiredDocType)
-    : documents;
+  const linkableDocs = documents.filter((d) => {
+    if (requiredDocType && d.type !== requiredDocType) return false;
+    if (requiredSubject && d.subject !== requiredSubject && d.subject !== 'both') return false;
+    return true;
+  });
   const linkedIds = new Set(item.evidence.map((e) => e.docId));
 
   return (
@@ -292,23 +331,54 @@ function TimelineDetail({
               이 단계 기준일 기록
             </div>
             <p className="mb-2 text-xs text-slate-500">
-              {ANCHOR_LABEL[anchor!]}을 기록하면 연관 항목의 기한이 자동 재계산됩니다.
+              {ANCHOR_LABEL[anchor!]}을 적으면 이 날짜를 기준으로 하는 항목들의 기한이 한꺼번에 정해집니다.
             </p>
             <div className="flex gap-2">
               <input
                 type="date"
                 value={anchorDate}
-                onChange={(e) => setAnchorDate(e.target.value)}
+                onChange={(e) => {
+                  setAnchorDate(e.target.value);
+                  setConfirmingAnchor(false);
+                }}
                 className="flex-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
               />
               <button
-                onClick={handleMarkAnchor}
-                disabled={saving}
+                onClick={() => setConfirmingAnchor(true)}
+                disabled={saving || !anchorDate}
                 className="rounded-md bg-slate-900 px-3 py-1 text-xs text-white hover:bg-slate-800 disabled:opacity-50"
               >
                 기록
               </button>
             </div>
+            {savedAnchorDate && (
+              <p className="mt-1.5 text-xs text-slate-500">
+                지금 적혀 있는 날짜 — {savedAnchorDate.toDate().toLocaleDateString('ko-KR')}
+              </p>
+            )}
+            {confirmingAnchor && anchorDate && (
+              <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
+                <p className="font-medium">
+                  {ANCHOR_LABEL[anchor!]}을 {new Date(anchorDate).toLocaleDateString('ko-KR')}로 적을까요?
+                </p>
+                <p className="mt-1">이 날짜를 기준으로 하는 항목들의 기한이 모두 다시 계산됩니다.</p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={handleMarkAnchor}
+                    disabled={saving}
+                    className="rounded-md bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                  >
+                    네, 적습니다
+                  </button>
+                  <button
+                    onClick={() => setConfirmingAnchor(false)}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700"
+                  >
+                    그만두기
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -369,13 +439,14 @@ function TimelineDetail({
             {requiredDocType && (
               <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-normal text-slate-600">
                 필요: {DOC_TYPE_LABEL[requiredDocType as keyof typeof DOC_TYPE_LABEL] ?? requiredDocType}
+                {requiredSubject ? ` · ${SUBJECT_LABEL[requiredSubject]}` : ''}
               </span>
             )}
           </div>
           {linkableDocs.length === 0 ? (
             <p className="text-xs text-slate-400">
               {requiredDocType
-                ? '해당 유형의 업로드된 서류가 없습니다. 오른쪽 서류 섹션에서 업로드하세요.'
+                ? `${requiredSubject ? `${SUBJECT_LABEL[requiredSubject]} ` : ''}${DOC_TYPE_LABEL[requiredDocType as keyof typeof DOC_TYPE_LABEL] ?? requiredDocType}가 아직 없습니다. 서류함에서 올려 주세요.`
                 : '업로드된 서류가 없습니다.'}
             </p>
           ) : (
@@ -394,7 +465,7 @@ function TimelineDetail({
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs text-slate-900">{d.fileName}</div>
                       <div className="text-[10px] text-slate-500">
-                        {DOC_TYPE_LABEL[d.type]} · {d.uploadedAt?.toDate?.().toLocaleDateString('ko-KR') ?? ''}
+                        {DOC_TYPE_LABEL[d.type]} · {SUBJECT_LABEL[d.subject] ?? ''} · {d.uploadedAt?.toDate?.().toLocaleDateString('ko-KR') ?? ''}
                       </div>
                     </div>
                   </li>
@@ -404,7 +475,9 @@ function TimelineDetail({
           )}
           {requiredDocType && (
             <p className="mt-1 text-[11px] text-slate-400">
-              필요 유형 서류를 연결하면 해당 항목이 자동으로 완료 처리됩니다.
+              {requiredDocType === 'other'
+                ? '「기타」 서류는 아무 파일이나 해당될 수 있어 자동으로 완료되지 않습니다. 확인한 뒤 위에서 「완료」를 눌러 주세요.'
+                : '필요한 서류를 연결하면 이 항목이 자동으로 완료됩니다.'}
             </p>
           )}
         </div>

@@ -145,7 +145,11 @@ export const onTimelineItemUpdated = onDocumentUpdated(
       after.evidence.length > before.evidence.length
     ) {
       const requiredType = after.checkRule.params?.docType as string | undefined;
-      if (requiredType) {
+      // 누구 서류인지도 본다. 예전에는 종류만 맞으면 완료 처리해서, 한국인 건강진단서
+      // 한 장으로 「외국인 측 건강상태 확인」까지 끝났다(점검 04-16·05-10).
+      const requiredSubject = after.checkRule.params?.subject as string | undefined;
+      // 「기타」는 아무 파일이나 해당되므로 자동으로 완료시키지 않는다. 사람이 눌러야 한다.
+      if (requiredType && requiredType !== 'other') {
         const newDocs = after.evidence.filter(
           (e) => !before.evidence.some((b) => b.docId === e.docId),
         );
@@ -153,7 +157,10 @@ export const onTimelineItemUpdated = onDocumentUpdated(
           const docSnap = await db
             .doc(`agencies/${agencyId}/clients/${clientId}/documents/${e.docId}`)
             .get();
-          if (docSnap.exists && docSnap.data()?.type === requiredType) {
+          const docData = docSnap.data();
+          const subjectMatches =
+            !requiredSubject || docData?.subject === requiredSubject || docData?.subject === 'both';
+          if (docSnap.exists && docData?.type === requiredType && subjectMatches) {
             await event.data.after.ref.update({
               status: 'done',
               completedAt: FieldValue.serverTimestamp(),
