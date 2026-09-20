@@ -3,3 +3,8 @@
 lib/
 node_modules/
 .env
+
+# 에뮬레이터용 시크릿. ★ 이 값들을 `.env`에 두면 안 된다 —
+# Firebase가 `.env`를 일반 환경변수로 같이 실어 보내서, 같은 이름의 Secret Manager 값과
+# 부딪혀 배포가 통째로 죽는다(「overlaps non secret environment variable」).
+.secret.local

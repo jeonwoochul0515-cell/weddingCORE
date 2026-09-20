@@ -19,7 +19,9 @@ import { createHash, createHmac } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const ACCOUNT_ID = 'da5ae1edf94b850d8ab9e6042d7236b3';
-const ENV_PATH = 'functions/.env';
+// ★ `.env`가 아니라 `.secret.local` 이다. Firebase는 `.env`를 일반 환경변수로 같이 실어
+// 보내서, 같은 이름의 Secret Manager 값과 부딪혀 배포가 통째로 죽는다.
+const ENV_PATH = 'functions/.secret.local';
 /** 영상 보관 1년. functions/src/video/index.ts의 VIDEO_RETENTION_YEARS와 같이 움직인다 */
 const RETENTION_DAYS = 365;
 
@@ -173,7 +175,7 @@ async function main() {
 
   console.log('\n배포 전에 한 줄 더 — 함수 시크릿에 같은 값을 넣어야 운영에서 돕니다:');
   for (const k of Object.keys(set)) {
-    console.log(`  firebase functions:secrets:set ${k}`);
+    console.log(`  firebase functions:secrets:set ${k} --data-file <값이 담긴 파일>`);
   }
 }
 

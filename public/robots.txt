@@ -6,6 +6,7 @@ Disallow: /pending-approval
 Disallow: /agency/
 Disallow: /lawyer/
 Disallow: /admin/
+Disallow: /call/
 
 # 네이버 검색로봇
 User-agent: Yeti
@@ -16,6 +17,7 @@ Disallow: /pending-approval
 Disallow: /agency/
 Disallow: /lawyer/
 Disallow: /admin/
+Disallow: /call/
 
 # AI 수집기 — 검색용이든 학습용이든 막지 않는다(2026-09-13 대표 결정, 전역 CLAUDE.md §16).
 # 예전에는 GPTBot·CCBot·Google-Extended·Bytespider 를 "학습용"으로 보아 막았다. 손님이
@@ -44,5 +46,6 @@ Disallow: /pending-approval
 Disallow: /agency/
 Disallow: /lawyer/
 Disallow: /admin/
+Disallow: /call/
 
 Sitemap: https://weddingcore.net/sitemap.xml
