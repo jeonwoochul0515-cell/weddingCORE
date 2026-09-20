@@ -4,7 +4,7 @@
 // 막힌 이유만 띄우고 무엇을 하면 풀리는지 안 적으면 사장은 전화를 건다.
 
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, Copy, Loader2, Video } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Copy, FileCheck2, Loader2, Video } from 'lucide-react';
 import {
   BLOCKER_GROUP,
   callLinkFor,
@@ -12,10 +12,12 @@ import {
   ROLE_HINT,
   ROLE_LABEL,
   startVideoCall,
+  syncObligations,
   useCallReadiness,
   type Blocker,
   type CallRole,
   type CallSession,
+  type ObligationSyncResult,
 } from './useVideoCall';
 import CallSetupPanel from './CallSetupPanel';
 import type { MatchListItem } from '@/features/matching/useMatches';
@@ -40,6 +42,31 @@ export default function CallReadinessPanel({ match, open }: Props) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState<CallRole | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [synced, setSynced] = useState<ObligationSyncResult | null>(null);
+
+  /**
+   * 올려 둔 서류로 법정의무를 채운다.
+   *
+   * 지금까지는 서류함에 올리고, 타임라인에 가서 같은 항목을 또 완료로 바꿔야 했다.
+   * 한쪽만 하면 여기서 「끝나지 않았습니다」가 뜨고, 사장은 서류가 있는데 왜 그러나 한다.
+   */
+  async function runSync() {
+    setSyncing(true);
+    setNotice(null);
+    try {
+      const result = await syncObligations(matchId);
+      setSynced(result);
+      if (result.completed.length === 0 && result.alreadyDone.length === 0) {
+        setNotice('서류함에서 채울 수 있는 항목이 없습니다. 아래 안내대로 증빙을 올려 주세요.');
+      }
+      void refresh();
+    } catch (err) {
+      setNotice((err as { message?: string }).message ?? '서류를 확인하지 못했습니다.');
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   async function copyLink(role: CallRole, code: string) {
     try {
@@ -205,6 +232,53 @@ export default function CallReadinessPanel({ match, open }: Props) {
           <p className="mt-1 text-xs leading-5 text-amber-800">
             신상정보 제공과 양측 서면 동의가 끝나기 전에 만남을 주선하면 영업정지 사유가 됩니다.
           </p>
+
+          {/*
+            나열하기 전에 먼저 채운다. 서류함에 이미 있는 증빙으로 끝낼 수 있는 항목은
+            사람을 다른 화면으로 보낼 이유가 없다.
+          */}
+          {state.blockers.some((b) => b.kind === 'obligation') && (
+            <div className="mt-3 rounded-xl border border-amber-300 bg-white p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-bold text-slate-800">
+                  서류함에 올린 증빙으로 채울 수 있습니다
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void runSync()}
+                  disabled={syncing}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                >
+                  {syncing ? <Loader2 size={13} className="animate-spin" /> : <FileCheck2 size={13} />}
+                  {syncing ? '맞추는 중…' : '서류로 자동 확인'}
+                </button>
+              </div>
+              <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                범죄경력·건강진단서·소득증빙·혼인관계증명을 서류함에 올려 두셨다면 눌러 주세요.
+                해당 법정의무가 그 서류를 근거로 완료 처리됩니다.
+              </p>
+
+              {synced && synced.completed.length > 0 && (
+                <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-[11px] leading-4 text-emerald-900">
+                  <strong>{synced.completed.length}건을 채웠습니다.</strong>{' '}
+                  {synced.completed.map((c) => c.title).join(', ')}
+                </p>
+              )}
+              {synced && synced.missing.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {synced.missing.map((m) => (
+                    <li key={m.templateCode} className="rounded-lg bg-slate-50 px-3 py-2">
+                      <p className="text-[11px] font-semibold text-slate-700">{m.title}</p>
+                      {m.hint && (
+                        <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{m.hint}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           <div className="mt-3 space-y-3">
             {groupBlockers(state.blockers).map(([kind, list]) => (
               <div key={kind}>

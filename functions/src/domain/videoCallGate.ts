@@ -129,7 +129,7 @@ export type CallRequest = {
  * 시행령 제3조의2가 만남 이전에 요구하는 것들.
  * 우리 의무 템플릿 코드와 1:1로 맞춰 둔다.
  */
-const PRE_MEETING_CODES = [
+export const PRE_MEETING_CODES = [
   'BG_KOR_CRIMINAL',
   'BG_KOR_INCOME',
   'BG_PARTNER_MARITAL_HISTORY',

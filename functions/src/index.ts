@@ -213,6 +213,8 @@ export { searchBrokerRegistry } from './registry/lookup.js';
 export { extractBusinessRegistration } from './agency/registrationOcr.js';
 // 현지 에이전트가 카톡으로 보낸 후보 자료(글 + 프로필 카드 사진)를 명부 폼으로 바꾼다
 export { extractPartnerProfile } from './agency/partnerIntake.js';
+// 서류함에 올려 둔 증빙으로 법정의무를 한 번에 채운다
+export { syncObligationsFromDocuments } from './video/obligationSync.js';
 
 // 직원 초대·역할·내보내기. 클레임을 다루므로 서버에서만 한다.
 export { claimStaffInvite, removeStaff, changeStaffRole } from './agency/staff.js';

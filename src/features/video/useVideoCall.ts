@@ -68,6 +68,26 @@ export type CallSession = {
   recordingError: string | null;
 };
 
+export type ObligationSyncResult = {
+  completed: Array<{ templateCode: string; title: string }>;
+  alreadyDone: string[];
+  missing: Array<{ templateCode: string; title: string; hint: string }>;
+};
+
+/**
+ * 서류함에 올려 둔 증빙으로 법정의무를 한 번에 채운다.
+ *
+ * 서류는 이미 올리고 타임라인에 가서 또 체크하는 일을 없앤다.
+ */
+export async function syncObligations(matchId: string): Promise<ObligationSyncResult> {
+  const call = httpsCallable<{ matchId: string }, ObligationSyncResult>(
+    functions,
+    'syncObligationsFromDocuments',
+  );
+  const { data } = await call({ matchId });
+  return data;
+}
+
 /** 입장 코드로 만드는 주소. 받은 사람은 이 한 줄만 누르면 된다 */
 export function callLinkFor(code: string): string {
   return `${window.location.origin}/call/${code}`;
