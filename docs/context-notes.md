@@ -515,12 +515,20 @@ LiveKit 토큰은 15분이면 만료돼 미리 못 보내고, 새면 회수가 �
 다음 호출이 `alreadyEnded`로 빠져나가 코드가 영영 안 지워진다.
 
 **남은 것.**
-- LiveKit 키(`LIVEKIT_API_KEY`/`SECRET`/`URL`)와 R2 키가 없어 실제 통화는 아직 못 해 봤다.
-  화면 렌더·오류 경로까지만 확인했다.
+- **LiveKit 키는 있고 살아 있다** (`functions/.env`, `wss://weddingcore-622u6d67.livekit.cloud`).
+  2026-09-20 `ListRooms` 호출로 HTTP 200 확인. 막힌 것은 **R2 키 하나뿐**이다.
 - 통역사가 현지 에이전시 쪽 사람인 경우(하루 100달러, 업체가 직접 지급 안 함)가
   많아 보인다. 지금은 업체 통역자 명단이나 전문업체 둘 중 하나로만 배정된다.
-- R2 버킷에 **1년 수명주기 규칙**을 손으로 걸어야 한다. 코드는 영상을 지우지 않는다.
+- R2 버킷에 **1년 수명주기 규칙**을 걸어야 한다. 코드는 영상을 지우지 않는다.
   규칙을 안 걸면 처리방침에 적은 「1년 뒤 삭제」가 거짓이 된다.
+  → `scripts/setupR2Recording.mjs`가 버킷 생성·규칙·`.env` 기록까지 한 번에 한다.
+
+**R2 키를 찾은 결과 (2026-09-20).** 이 PC에 없다. 본 곳은 다음과 같다 —
+`functions/.env`·`.env.local`(LiveKit만 있음), GCP Secret Manager **26개 프로젝트 전수**,
+홈 디렉터리 전체 파일 검색, `Downloads`, wrangler OAuth 설정.
+`~/.cf-token`은 살아 있지만 **R2 권한이 없다**(버킷 조회가 10000 Authentication error).
+wrangler OAuth 토큰은 만료이고 scopes에 `r2:*`가 애초에 없다.
+즉 **R2 편집 권한을 포함한 토큰을 새로 발급받는 것 외에 길이 없다.**
 
 ---
 
