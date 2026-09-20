@@ -72,6 +72,69 @@ export function obligationsFor(doc: EvidenceDoc): string[] {
   return [...korean, ...partner];
 }
 
+// ── 서류함 밖의 근거 ──────────────────────
+//
+// 마지막 세 개는 서류를 받는 일이 아니라 우리가 하는 일이다.
+// 번역하고, 양쪽에 건네고, 주고받았다는 증명서를 낸다.
+// 그 기록은 이미 backgroundInfo 아래에 쌓이고 있는데 타임라인과 이어져 있지 않았다.
+// 한 일이 반영되지 않는 것이 가장 나쁜 종류의 빈칸이다.
+
+export type TranslationRecord = {
+  /** 어느 신상정보의 번역인가 */
+  infoId: string;
+  /** 그 신상정보가 누구 것인가 */
+  subject: 'korean' | 'partner';
+  lang: string;
+  /** 받은 사람이 읽고 이해했다고 서명했는가 */
+  signed: boolean;
+};
+
+export type DeliveryRecord = {
+  infoId: string;
+  /** 이 신상정보를 누구에게 줘는가 */
+  to: 'korean' | 'partner';
+  receiptConfirmed: boolean;
+  /** 내용을 설명했는가. 서면만 건네고 끝내면 안 된다 */
+  explained: boolean;
+};
+
+/**
+ * 모국어 번역 의무가 채워졌는가.
+ *
+ * 둘 다 있어야 한다 — 한국인 신상정보를 후보 모국어로, 후보 신상정보를 한국어로.
+ * 한쪽만 번역하면 나머지 한 사람은 상대방을 모른 채 만난다.
+ *
+ * ★ 서명을 요구한다. AI 번역본은 초안이고, 법 제10조지2 ③가 말하는
+ * 「이해할 수 있는 언어」는 받은 사람이 읽었다고 확인해야 증명된다.
+ * 만들어 놓기만 한 번역을 끝난 것으로 치면, 다투는 자리에서 그게 가장 먼저 깨진다.
+ */
+export function translationSatisfied(
+  translations: TranslationRecord[],
+  partnerLang: string,
+): boolean {
+  if (!partnerLang) return false;
+  const koreanInfoTranslated = translations.some(
+    (t) => t.subject === 'korean' && t.lang === partnerLang && t.signed,
+  );
+  const partnerInfoTranslated = translations.some(
+    (t) => t.subject === 'partner' && t.lang === 'ko' && t.signed,
+  );
+  return koreanInfoTranslated && partnerInfoTranslated;
+}
+
+/**
+ * 상호 서면제공과 수령확인이 끝났는가.
+ *
+ * 대법원 2018도7989은 제공 의무를 「만나기 이전」에 이행하라고 했고,
+ * 재결례는 「통역이 설명했다」는 항변을 기각했다. 그래서 세 가지를 다 본다 —
+ * 양방향으로 건네고, 받았다는 확인을 받고, 내용을 설명했을 것.
+ */
+export function deliverySatisfied(deliveries: DeliveryRecord[]): boolean {
+  const ok = (to: 'korean' | 'partner') =>
+    deliveries.some((d) => d.to === to && d.receiptConfirmed && d.explained);
+  return ok('korean') && ok('partner');
+}
+
 export type TimelineRow = {
   id: string;
   templateCode: string;

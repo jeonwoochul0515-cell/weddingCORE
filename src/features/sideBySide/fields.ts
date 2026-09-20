@@ -3,7 +3,27 @@
  * 각 필드는 다국어 라벨을 가지며, "나란히 보기" UI에서 완전 대응됨.
  */
 
-export type SupportedLang = 'ko' | 'vi' | 'km' | 'zh' | 'uz' | 'en';
+/**
+ * 신상정보를 만들 수 있는 언어.
+ *
+ * 법 제10조지2 ③는 「이용자와 상대방이 이해할 수 있는 언어」로 작성하라고 한다.
+ * 목록에 없는 나라 사람은 이해할 수 없는 말로 받게 된다 — 라오스 후보가 명부에
+ * 있는데 라오어가 없어 넣었다(2026-09-20).
+ */
+export type SupportedLang =
+  | 'ko'
+  | 'vi'
+  | 'km'
+  | 'zh'
+  | 'uz'
+  | 'en'
+  | 'lo'
+  | 'th'
+  | 'tl'
+  | 'mn'
+  | 'ne'
+  | 'id'
+  | 'ru';
 
 export const LANG_LABEL: Record<SupportedLang, string> = {
   ko: '한국어',
@@ -12,7 +32,43 @@ export const LANG_LABEL: Record<SupportedLang, string> = {
   zh: '中文',
   uz: "O'zbek",
   en: 'English',
+  lo: 'ລາວ',
+  th: 'ไทย',
+  tl: 'Tagalog',
+  mn: 'Монгол',
+  ne: 'नेपाली',
+  id: 'Bahasa Indonesia',
+  ru: 'Русский',
 };
+
+/**
+ * 나라 → 그 나라 말.
+ *
+ * 후보 명부의 국적으로 번역할 언어를 골라 준다. 사람이 매번 드롭다운을 열어
+ * 「라오스 사람이니까 라오어」를 고를 이유가 없다.
+ */
+const LANG_BY_NATIONALITY: Array<[string, SupportedLang]> = [
+  ['베트남', 'vi'],
+  ['라오스', 'lo'],
+  ['컬보디아', 'km'],
+  ['태국', 'th'],
+  ['필리핀', 'tl'],
+  ['몽골', 'mn'],
+  ['중국', 'zh'],
+  ['대만', 'zh'],
+  ['우즈베키스탄', 'uz'],
+  ['네팔', 'ne'],
+  ['인도네시아', 'id'],
+  ['러시아', 'ru'],
+  ['한국', 'ko'],
+];
+
+/** 모르는 나라면 null. 짐작해서 못 읽는 말로 만들어 주지 않는다 */
+export function langForNationality(nationality: string | undefined | null): SupportedLang | null {
+  if (!nationality) return null;
+  const hit = LANG_BY_NATIONALITY.find(([name]) => nationality.includes(name));
+  return hit ? hit[1] : null;
+}
 
 export type FieldKey =
   | 'maritalHistory'
@@ -29,8 +85,13 @@ export type FieldDef = {
   key: FieldKey;
   legalBasis: string;
   required: boolean;
-  labels: Record<SupportedLang, string>;
-  descriptions: Record<SupportedLang, string>;
+  /**
+   * 화면에 보일 라벨. 언어를 늘릴 때마다 아홉 개 필드를 다 번역해 채울 수는 없다.
+   * 비어 두면 한국어로 떨어진다 — 업체 직원이 보는 칸이므로 그래도 된다.
+   * 손님에게 가는 문서는 라벨이 아니라 AI 번역본이다.
+   */
+  labels: Partial<Record<SupportedLang, string>> & { ko: string };
+  descriptions: Partial<Record<SupportedLang, string>> & { ko: string };
   inputType: 'text' | 'textarea' | 'number' | 'select';
   options?: Array<{ value: string; labels: Record<SupportedLang, string> }>;
 };
@@ -202,10 +263,10 @@ export const BG_INFO_FIELDS: FieldDef[] = [
 
 export function fieldLabel(key: FieldKey, lang: SupportedLang): string {
   const f = BG_INFO_FIELDS.find((x) => x.key === key);
-  return f?.labels[lang] ?? key;
+  return f?.labels[lang] ?? f?.labels.ko ?? key;
 }
 
 export function fieldDescription(key: FieldKey, lang: SupportedLang): string {
   const f = BG_INFO_FIELDS.find((x) => x.key === key);
-  return f?.descriptions[lang] ?? '';
+  return f?.descriptions[lang] ?? f?.descriptions.ko ?? '';
 }

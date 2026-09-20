@@ -4,13 +4,24 @@
 // 막힌 이유만 띄우고 무엇을 하면 풀리는지 안 적으면 사장은 전화를 건다.
 
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, Copy, FileCheck2, Loader2, Video } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  AlertTriangle,
+  Award,
+  CheckCircle2,
+  Copy,
+  FileCheck2,
+  Languages,
+  Loader2,
+  Video,
+} from 'lucide-react';
 import {
   BLOCKER_GROUP,
   callLinkFor,
   endVideoCall,
   ROLE_HINT,
   ROLE_LABEL,
+  issueCertificate,
   startVideoCall,
   syncObligations,
   useCallReadiness,
@@ -44,6 +55,34 @@ export default function CallReadinessPanel({ match, open }: Props) {
   const [copied, setCopied] = useState<CallRole | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [synced, setSynced] = useState<ObligationSyncResult | null>(null);
+  const [issuing, setIssuing] = useState(false);
+  const [certMissing, setCertMissing] = useState<string[] | null>(null);
+
+  /**
+   * 교환완료 증명서를 낸다.
+   *
+   * 근거는 이미 시스템 안에 있다 — 신상정보, 서명된 번역본, 전달·수령 기록.
+   * 사람이 그걸 다시 워드로 옮겨 적을 이유가 없다.
+   * 모자라면 내주지 않는다 — 비어 있는 증명서는 다투는 자리에서 오히려 불리한 자료가 된다.
+   */
+  async function makeCertificate() {
+    setIssuing(true);
+    setNotice(null);
+    setCertMissing(null);
+    try {
+      const result = await issueCertificate(matchId);
+      if (result.issued) {
+        setNotice('교환완료 증명서를 발급해 서류함에 넣었습니다.');
+        void refresh();
+      } else {
+        setCertMissing(result.missing);
+      }
+    } catch (err) {
+      setNotice((err as { message?: string }).message ?? '증명서를 내지 못했습니다.');
+    } finally {
+      setIssuing(false);
+    }
+  }
 
   /**
    * 올려 둔 서류로 법정의무를 채운다.
@@ -275,6 +314,41 @@ export default function CallReadinessPanel({ match, open }: Props) {
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {/*
+                마지막 두 개는 서류를 받는 일이 아니라 우리가 하는 일이다.
+                가는 길을 여기서 바로 열어 둔다 — 설명만 적어 두면 또 찾아다니게 된다.
+              */}
+              <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                <Link
+                  to={`/agency/clients/${match.clientId}/background-info`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-400"
+                >
+                  <Languages size={13} />모국어로 번역하기
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void makeCertificate()}
+                  disabled={issuing}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-400 disabled:opacity-50"
+                >
+                  {issuing ? <Loader2 size={13} className="animate-spin" /> : <Award size={13} />}
+                  {issuing ? '내는 중…' : '교환완료 증명서 발급'}
+                </button>
+              </div>
+
+              {certMissing && (
+                <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2">
+                  <p className="text-[11px] font-bold text-amber-900">
+                    아직 증명서를 낼 수 없습니다
+                  </p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[11px] leading-4 text-amber-900/90">
+                    {certMissing.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
           )}

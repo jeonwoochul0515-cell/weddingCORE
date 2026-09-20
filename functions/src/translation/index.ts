@@ -27,6 +27,15 @@ const LANG_NAMES: Record<string, string> = {
   zh: 'Simplified Chinese',
   uz: 'Uzbek',
   en: 'English',
+  // 목록에 없는 나라 사람은 이해할 수 없는 말로 받는다. 법 제10조지2 ③가
+  // 「이해할 수 있는 언어」를 요구하므로 빠지면 의무 위반이 된다.
+  lo: 'Lao',
+  th: 'Thai',
+  tl: 'Tagalog (Filipino)',
+  mn: 'Mongolian',
+  ne: 'Nepali',
+  id: 'Indonesian',
+  ru: 'Russian',
 };
 
 const FIELD_META: Record<string, { ko: string; desc: string }> = {

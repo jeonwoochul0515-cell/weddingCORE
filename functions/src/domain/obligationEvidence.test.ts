@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
+  deliverySatisfied,
   obligationsFor,
   planObligationSync,
+  translationSatisfied,
   type EvidenceDoc,
   type TimelineRow,
 } from './obligationEvidence.js';
@@ -145,6 +147,7 @@ describe('planObligationSync', () => {
 
   it('서류로는 절대 안 채워지는 의무가 남는다', () => {
     // 번역·교환완료 증명서는 서류를 받는 일이 아니라 우리가 하는 일이다.
+    // 번역·교환완료 증명서는 서류를 받는 일이 아니라 우리가 하는 일이다.
     const docs: EvidenceDoc[] = [
       { docId: 'd1', type: 'criminal_record', subject: 'both' },
       { docId: 'd2', type: 'health_cert', subject: 'partner' },
@@ -154,5 +157,66 @@ describe('planObligationSync', () => {
     ];
     const plan = planObligationSync(docs, TIMELINE, REQUIRED);
     expect(plan.missing).toEqual(['BG_TRANSLATION', 'BG_CERTIFICATE']);
+  });
+});
+
+describe('translationSatisfied — 모국어 번역', () => {
+  const both = [
+    { infoId: 'i1', subject: 'korean' as const, lang: 'lo', signed: true },
+    { infoId: 'i2', subject: 'partner' as const, lang: 'ko', signed: true },
+  ];
+
+  it('양쪽이 서명까지 끝나야 채워진다', () => {
+    expect(translationSatisfied(both, 'lo')).toBe(true);
+  });
+
+  it('★ 서명이 없으면 안 된다 — 만들어 놓기만 한 번역은 확인된 것이 아니다', () => {
+    const draft = both.map((t) => ({ ...t, signed: false }));
+    expect(translationSatisfied(draft, 'lo')).toBe(false);
+  });
+
+  it('한국인 신상정보만 번역했으면 안 된다', () => {
+    expect(translationSatisfied([both[0]!], 'lo')).toBe(false);
+  });
+
+  it('후보 신상정보만 번역했으면 안 된다', () => {
+    expect(translationSatisfied([both[1]!], 'lo')).toBe(false);
+  });
+
+  it('엉뚱한 언어로 번역했으면 안 된다 — 라오스 후보에게 베트남어를 주면 못 읽는다', () => {
+    expect(translationSatisfied(both, 'vi')).toBe(false);
+  });
+
+  it('후보 언어를 모르면 판단하지 않는다', () => {
+    expect(translationSatisfied(both, '')).toBe(false);
+  });
+});
+
+describe('deliverySatisfied — 상호 제공', () => {
+  const full = [
+    { infoId: 'i1', to: 'partner' as const, receiptConfirmed: true, explained: true },
+    { infoId: 'i2', to: 'korean' as const, receiptConfirmed: true, explained: true },
+  ];
+
+  it('양방향으로 건네고 확인받고 설명했으면 채워진다', () => {
+    expect(deliverySatisfied(full)).toBe(true);
+  });
+
+  it('한쪽에만 건넘으면 「상호」가 아니다', () => {
+    expect(deliverySatisfied([full[0]!])).toBe(false);
+  });
+
+  it('★ 수령 확인이 없으면 안 된다 — 보냈다는 것과 받았다는 것은 다르다', () => {
+    const noReceipt = full.map((d) => ({ ...d, receiptConfirmed: false }));
+    expect(deliverySatisfied(noReceipt)).toBe(false);
+  });
+
+  it('★ 설명하지 않았으면 안 된다 — 서면만 건네고 끝내는 항변은 기각됐다', () => {
+    const noExplain = full.map((d) => ({ ...d, explained: false }));
+    expect(deliverySatisfied(noExplain)).toBe(false);
+  });
+
+  it('기록이 없으면 안 된다', () => {
+    expect(deliverySatisfied([])).toBe(false);
   });
 });

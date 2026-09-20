@@ -11,9 +11,13 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import {
+  deliverySatisfied,
   planObligationSync,
+  translationSatisfied,
+  type DeliveryRecord,
   type EvidenceDoc,
   type TimelineRow,
+  type TranslationRecord,
 } from '../domain/obligationEvidence.js';
 import { PRE_MEETING_CODES } from '../domain/videoCallGate.js';
 
@@ -65,6 +69,78 @@ const DOC_HINT: Record<string, string> = {
   BG_PARTNER_CRIMINAL: '후보의 범죄경력 증명서를 「범죄경력 · 외국인」으로 올리면 자동으로 채워집니다.',
 };
 
+/**
+ * 후보의 모국어를 명부에서 찾는다.
+ *
+ * 맞선 문서에 적혀 있으면 그걸 쓰고, 없으면 국적으로 갈음한다.
+ * 모르면 빈 문자열이다 — 그러면 번역 의무를 「채워졌다」고 판단하지 않는다.
+ */
+const LANG_BY_NATIONALITY: Array<[string, string]> = [
+  ['베트남', 'vi'],
+  ['라오스', 'lo'],
+  ['컬보디아', 'km'],
+  ['태국', 'th'],
+  ['필리핀', 'tl'],
+  ['몽골', 'mn'],
+  ['중국', 'zh'],
+  ['대만', 'zh'],
+  ['우즈베키스탄', 'uz'],
+  ['네팔', 'ne'],
+  ['인도네시아', 'id'],
+  ['러시아', 'ru'],
+];
+
+async function partnerLanguage(
+  db: FirebaseFirestore.Firestore,
+  agencyId: string,
+  partnerId: string,
+): Promise<string> {
+  if (!partnerId) return '';
+  const snap = await db.doc(`agencies/${agencyId}/partners/${partnerId}`).get();
+  if (!snap.exists) return '';
+  const nationality = String(snap.get('nationality') ?? '');
+  const hit = LANG_BY_NATIONALITY.find(([name]) => nationality.includes(name));
+  return hit ? hit[1] : '';
+}
+
+/** 신상정보 아래의 번역본과 전달 기록을 모은다 */
+async function readBackgroundEvidence(
+  db: FirebaseFirestore.Firestore,
+  base: string,
+): Promise<{ translations: TranslationRecord[]; deliveries: DeliveryRecord[] }> {
+  const infos = await db.collection(`${base}/backgroundInfo`).get();
+  const translations: TranslationRecord[] = [];
+  const deliveries: DeliveryRecord[] = [];
+
+  await Promise.all(
+    infos.docs.map(async (info) => {
+      const subject = String(info.get('subject') ?? 'korean') as 'korean' | 'partner';
+      const [tSnap, dSnap] = await Promise.all([
+        db.collection(`${base}/backgroundInfo/${info.id}/translations`).get(),
+        db.collection(`${base}/backgroundInfo/${info.id}/deliveries`).get(),
+      ]);
+      for (const t of tSnap.docs) {
+        translations.push({
+          infoId: info.id,
+          subject,
+          lang: String(t.get('lang') ?? t.id),
+          signed: Boolean(t.get('signedAt')),
+        });
+      }
+      for (const d of dSnap.docs) {
+        deliveries.push({
+          infoId: info.id,
+          to: String(d.get('to') ?? 'partner') as 'korean' | 'partner',
+          receiptConfirmed: d.get('receiptConfirmed') === true,
+          explained: d.get('explained') === true,
+        });
+      }
+    }),
+  );
+
+  return { translations, deliveries };
+}
+
 export const syncObligationsFromDocuments = onCall(
   { region: REGION, enforceAppCheck: ENFORCE_APP_CHECK, timeoutSeconds: 60 },
   async (request): Promise<ObligationSyncResult> => {
@@ -105,6 +181,54 @@ export const syncObligationsFromDocuments = onCall(
 
     const plan = planObligationSync(documents, timeline, [...PRE_MEETING_CODES]);
 
+    // ── 서류함 밖의 근거 ──────────────────────
+    //
+    // 번역과 전달 기록은 backgroundInfo 아래에 이미 쌓이고 있다. 그런데 타임라인과
+    // 이어져 있지 않아, 번역을 다 해 놓고도 「번역이 끝나지 않았습니다」가 떴다.
+    // 한 일이 반영되지 않는 것이 가장 나쁜 종류의 빈칸이다.
+    const partnerLang = String(matchSnap.get('partnerLang') ?? '') || (await partnerLanguage(db, agencyId, String(matchSnap.get('partnerId') ?? '')));
+    const { translations, deliveries } = await readBackgroundEvidence(db, base);
+
+    const extraDone: Array<{ itemId: string; templateCode: string }> = [];
+    const rowOf = (code: string) => timeline.find((r) => r.templateCode === code);
+
+    if (translationSatisfied(translations, partnerLang)) {
+      const row = rowOf('BG_TRANSLATION');
+      if (row && row.status !== 'done') {
+        extraDone.push({ itemId: row.id, templateCode: 'BG_TRANSLATION' });
+      }
+    }
+    if (deliverySatisfied(deliveries)) {
+      const row = rowOf('BG_MUTUAL_DELIVERY');
+      if (row && row.status !== 'done') {
+        extraDone.push({ itemId: row.id, templateCode: 'BG_MUTUAL_DELIVERY' });
+      }
+    }
+
+    if (extraDone.length > 0) {
+      const batch = db.batch();
+      for (const item of extraDone) {
+        batch.update(db.doc(`${base}/timeline/${item.itemId}`), {
+          status: 'done',
+          completedAt: FieldValue.serverTimestamp(),
+          completedBy: uid,
+          notes:
+            item.templateCode === 'BG_TRANSLATION'
+              ? '모국어 번역본에 수령·이해 확인 서명이 완료되어 자동 확인'
+              : '양방향 전달과 수령확인·설명 기록이 있어 자동 확인',
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+      // 방금 채운 것은 「남은 것」에서 뺀다.
+      // ★ plan.complete 에는 넣지 않는다 — 아래 batch가 다시 쓰면서
+      //   evidence 에 빈 docId 가 들어간다. 결과에만 합친다.
+      for (const item of extraDone) {
+        const i = plan.missing.indexOf(item.templateCode);
+        if (i >= 0) plan.missing.splice(i, 1);
+      }
+    }
+
     if (plan.complete.length > 0) {
       const batch = db.batch();
       const now = Timestamp.now();
@@ -129,7 +253,7 @@ export const syncObligationsFromDocuments = onCall(
     }
 
     return {
-      completed: plan.complete.map((c) => ({
+      completed: [...plan.complete, ...extraDone].map((c) => ({
         templateCode: c.templateCode,
         title: TITLE[c.templateCode] ?? c.templateCode,
       })),

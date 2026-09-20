@@ -88,6 +88,24 @@ export async function syncObligations(matchId: string): Promise<ObligationSyncRe
   return data;
 }
 
+export type CertificateResult =
+  | { issued: true; certificateId: string; issuedAt: number }
+  | { issued: false; missing: string[] };
+
+/**
+ * 신상정보 교환완료 증명서를 낸다.
+ *
+ * 근거가 모자라면 내주지 않고 무엇이 빠졌는지 돌려준다.
+ */
+export async function issueCertificate(matchId: string): Promise<CertificateResult> {
+  const call = httpsCallable<{ matchId: string }, CertificateResult>(
+    functions,
+    'issueExchangeCertificate',
+  );
+  const { data } = await call({ matchId });
+  return data;
+}
+
 /** 입장 코드로 만드는 주소. 받은 사람은 이 한 줄만 누르면 된다 */
 export function callLinkFor(code: string): string {
   return `${window.location.origin}/call/${code}`;
