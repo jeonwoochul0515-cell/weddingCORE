@@ -137,13 +137,71 @@ export default function AdminAgenciesPage() {
                 <div className="font-semibold text-slate-900">{a.name}</div>
                 <div className="text-xs text-slate-500">ID: {a.id}</div>
                 <dl className="mt-3 grid grid-cols-2 gap-1 text-sm">
+                  <dt className="text-slate-500">대표자</dt>
+                  <dd>{(a as { ownerName?: string }).ownerName ?? '-'}</dd>
                   <dt className="text-slate-500">사업자번호</dt>
                   <dd>{a.businessNumber}</dd>
-                  <dt className="text-slate-500">중개업 등록번호</dt>
-                  <dd>{a.registrationNumber}</dd>
+                  <dt className="text-slate-500">국제 등록번호</dt>
+                  <dd>
+                    {(a as { internationalRegistrationNumber?: string })
+                      .internationalRegistrationNumber ?? a.registrationNumber}
+                  </dd>
+                  {(a as { domesticRegistrationNumber?: string | null })
+                    .domesticRegistrationNumber && (
+                    <>
+                      <dt className="text-slate-500">국내 신고번호</dt>
+                      <dd>
+                        {
+                          (a as { domesticRegistrationNumber?: string | null })
+                            .domesticRegistrationNumber
+                        }
+                      </dd>
+                    </>
+                  )}
                   <dt className="text-slate-500">대표 UID</dt>
                   <dd className="truncate">{a.ownerUid}</dd>
                 </dl>
+
+                {/*
+                  공시 대조 결과. 이 공시는 국제결혼중개업체만 담으므로
+                  찾혔다는 것은 결 국제 등록이 있다는 뜻이다. 인증 누르기 전에 보여 준다.
+                */}
+                {(() => {
+                  const rv = (
+                    a as {
+                      registryVerified?: {
+                        found?: boolean;
+                        entrpsNm?: string;
+                        rprsvNm?: string;
+                        registeredOn?: string | null;
+                        operating?: boolean;
+                        hasSanctions?: boolean;
+                      };
+                    }
+                  ).registryVerified;
+                  if (!rv) return null;
+                  const ok = rv.found !== false && Boolean(rv.entrpsNm);
+                  return (
+                    <p
+                      className={`mt-2 inline-block rounded-md px-2.5 py-1.5 text-xs ${
+                        ok ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'
+                      }`}
+                    >
+                      {ok ? (
+                        <>
+                          <strong>공시에서 확인됨</strong> — {rv.entrpsNm} / {rv.rprsvNm}
+                          {rv.registeredOn ? ` / 등록일 ${rv.registeredOn}` : ''}
+                          {rv.operating === false ? ' / ★ 운영 중지' : ''}
+                          {rv.hasSanctions ? ' / ★ 제재이력 있음' : ''}
+                        </>
+                      ) : (
+                        <>
+                          <strong>공시에서 못 찾음</strong> — 국제결혼중개업 등록증을 눈으로 확인하세요.
+                        </>
+                      )}
+                    </p>
+                  );
+                })()}
               </div>
               <div className="flex gap-2">
                 <button

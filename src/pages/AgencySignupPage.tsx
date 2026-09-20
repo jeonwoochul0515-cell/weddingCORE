@@ -15,7 +15,10 @@ import { signOut } from '@/lib/auth';
 
 type FormValues = {
   businessNumber: string;
+  /** 국제결혼중개업 등록번호 (법 제4조). 이 서비스를 쓰는 이유가 여기다 */
   registrationNumber: string;
+  /** 국내결혼중개업 신고번호 (법 제3조). 같이 하는 업체만 적는다 */
+  domesticRegistrationNumber: string;
   ownerName: string;
   phone: string;
   address: string;
@@ -202,6 +205,25 @@ export default function AgencySignupPage() {
         agencyId,
         businessNumber: values.businessNumber,
         registrationNumber: values.registrationNumber,
+        // 국내와 국제를 나눠 적는다. 한 칸에 두면 어느 쪽 번호인지 알 수 없고,
+        // 국내 신고만 하고 국제 중개를 하는 업체를 걸러낼 수도 없다.
+        internationalRegistrationNumber: values.registrationNumber,
+        domesticRegistrationNumber: values.domesticRegistrationNumber?.trim() || null,
+        registrationType: values.domesticRegistrationNumber?.trim() ? 'both' : 'international',
+        // ★ 공시는 국제결혼중개업체만 담는다. 거기서 골랐다는 것은 곳 국제 등록이
+        //   있다는 뜻이다. 승인 때 다시 대조하지만 가입 시점에도 남겨 둔다.
+        registryVerified: selectedBroker
+          ? {
+              source: '성평등가족부 결혼중개업 공시',
+              entrpsNm: selectedBroker.entrpsNm,
+              rprsvNm: selectedBroker.rprsvNm,
+              region: selectedBroker.region,
+              registeredOn: selectedBroker.mrbrkRegYmd,
+              operating: selectedBroker.operYn,
+              hasSanctions: selectedBroker.hasSanctions,
+              checkedAt: serverTimestamp(),
+            }
+          : { source: '성평등가족부 결혼중개업 공시', found: false, checkedAt: serverTimestamp() },
         name: nameToUse,
         ownerUid: uid,
         ownerName: values.ownerName,
@@ -331,8 +353,11 @@ export default function AgencySignupPage() {
             <label className="mb-1 block text-sm font-medium text-slate-700">
               상호(업체명)
               {selectedBroker && (
-                <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-normal text-emerald-700">
-                  공시 매칭
+                <span
+                  className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-normal text-emerald-700"
+                  title="성평등가족부 공시는 국제결혼중개업 등록 업체만 담습니다"
+                >
+                  국제 등록 확인됨
                 </span>
               )}
               {autoFilled.includes('상호') && !selectedBroker && <AutoBadge />}
@@ -359,10 +384,18 @@ export default function AgencySignupPage() {
               </button>
             )}
             {manualMode && (
-              <p className="mt-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-                수동 입력 모드: 공시 매칭이 없어 "공시 인증" 배지는 미발급 상태로 가입됩니다.
-                공시 등록이 완료된 이후 대시보드에서 재연결하면 배지가 활성화됩니다.
-              </p>
+              <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-900">
+                <p className="font-bold">공시에서 찾지 못한 채로 가입합니다.</p>
+                <p className="mt-1">
+                  이 공시에는 <strong>국제결혼중개업 등록 업체만</strong> 올라 있습니다. 방금 등록하셔
+                  아직 반영이 안 됐을 수도 있고, 국내 신고만 되어 있을 수도 있습니다.
+                </p>
+                <p className="mt-1">
+                  국제결혼중개는 <strong>등록</strong>(법 제4조)이 따로 필요하고, 등록 없이 하면
+                  5년 이하 징역 또는 5천만원 이하 벌금입니다. 가입은 그대로 진행되지만,
+                  인증 단계에서 등록증을 확인합니다.
+                </p>
+              </div>
             )}
           </div>
 
@@ -382,11 +415,33 @@ export default function AgencySignupPage() {
               })}
             />
           </Field>
-          <Field label="결혼중개업 등록번호" error={errors.registrationNumber?.message} auto={autoFilled.includes('결혼중개업 등록번호')}>
+          <Field
+            label="국제결혼중개업 등록번호"
+            error={errors.registrationNumber?.message}
+            auto={autoFilled.includes('결혼중개업 등록번호')}
+          >
             <input
               className="input"
+              placeholder="예) 부산-연제-국제-26-0001호"
               {...register('registrationNumber', { required: '필수 입력입니다.' })}
             />
+            <p className="mt-1 text-xs text-slate-400">
+              등록증 제목이 「<strong>국제</strong>결혼중개업 등록증」인 것을 보고 적어 주세요.
+              「국내결혼중개업 신고필증」은 아래 칸입니다 — 둘은 서로 다른 절차입니다.
+            </p>
+          </Field>
+          <Field
+            label="국내결혼중개업 신고번호 (같이 하시면)"
+            error={errors.domesticRegistrationNumber?.message}
+          >
+            <input
+              className="input"
+              placeholder="예) 부산-연제-국내-26-0001호"
+              {...register('domesticRegistrationNumber')}
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              국내 중개도 하시면 적어 주세요. 안 하시면 비워 두셔도 됩니다.
+            </p>
           </Field>
           <Field label="연락처 · 휴대폰 (필수)" error={errors.phone?.message} auto={autoFilled.includes('연락처')}>
             <input
