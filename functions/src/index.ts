@@ -190,6 +190,8 @@ export { crawlRegulations, runCrawlNow } from './regulations/index.js';
 
 // Document Expiry Alerts (W8)
 export { checkExpiringDocuments } from './documents/index.js';
+// 서류 사진을 여러 장 받아 종류·대상·발급일을 가려낸다
+export { classifyClientDocuments } from './documents/classify.js';
 
 // Obligation Templates Admin (W5-7)
 export { seedObligationTemplates } from './admin/index.js';

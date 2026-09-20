@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { FileText, Upload, ExternalLink, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { deleteClientDocument, useClientDocuments, uploadClientDocument, type DocumentListItem } from './useClientDocuments';
+import { deleteClientDocument, useClientDocuments, type DocumentListItem } from './useClientDocuments';
+import BulkUploadDialog from './BulkUploadDialog';
 import { DOC_TYPE_LABEL, type DocType, validityStatus } from './types';
 
 const UPLOADABLE_TYPES: DocType[] = [
@@ -54,7 +55,7 @@ export default function DocumentSection({ clientId }: { clientId: string }) {
       </div>
 
       {showUpload && user?.agencyId && (
-        <UploadDialog
+        <BulkUploadDialog
           agencyId={user.agencyId}
           clientId={clientId}
           uid={user.uid}
@@ -149,97 +150,6 @@ function DocumentRow({ doc, clientId, agencyId }: { doc: DocumentListItem; clien
         </div>
       )}
       {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
-    </div>
-  );
-}
-
-function UploadDialog({
-  agencyId,
-  clientId,
-  uid,
-  onClose,
-}: {
-  agencyId: string;
-  clientId: string;
-  uid: string;
-  onClose: () => void;
-}) {
-  const [file, setFile] = useState<File | null>(null);
-  const [type, setType] = useState<DocType>('criminal_record');
-  const [subject, setSubject] = useState<'korean' | 'partner' | 'both'>('korean');
-  const [issuedAt, setIssuedAt] = useState('');
-  const [validUntil, setValidUntil] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleUpload() {
-    if (!file) { setError('파일을 골라 주세요.'); return; }
-    if (file.size > 20 * 1024 * 1024) { setError('파일이 20MB를 넘습니다. 사진이면 크기를 줄여 다시 올려 주세요.'); return; }
-    setSubmitting(true);
-    setError(null);
-    try {
-      await uploadClientDocument({
-        agencyId,
-        clientId,
-        uid,
-        file,
-        type,
-        subject,
-        issuedAt: issuedAt ? new Date(issuedAt) : null,
-        validUntilOverride: validUntil ? new Date(validUntil) : null,
-      });
-      onClose();
-    } catch (err) {
-      setError(`올리지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요. (${(err as Error).message})`);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
-      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-        <h3 className="mb-4 text-lg font-semibold">서류 올리기</h3>
-        <div className="space-y-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">서류 종류</label>
-            <select value={type} onChange={(e) => setType(e.target.value as DocType)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
-              {UPLOADABLE_TYPES.map((t) => (
-                <option key={t} value={t}>{DOC_TYPE_LABEL[t]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">누구 서류인가</label>
-            <select value={subject} onChange={(e) => setSubject(e.target.value as typeof subject)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
-              <option value="korean">한국인 측</option>
-              <option value="partner">외국인 측</option>
-              <option value="both">양측</option>
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">발급일</label>
-            <input type="date" value={issuedAt} onChange={(e) => setIssuedAt(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-            <p className="mt-1 text-xs text-slate-500">적으면 서류 종류에 따라 만료일을 계산해 미리 알려 드립니다.</p>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">만료일 (선택)</label>
-            <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-            <p className="mt-1 text-xs text-slate-500">비워 두면 서류 종류별 기본 기간으로 계산합니다.</p>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">파일 (사진 또는 PDF, 20MB까지)</label>
-            <input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block w-full text-sm" />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-        </div>
-        <div className="mt-4 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">취소</button>
-          <button onClick={handleUpload} disabled={submitting} className="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:opacity-50">
-            {submitting ? '올리는 중…' : '올리기'}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
