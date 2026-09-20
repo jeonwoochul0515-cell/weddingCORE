@@ -361,6 +361,51 @@ export type Match = {
   updatedAt?: Timestamp;
 };
 
+// ===== 약속과 일정 =====
+
+/**
+ * 약속 한 건.
+ *
+ * 맞선(Match) 안에 두지 않고 따로 둔 이유 — 한 맞선에 약속은 여러 번 생긴다.
+ * 화상맞선으로 서로 보고, 괜찮으면 현지에 나가 만나고, 다시 만나고, 상견례를 한다.
+ * Match.date 하나에 이걸 다 담으려면 지난 약속이 덮어쓰여 없어진다.
+ *
+ * 업체 밑에 바로 두는 것은 「이번 주 일정」을 한 번에 불러오기 위해서다.
+ * 맞선 밑에 두면 모든 맞선을 뒤져야 한다.
+ */
+export type Appointment = {
+  appointmentId: string;
+  agencyId: string;
+  matchId: string;
+  clientId: string;
+  partnerId: string;
+  /** 목록에서 바로 보여 주려고 적어 둔다. 이름이 바뀜어도 지난 약속은 그때 이름으로 남는다 */
+  clientName: string;
+  partnerName: string;
+  /** 어떻게 만나는가 */
+  mode: 'online' | 'offline';
+  kind: '화상맞선' | '현지만남' | '재회' | '상견례' | '혼인신고' | '기타';
+  startAt: Timestamp;
+  /** 예상 소요(분). 달력에서 길이로 쓴다 */
+  durationMinutes: number;
+  /**
+   * 오프라인일 때만 채운다. 온라인은 사이트 안 통화방을 쓰므로
+   * 따로 주소를 적지 않는다 — 적을 수 있게 두면 줄·카톡 링크를 적어 넣게 되고,
+   * 그러면 녹화도 전사본도 남지 않는다.
+   */
+  place: { name: string; address: string; note: string } | null;
+  status: 'planned' | 'confirmed' | 'done' | 'canceled' | 'noshow';
+  /** 누가 나오는가. 통역과 담당자는 맞선 쪽에 이미 있지만 약속마다 달라질 수 있다 */
+  interpreterName: string;
+  agentUid: string | null;
+  memo: string;
+  /** 업체가 아니라 손님이 못 나온 경우를 가르려고 둔다 */
+  canceledReason: string;
+  createdBy: string;
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
+};
+
 export type ClientActivityType = 'call' | 'message' | 'consultation' | 'visit' | 'note';
 
 /** 고객과 나눈 연락·상담과 다음 약속. 고객 상세의 시간순 업무일지로 쓴다. */
