@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   collection,
   doc,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -10,6 +9,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 import type { ClientActivity, ClientActivityType } from '@/types/schema';
 
@@ -19,21 +19,28 @@ export function useClientActivities(clientId: string | undefined) {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [items, setItems] = useState<ClientActivityListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId || !clientId) { setLoading(false); return; }
     setLoading(true);
+    setError(null);
     const q = query(
       collection(db, `agencies/${agencyId}/clients/${clientId}/activities`),
       orderBy('occurredAt', 'desc'),
     );
-    return onSnapshot(q, (snapshot) => {
-      setItems(snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as ClientActivity) })));
-      setLoading(false);
-    });
+    return liveQuery(
+      '고객 응대 기록',
+      q,
+      (snapshot) => {
+        setItems(snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as ClientActivity) })));
+        setLoading(false);
+      },
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
+    );
   }, [agencyId, clientId]);
 
-  return { items, loading };
+  return { items, loading, error };
 }
 
 export async function createClientActivity(args: {

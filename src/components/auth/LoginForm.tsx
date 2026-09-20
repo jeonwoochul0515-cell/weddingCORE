@@ -41,8 +41,12 @@ export default function LoginForm() {
     setLoading(true);
     try {
       if (mode === 'login') await signInEmail(email, password);
-      else if (mode === 'signup') await signUpEmail(email, password);
-      else {
+      else if (mode === 'signup') {
+        await signUpEmail(email, password);
+        // 어느 업체에도 속하지 않은 사람은 초대장을 받으려면 메일 인증이 필요하다.
+        // 대표로 가입하는 사람은 안 해도 되지만, 여기서는 둘을 구분할 수 없으므로 알려만 둔다.
+        setNotice(`${email} 로 인증 메일을 보냈습니다. 직원으로 초대받으셨다면 메일의 링크를 누른 뒤 다시 로그인해 주세요.`);
+      } else {
         await sendPasswordReset(email);
         setNotice(`${email} 로 비밀번호 재설정 메일을 보냈습니다. 메일이 안 보이면 스팸함을 확인해 주세요.`);
       }

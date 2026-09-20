@@ -1,8 +1,9 @@
 // 고객별 F-6 비자 사건의 단계·기한을 관리하고 신청 대행 수임료를 안내하는 화면
 import { useEffect, useMemo, useState } from 'react';
-import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { CalendarClock, CheckCircle2, ClipboardCheck, FileWarning, Landmark, Plus, ShieldCheck, Trash2, Wallet } from 'lucide-react';
 import { db } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
 import { TRACKS, TRACK_LIST, stageSpec, type TrackId } from '@/domain/visaTracks';
@@ -63,13 +64,14 @@ export default function VisaWorkCenterPage() {
 
   useEffect(() => {
     if (!agencyId) return;
-    return onSnapshot(
+    return liveQuery(
+      '비자 사건',
       query(collection(db, `agencies/${agencyId}/visaCases`), orderBy('createdAt', 'desc')),
       (snapshot) => {
         setCases(snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as VisaCase)));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => { setNotice(liveErrorMessage(err)); setLoading(false); },
     );
   }, [agencyId]);
 

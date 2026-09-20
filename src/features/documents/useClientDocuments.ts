@@ -4,7 +4,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -13,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 import type { ClientDocument } from '@/types/schema';
 import { computeValidUntil, type DocType } from './types';
@@ -23,21 +23,27 @@ export function useClientDocuments(clientId: string | undefined) {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [items, setItems] = useState<DocumentListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId || !clientId) { setLoading(false); return; }
+    setError(null);
     const q = query(
       collection(db, `agencies/${agencyId}/clients/${clientId}/documents`),
       orderBy('uploadedAt', 'desc'),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ClientDocument) })));
-      setLoading(false);
-    });
-    return () => unsub();
+    return liveQuery(
+      '고객 서류',
+      q,
+      (snap) => {
+        setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ClientDocument) })));
+        setLoading(false);
+      },
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
+    );
   }, [agencyId, clientId]);
 
-  return { items, loading };
+  return { items, loading, error };
 }
 
 /** 파일명에서 경로 문자와 공백을 걷어낸다. Storage 경로에 그대로 들어간다 */

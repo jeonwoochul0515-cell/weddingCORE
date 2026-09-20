@@ -9,12 +9,18 @@
 //  - 둘 다 실패했을 때만 손님에게 실패를 알린다. 가짜 성공은 연락처를 조용히 잃는 길이다.
 
 import { onRequest } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { isRateLimited, requesterIp } from '../lib/rateLimit.js';
 
 const REGION = 'asia-northeast3';
 const SOLAPI_BASE = 'https://api.solapi.com';
+
+// 접수는 사람이 손으로 하는 일이다. 한 사람이 10분에 여러 번 보낼 이유가 없다.
+// 호출당 문자 한 통씩 나가므로 막지 않으면 남이 우리 지갑을 열 수 있다.
+const SUBMIT_LIMIT = { windowMs: 10 * 60_000, max: 5 };
 
 /** 이름 + 전화번호만 받는다. 그 이상은 캐릭터가 묻지도 않는다. */
 type LeadInput = {
@@ -25,6 +31,8 @@ type LeadInput = {
   /** "손님: ... / 하람: ..." 형식의 대화 전문 */
   chat?: string;
   page?: string;
+  /** 사람에게 보이지 않는 칸. 값이 있으면 봇이다. */
+  company?: string;
 };
 
 const PHONE_RE = /^0\d{1,2}-?\d{3,4}-?\d{4}$/;
@@ -119,10 +127,25 @@ export const submitConsult = onRequest(
     }
 
     const body = (req.body ?? {}) as LeadInput;
+    // 봇은 값싸게 돌려보낸다. 성공처럼 보여야 다시 시도하지 않는다.
+    if (String(body.company ?? '').trim()) {
+      res.json({ ok: true, sessionId: null });
+      return;
+    }
+
     const name = String(body.name ?? '').trim().slice(0, 40);
     const phoneRaw = String(body.phone ?? '').trim();
     if (!name || !PHONE_RE.test(phoneRaw.replace(/\s/g, ''))) {
       res.status(400).json({ ok: false, error: '성함과 연락처를 확인해 주세요.' });
+      return;
+    }
+
+    if (await isRateLimited('consult', requesterIp(req), SUBMIT_LIMIT)) {
+      logger.warn('상담 접수 빈도 초과', { ip: requesterIp(req) });
+      res.status(429).json({
+        ok: false,
+        error: '접수가 여러 번 들어왔습니다. 잠시 뒤에 다시 시도하거나 사무실(1660-4452)로 전화해 주세요.',
+      });
       return;
     }
     const phone = normalizePhone(phoneRaw);
@@ -254,6 +277,15 @@ export const submitCheckLead = onRequest(
       res.status(400).json({ ok: false, error: '성함과 연락처를 확인해 주세요.' });
       return;
     }
+    if (await isRateLimited('checkLead', requesterIp(req), SUBMIT_LIMIT)) {
+      logger.warn('점검 접수 빈도 초과', { agencyId, ip: requesterIp(req) });
+      res.status(429).json({
+        ok: false,
+        error: '접수가 여러 번 들어왔습니다. 잠시 뒤에 다시 시도해 주세요.',
+      });
+      return;
+    }
+
     const phone = normalizePhone(phoneRaw);
     const level = ['ok', 'check', 'stop'].includes(String(body.level)) ? String(body.level) : 'unknown';
     const summary = String(body.summary ?? '').slice(0, 2000);
@@ -262,8 +294,13 @@ export const submitCheckLead = onRequest(
     const db = getFirestore();
     const agencySnap = await db.doc('agencies/' + agencyId).get();
     const agency = agencySnap.data();
-    // 승인된 업체만 받는다. 아무 ID나 넣어 남의 이름으로 접수를 만드는 것을 막는다.
-    if (!agencySnap.exists || !agency || agency.verificationStatus !== 'verified') {
+    // 있는 업체인지, 반려된 곳은 아닌지만 본다.
+    //
+    // 예전엔 verified만 받았다. 그런데 사용 권한은 가입 즉시 나가고(selfProvisionAgency)
+    // verified는 공시 대조를 마친 배지라, 정상 영업 중인 업체도 계속 pending이다.
+    // 그 상태에서 마케팅 센터가 위젯 코드를 내주니, 업체는 홈페이지에 심었는데
+    // 손님이 접수할 때마다 404가 떨어졌다. 손님 연락처가 통째로 버려졌다는 뜻이다.
+    if (!agencySnap.exists || !agency || agency.verificationStatus === 'rejected') {
       res.status(404).json({ ok: false, error: '접수할 업체를 찾을 수 없습니다.' });
       return;
     }
@@ -425,6 +462,37 @@ export const weddingcoreAdmin = onRequest(
         return;
       }
 
+      // 마케팅 신청 목록. 카드 결제로 들어온 건과 무료 상담 요청이 여기 쌓인다.
+      //
+      // 이게 없으면 돈을 받고도 아무도 모른다. 신청서는 업체 문서 아래에 흔어져 있고
+      // 우리 쪽 화면은 업체를 가로지르는 조회를 하지 않았다.
+      // 결제건(paid)을 먼저 보여 준다 — 돈을 받았으면 먼저 해야 한다.
+      if (path.endsWith('/marketing/requests')) {
+        const snap = await db
+          .collectionGroup('marketingRequests')
+          .orderBy('createdAt', 'desc')
+          .limit(200)
+          .get();
+
+        const items = snap.docs.map((d) => ({
+          id: d.id,
+          agency_id: d.get('agencyId') ?? '',
+          services: (d.get('services') as string[] | undefined) ?? [],
+          status: d.get('status') ?? 'requested',
+          paid: d.get('paid') === true,
+          paid_amount: d.get('paidAmount') ?? 0,
+          billing: d.get('billing') ?? 'once',
+          order_id: d.get('orderId') ?? '',
+          note: d.get('note') ?? '',
+          keywords: (d.get('keywords') as string[] | undefined) ?? [],
+          created_at: utc(d.get('createdAt')),
+        }));
+        // 결제건을 앞으로. 그 안에서는 최신순이다.
+        items.sort((a, b) => Number(b.paid) - Number(a.paid));
+        res.json({ requests: items, paidCount: items.filter((i) => i.paid).length });
+        return;
+      }
+
       // 답변 초안·서류·첨부는 다음 단계에서 붙인다. 접수함이 물어도 조용히 실패하지 않도록
       // 준비되지 않았음을 분명히 알린다.
       if (path.endsWith('/chat/draft')) {
@@ -445,5 +513,71 @@ export const weddingcoreAdmin = onRequest(
       logger.error('어드민 API 오류', { path, error });
       res.status(500).json({ error: 'internal' });
     }
+  },
+);
+
+/**
+ * 개인정보처리방침이 약속한 「1년 뒤 파기」를 실제로 하는 작업.
+ *
+ * 방침에는 "상담 접수 정보는 문의 처리 후 1년간 보관 후 파기"라고 적혀 있었는데
+ * 지우는 코드가 없었다(점검 13-21). 약속만 있고 실행이 없으면 방침 자체가 위반이 된다.
+ * 마지막 대화(lastAt)로부터 1년이 지난 세션을 대화까지 함께 지운다.
+ */
+export const purgeOldConsultSessions = onSchedule(
+  { region: REGION, schedule: '30 3 * * *', timeZone: 'Asia/Seoul', timeoutSeconds: 540 },
+  async () => {
+    const db = getFirestore();
+    const cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - 1);
+
+    // 한 번에 200건씩만 본다. 오래된 것부터 지우므로 남으면 다음 날 이어서 지운다.
+    const snap = await db
+      .collection('liveSessions')
+      .where('lastAt', '<', Timestamp.fromDate(cutoff))
+      .orderBy('lastAt', 'asc')
+      .limit(200)
+      .get();
+
+    let removed = 0;
+    for (const doc of snap.docs) {
+      // 하위 대화를 먼저 지운다. 세션만 지우면 대화가 주인 없이 남는다.
+      const messages = await doc.ref.collection('messages').get();
+      // docs를 그대로 splice하지 않는다. 스냅샷이 들고 있는 배열을 건드리게 된다.
+      const pending = [...messages.docs];
+      while (pending.length) {
+        const chunk = pending.splice(0, 400);
+        const batch = db.batch();
+        chunk.forEach((m) => batch.delete(m.ref));
+        await batch.commit();
+      }
+      await doc.ref.delete();
+      removed++;
+    }
+
+    logger.info(`1년 지난 상담 접수 ${removed}건 파기`);
+  },
+);
+
+/**
+ * 호출 빈도 기록 청소.
+ * 창이 끝난 문서는 쓸모가 없는데 지우는 사람이 없으면 계속 쌓인다.
+ * 하루 지난 것부터 지운다(창이 길어봐야 10분이다).
+ */
+export const purgeRateLimits = onSchedule(
+  { region: REGION, schedule: '10 4 * * *', timeZone: 'Asia/Seoul', timeoutSeconds: 300 },
+  async () => {
+    const db = getFirestore();
+    const cutoff = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
+    const snap = await db
+      .collection('rateLimits')
+      .where('updatedAt', '<', cutoff)
+      .limit(500)
+      .get();
+
+    if (snap.empty) return;
+    const batch = db.batch();
+    snap.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    logger.info(`호출 빈도 기록 ${snap.size}건 정리`);
   },
 );

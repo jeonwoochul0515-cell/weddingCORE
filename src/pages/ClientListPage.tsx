@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, FileSpreadsheet, Inbox, Plus, Search, UserRound, Users } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
-import { useAgencyClientPhones, useAgencyClients, type ClientScope } from '@/features/agency/useAgencyClients';
+import { useAgencyClients, type ClientScope } from '@/features/agency/useAgencyClients';
 import CreateClientDialog, { type CreateClientFormValues } from '@/features/agency/CreateClientDialog';
 import type { CreateClientIntake } from '@/features/agency/useAgencyClients';
 import LeadsPanel from '@/features/leads/LeadsPanel';
@@ -43,9 +43,8 @@ export default function ClientListPage() {
   const scope: ClientScope = params.get('scope') === 'closed' ? 'closed' : 'active';
   // 대시보드의 「기한 지남」 카드에서 오면 기한을 넘긴 항목이 있는 고객만 보여 준다.
   const overdueOnly = params.get('filter') === 'overdue';
-  const { items, loading } = useAgencyClients(scope);
+  const { items, loading, error } = useAgencyClients(scope);
   const { byClient: overdue } = useOverdueClients();
-  const existingPhones = useAgencyClientPhones();
   const { items: leads } = useAgencyLeads();
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [showCreate, setShowCreate] = useState(false);
@@ -157,7 +156,10 @@ export default function ClientListPage() {
           </div>
 
           {loading && <p className="text-sm text-slate-500">불러오는 중…</p>}
-          {!loading && items.length === 0 && (
+          {error && (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+          )}
+          {!loading && !error && items.length === 0 && (
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-14 text-center">
               <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><UserRound /></span>
               <p className="text-sm text-slate-500">{scope === 'active' ? '진행 중인 고객이 없습니다.' : '종료 처리한 고객이 없습니다.'}</p>
@@ -230,7 +232,6 @@ export default function ClientListPage() {
 
       {showImport && (
         <ImportClientsDialog
-          existingPhones={existingPhones}
           onClose={() => setShowImport(false)}
           onImported={(count) => {
             setShowImport(false);

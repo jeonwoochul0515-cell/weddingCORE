@@ -4,13 +4,13 @@ import {
   collection,
   doc,
   limit,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 
 export type NotificationItem = {
@@ -37,10 +37,14 @@ export function useAgencyNotifications(max = 20) {
       orderBy('createdAt', 'desc'),
       limit(max),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<NotificationItem, 'id'>) })));
-    });
-    return () => unsub();
+    return liveQuery(
+      '업체 알림',
+      q,
+      (snap) => setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<NotificationItem, 'id'>) }))),
+      // 알림은 보조 정보다. 못 읽으면 종을 비워 둔다 — 안 온 것처럼 보이는 편이
+      // 읽지도 못하는 빨간 점을 달아 두는 것보다 낫다. 로그는 liveQuery가 남긴다.
+      () => setItems([]),
+    );
   }, [agencyId, max]);
 
   return items;

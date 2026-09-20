@@ -8,7 +8,6 @@ import {
   collection,
   doc,
   limit,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -16,6 +15,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 import type { Lead, LeadCloseReason, LeadStatus } from '@/types/schema';
 
@@ -52,22 +52,24 @@ export function useAgencyLeads(max = 200) {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [items, setItems] = useState<LeadListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId) { setLoading(false); return; }
+    setError(null);
     const q = query(collection(db, `agencies/${agencyId}/leads`), orderBy('createdAt', 'desc'), limit(max));
-    const unsub = onSnapshot(
+    return liveQuery(
+      '상담 접수',
       q,
       (snap) => {
         setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Lead) })));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
     );
-    return () => unsub();
   }, [agencyId, max]);
 
-  return { items, loading };
+  return { items, loading, error };
 }
 
 function leadRef(agencyId: string, leadId: string) {

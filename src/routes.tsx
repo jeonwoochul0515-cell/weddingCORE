@@ -38,6 +38,9 @@ const GuideDetailPage = lazy(() => import('./pages/GuideDetailPage'));
 // 빠른 요건 점검. 업체 홈페이지에 iframe으로 들어가므로 가볍게 유지한다(Firebase를 쓰지 않는다).
 const QuickCheckPage = lazy(() => import('./pages/QuickCheckPage'));
 const EmbedCheckPage = lazy(() => import('./pages/EmbedCheckPage'));
+// 화상맞선 통화방. 링크를 받은 네 사람이 로그인 없이 들어온다.
+// 들어갈 자격은 주소가 아니라 서버가 코드를 보고 판정한다(functions/src/video/index.ts).
+const CallRoomPage = lazy(() => import('./pages/CallRoomPage'));
 
 function RouteFallback() {
   return (
@@ -56,6 +59,7 @@ export default function AppRoutes() {
         <Route path="/check" element={<QuickCheckPage />} />
         <Route path="/embed/check" element={<EmbedCheckPage />} />
         <Route path="/mbti-test" element={<MbtiTestPage />} />
+        <Route path="/call/:code" element={<CallRoomPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         {/* 결혼중개업법 해석 — 검색으로 들어오는 공개 입구 */}
         <Route path="/law" element={<LawMapPage />} />

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import {
   collectionGroup,
   limit,
-  onSnapshot,
   orderBy,
   query,
   Timestamp,
@@ -11,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { AlertTriangle, ArrowRight, Bot, CalendarClock, CheckCircle2, Inbox, MessageSquareText, RefreshCw, ShieldAlert, Sparkles, Users } from 'lucide-react';
 import { db } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
 import { isFollowUpDue, isUnanswered, useAgencyLeads } from '@/features/leads/useAgencyLeads';
@@ -24,12 +24,14 @@ function useUpcomingTimeline() {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [items, setItems] = useState<UpcomingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId) {
       setLoading(false);
       return;
     }
+    setError(null);
     const q = query(
       collectionGroup(db, 'timeline'),
       where('agencyId', '==', agencyId),
@@ -41,20 +43,24 @@ function useUpcomingTimeline() {
       orderBy('dueDate', 'asc'),
       limit(5),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(
-        snap.docs.map((d) => ({
-          id: d.id,
-          path: d.ref.path,
-          ...(d.data() as TimelineItem),
-        })),
-      );
-      setLoading(false);
-    });
-    return () => unsub();
+    return liveQuery(
+      '임박한 법정의무',
+      q,
+      (snap) => {
+        setItems(
+          snap.docs.map((d) => ({
+            id: d.id,
+            path: d.ref.path,
+            ...(d.data() as TimelineItem),
+          })),
+        );
+        setLoading(false);
+      },
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
+    );
   }, [agencyId]);
 
-  return { items, loading };
+  return { items, loading, error };
 }
 
 export default function AgencyDashboardPage() {

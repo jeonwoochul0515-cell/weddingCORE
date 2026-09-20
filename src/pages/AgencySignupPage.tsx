@@ -225,8 +225,11 @@ export default function AgencySignupPage() {
       });
 
       // 4) members 서브문서
+      //    email을 같이 적는다. 이게 없으면 직원 목록에 대표가 누구인지 안 나온다
+      //    (초대로 들어온 직원은 claimStaffInvite가 적어 준다).
       await setDoc(doc(db, `agencies/${agencyId}/members/${uid}`), {
         uid,
+        email: (auth.currentUser.email ?? '').trim().toLowerCase(),
         role: 'owner',
         invitedAt: serverTimestamp(),
         joinedAt: serverTimestamp(),
@@ -243,6 +246,7 @@ export default function AgencySignupPage() {
         displayName: auth.currentUser.displayName,
         agencyId: (token.claims.agencyId as string | undefined) ?? null,
         role: (token.claims.role as string | undefined) ?? null,
+        emailVerified: auth.currentUser.emailVerified,
       });
 
       navigate('/agency');

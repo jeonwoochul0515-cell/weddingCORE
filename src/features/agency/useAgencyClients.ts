@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   collection,
   doc,
-  onSnapshot,
+  getDocs,
   orderBy,
   query,
   serverTimestamp,
@@ -14,6 +14,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { liveDoc, liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 import type { Client, ClientIntake } from '@/types/schema';
 
@@ -76,10 +77,12 @@ export function useAgencyClients(scope: ClientScope = 'active') {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [items, setItems] = useState<ClientListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId) { setLoading(false); return; }
     setLoading(true);
+    setError(null);
     const statusFilter = scope === 'active'
       ? where('status', '==', 'active')
       : where('status', 'in', ['completed', 'cancelled']);
@@ -88,47 +91,57 @@ export function useAgencyClients(scope: ClientScope = 'active') {
       statusFilter,
       orderBy('updatedAt', 'desc'),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Client) })));
-      setLoading(false);
-    });
-    return () => unsub();
+    return liveQuery(
+      '고객 목록',
+      q,
+      (snap) => {
+        setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Client) })));
+        setLoading(false);
+      },
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
+    );
   }, [agencyId, scope]);
 
-  return { items, loading };
+  return { items, loading, error };
 }
 
 export function useClient(clientId: string | undefined) {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [client, setClient] = useState<ClientListItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId || !clientId) { setLoading(false); return; }
+    setError(null);
     const ref = doc(db, `agencies/${agencyId}/clients/${clientId}`);
-    const unsub = onSnapshot(ref, (snap) => {
-      setClient(snap.exists() ? { id: snap.id, ...(snap.data() as Client) } : null);
-      setLoading(false);
-    });
-    return () => unsub();
+    return liveDoc(
+      '고객 상세',
+      ref,
+      (snap) => {
+        setClient(snap.exists() ? { id: snap.id, ...(snap.data() as Client) } : null);
+        setLoading(false);
+      },
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
+    );
   }, [agencyId, clientId]);
 
-  return { client, loading };
+  return { client, loading, error };
 }
 
-/** CSV 가져오기 중복 확인용. 진행·종료 상태와 관계없이 전화번호만 가볍게 모은다. */
-export function useAgencyClientPhones() {
-  const agencyId = useAuthStore((s) => s.user?.agencyId);
-  const [phones, setPhones] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!agencyId) return;
-    return onSnapshot(collection(db, `agencies/${agencyId}/clients`), (snapshot) => {
-      setPhones(snapshot.docs.map((item) => (item.data() as Client).koreanClient?.phone ?? '').filter(Boolean));
-    });
-  }, [agencyId]);
-
-  return phones;
+/**
+ * CSV 가져오기 중복 확인용. 진행·종료 상태와 관계없이 전화번호만 모은다.
+ *
+ * 실시간 구독(onSnapshot)이 아니라 한 번만 읽는다. 예전에는 고객 목록 화면이
+ * 뜨기만 하면 업체의 고객 전체를 살아있는 구독으로 끌고 있었다. 쓰는 곳은
+ * 「엑셀 가져오기」 창 하나뿐인데, 명단이 큰 업체일수록 읽기 비용과 메모리가
+ * 그대로 나갔다. 중복 확인은 파일을 고를 때 한 번이면 충분하다.
+ */
+export async function fetchClientPhones(agencyId: string): Promise<string[]> {
+  const snapshot = await getDocs(collection(db, `agencies/${agencyId}/clients`));
+  return snapshot.docs
+    .map((item) => (item.data() as Client).koreanClient?.phone ?? '')
+    .filter(Boolean);
 }
 
 /**

@@ -23,6 +23,7 @@
     ],
     "headers": [
       {
+        "//": "전체 기본 보안 헤더. 아래 /embed/** 규칙이 이것을 덮는다 — Firebase 는 정의한 순서대로 규칙을 적용하므로 뒤에 온 같은 이름의 헤더가 이긴다.",
         "source": "**",
         "headers": [
           { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; frame-src https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" },
@@ -33,11 +34,23 @@
         ]
       },
       {
+        "//": "빠른 점검 위젯. 회원 업체 홈페이지에 iframe 으로 들어가므로 프레임을 허용한다. 위 규칙의 CSP 는 같은 키라 덮이지만 X-Frame-Options 는 여기서 다른 값으로 덮어써야 한다 — firebase.json 은 Cloudflare _headers 와 달리 헤더를 떼 수 없고, XFO 에는 '모두 허용' 값이 없다(DENY/SAMEORIGIN 뿐). CSP 명세(CSP3 §6.4.2.2)가 'frame-ancestors 가 enforce 로 오면 X-Frame-Options 는 무시된다'고 정했으므로, 아래 CSP 가 붙는 한 XFO 값은 적용되지 않는다. CSP 를 못 읽는 아주 오래된 브라우저에서만 SAMEORIGIN 이 살아나며, 그때는 DENY 보다 느슨하다. 주 배포인 Cloudflare 는 _headers 에서 XFO 를 아예 떼낸다.",
+        "source": "/embed/**",
+        "headers": [
+          { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors *" },
+          { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+        ]
+      },
+      {
         "source": "**/*.@(js|css|woff2)",
         "headers": [
           { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
         ]
       },
+
       {
         "source": "/index.html",
         "headers": [

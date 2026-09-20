@@ -28,6 +28,14 @@ export const claimStaffInvite = onCall({ region: REGION }, async (request) => {
   // 이미 소속이 있으면 손대지 않는다. 초대로 소속을 갈아타지 못하게 한다.
   if (request.auth?.token?.agencyId) return { joined: false, reason: 'already-member' };
 
+  // ★ 메일 주소를 정말 가진 사람인가.
+  // Firebase 이메일·비밀번호 가입은 소유 확인 없이 아무 주소나 쓸 수 있다. 이걸 안 보면
+  // 남의 직원 이메일을 아는 사람이 그 주소로 가입해 그 업체 고객 명부를 통째로 가져간다.
+  // 구글 로그인은 email_verified가 처음부터 true라 그대로 통과한다.
+  if (request.auth?.token?.email_verified !== true) {
+    return { joined: false, reason: 'email-unverified' };
+  }
+
   const snap = await db()
     .collectionGroup('invites')
     .where('email', '==', normalize(email))
@@ -42,9 +50,13 @@ export const claimStaffInvite = onCall({ region: REGION }, async (request) => {
   const role = (invite.get('role') as StaffRole) ?? 'staff';
   if (!ROLES.includes(role)) throw new HttpsError('failed-precondition', '초대장의 역할이 올바르지 않습니다.');
 
-  // 승인 전 업체에는 직원을 붙이지 않는다. 승인 뒤 다시 부르면 된다.
+  // 반려된 업체에는 직원을 붙이지 않는다.
+  // (사용 권한은 가입 즉시 나가고 verified는 공시 인증 배지라, pending은 막을 이유가 없다)
   const agency = await db().doc(`agencies/${agencyId}`).get();
   if (!agency.exists) throw new HttpsError('not-found', '업체를 찾지 못했습니다.');
+  if (agency.get('verificationStatus') === 'rejected') {
+    throw new HttpsError('failed-precondition', '가입이 반려된 업체입니다.');
+  }
 
   await getAuth().setCustomUserClaims(uid, { agencyId, role });
   await db().doc(`agencies/${agencyId}/members/${uid}`).set({
@@ -105,7 +117,18 @@ export const changeStaffRole = onCall({ region: REGION }, async (request) => {
     throw new HttpsError('failed-precondition', '대표는 스스로의 역할을 바꿀 수 없습니다.');
   }
 
+  // ★ 클레임을 쓰기 전에 「정말 우리 직원인가」를 먼저 본다.
+  // 이 확인이 없으면 대표가 아무 uid나 넣어 그 사람의 클레임을 통째로 덮어쓸 수 있다.
+  // 피해자는 자기 업체에서 튕겨 나와 남의 업체 직원이 된다. members 문서 갱신이
+  // 뒤이어 실패해도 클레임은 이미 바뀐 뒤라 되돌릴 방법이 없다.
+  const memberRef = db().doc(`agencies/${agencyId}/members/${uid}`);
+  const member = await memberRef.get();
+  if (!member.exists) throw new HttpsError('not-found', '그 직원을 찾지 못했습니다.');
+  if (member.get('role') === 'owner') {
+    throw new HttpsError('failed-precondition', '대표의 역할은 바꿀 수 없습니다.');
+  }
+
   await getAuth().setCustomUserClaims(uid, { agencyId, role });
-  await db().doc(`agencies/${agencyId}/members/${uid}`).update({ role });
+  await memberRef.update({ role });
   return { changed: true };
 });

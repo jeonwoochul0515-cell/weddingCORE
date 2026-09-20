@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { CalendarClock, ChevronDown, ChevronUp, MessageSquareText } from 'lucide-react';
+import { CalendarClock, ChevronDown, ChevronUp, MessageSquareText, Video } from 'lucide-react';
 import { useMatches, updateMatchWorkflow, type MatchListItem } from './useMatches';
+import CallReadinessPanel from '@/features/video/CallReadinessPanel';
 import { useAuthStore } from '@/store/authStore';
 import type { MatchResult, MatchStage } from '@/types/schema';
 
@@ -55,6 +56,8 @@ function dateValue(value: unknown) {
 export default function MatchHistory({ clientId }: Props) {
   const { items, loading } = useMatches(clientId);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // 통화 패널은 열 때마다 서버에 묻는다. 펼쳐 둔 것은 하나만 둔다.
+  const [callId, setCallId] = useState<string | null>(null);
 
   if (loading) return <p className="text-sm text-slate-500">불러오는 중…</p>;
   if (items.length === 0) {
@@ -68,6 +71,7 @@ export default function MatchHistory({ clientId }: Props) {
         const nextAction = match.nextActionAt?.toDate ? match.nextActionAt.toDate() : null;
         const overdue = nextAction ? nextAction.getTime() < new Date().setHours(0, 0, 0, 0) : false;
         const open = editingId === match.id;
+        const callOpen = callId === match.id;
         return (
           <article key={match.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <div className="p-4 sm:p-5">
@@ -86,9 +90,14 @@ export default function MatchHistory({ clientId }: Props) {
                     {match.sajuScore != null && <span className="text-xs text-slate-500">사주 {match.sajuScore}점</span>}
                   </div>
                 </div>
-                <button type="button" onClick={() => setEditingId(open ? null : match.id)} className="secondary-button shrink-0 !py-1.5 text-xs">
-                  <MessageSquareText size={14} />진행 기록 {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                </button>
+                <div className="flex shrink-0 gap-2">
+                  <button type="button" onClick={() => setCallId(callOpen ? null : match.id)} className="secondary-button !py-1.5 text-xs">
+                    <Video size={14} />영상통화 {callOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  </button>
+                  <button type="button" onClick={() => setEditingId(open ? null : match.id)} className="secondary-button !py-1.5 text-xs">
+                    <MessageSquareText size={14} />진행 기록 {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  </button>
+                </div>
               </div>
 
               {(match.feedback?.client || match.feedback?.partner) && (
@@ -104,6 +113,11 @@ export default function MatchHistory({ clientId }: Props) {
                 </div>
               )}
             </div>
+            {callOpen && (
+              <div className="border-t border-slate-200 bg-slate-50/60 p-4 sm:p-5">
+                <CallReadinessPanel match={match} open={callOpen} />
+              </div>
+            )}
             {open && <WorkflowEditor match={match} onSaved={() => setEditingId(null)} />}
           </article>
         );

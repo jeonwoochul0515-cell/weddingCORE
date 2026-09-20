@@ -3,7 +3,6 @@ import {
   addDoc,
   collection,
   doc,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -13,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import { app, db } from '@/lib/firebase';
+import { liveDoc, liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 import type { FieldKey, SupportedLang } from './fields';
 
@@ -46,21 +46,27 @@ export function useBackgroundInfoList(clientId: string | undefined) {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [items, setItems] = useState<BackgroundInfoDoc[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId || !clientId) { setLoading(false); return; }
+    setError(null);
     const q = query(
       collection(db, `agencies/${agencyId}/clients/${clientId}/backgroundInfo`),
       orderBy('createdAt', 'desc'),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BackgroundInfoDoc, 'id'>) })));
-      setLoading(false);
-    });
-    return () => unsub();
+    return liveQuery(
+      '신상정보 목록',
+      q,
+      (snap) => {
+        setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BackgroundInfoDoc, 'id'>) })));
+        setLoading(false);
+      },
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
+    );
   }, [agencyId, clientId]);
 
-  return { items, loading };
+  return { items, loading, error };
 }
 
 export function useBackgroundInfo(clientId: string | undefined, infoId: string | undefined) {
@@ -68,24 +74,32 @@ export function useBackgroundInfo(clientId: string | undefined, infoId: string |
   const [info, setInfo] = useState<BackgroundInfoDoc | null>(null);
   const [translations, setTranslations] = useState<TranslationDoc[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId || !clientId || !infoId) { setLoading(false); return; }
+    setError(null);
     const path = `agencies/${agencyId}/clients/${clientId}/backgroundInfo/${infoId}`;
-    const unsub1 = onSnapshot(doc(db, path), (snap) => {
-      setInfo(snap.exists() ? { id: snap.id, ...(snap.data() as Omit<BackgroundInfoDoc, 'id'>) } : null);
-      setLoading(false);
-    });
-    const unsub2 = onSnapshot(
-      collection(db, `${path}/translations`),
+    const unsub1 = liveDoc(
+      '신상정보',
+      doc(db, path),
       (snap) => {
-        setTranslations(snap.docs.map((d) => d.data() as TranslationDoc));
+        setInfo(snap.exists() ? { id: snap.id, ...(snap.data() as Omit<BackgroundInfoDoc, 'id'>) } : null);
+        setLoading(false);
       },
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
+    );
+    const unsub2 = liveQuery(
+      '신상정보 번역',
+      collection(db, `${path}/translations`),
+      (snap) => setTranslations(snap.docs.map((d) => d.data() as TranslationDoc)),
+      // 번역을 못 읽어도 원본은 보여 준다. 빈 목록이면 「번역 없음」으로 보인다.
+      () => setTranslations([]),
     );
     return () => { unsub1(); unsub2(); };
   }, [agencyId, clientId, infoId]);
 
-  return { info, translations, loading };
+  return { info, translations, loading, error };
 }
 
 export async function createBackgroundInfo(params: {

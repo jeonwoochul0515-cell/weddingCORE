@@ -20,7 +20,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -28,6 +27,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 
 // ── 통역자 ────────────────────────────────────────────────
@@ -38,12 +38,16 @@ export type Interpreter = {
   phone: string;
   /** 통역 가능 언어. 자유 입력으로 두어 소수 언어도 담는다 */
   languages: string;
-  /** 자격 (TOPIK, 통번역 자격증, 현지 공인 등) */
+  /** 자격 (TOPIK, 통번역 자격증, 현지 공인 등). 법이 요구하지는 않는다 */
   certification: string;
   affiliation: string;
   /**
    * 이해관계 없음을 확인했는가.
-   * 상대방·현지 업체와 친족이거나 고용 관계면 배제해야 한다.
+   *
+   * 법이 배제를 요구하지는 않는다 — 법·시행령·시행규칙 어느 곳에도 통역자
+   * 자격이나 이해관계인 배제 조항이 없다(2026-09-19 원문 대조).
+   * 다만 분쟁이 나면 「설명을 제대로 했는가」가 다후지므로, 이해관계가 없다는
+   * 기록을 남겨 두는 편이 방어에 유리하다.
    */
   conflictChecked: boolean;
   conflictNote: string;
@@ -175,25 +179,27 @@ export function useOfficeCollection<K extends keyof Collections>(name: K) {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [items, setItems] = useState<Collections[K][]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId) {
       setLoading(false);
       return;
     }
+    setError(null);
     const q = query(collection(db, `agencies/${agencyId}/${name}`), orderBy(ORDER_FIELD[name]));
-    const unsub = onSnapshot(
+    return liveQuery(
+      `사무소 자료(${name})`,
       q,
       (snap) => {
         setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Collections[K]));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
     );
-    return () => unsub();
   }, [agencyId, name]);
 
-  return { items, loading };
+  return { items, loading, error };
 }
 
 export async function addOfficeItem(
@@ -230,8 +236,10 @@ export function officeWarnings(input: {
 
   const uncheckedInterp = input.interpreters.filter((i) => i.active && !i.conflictChecked);
   if (uncheckedInterp.length > 0) {
+    // 「배제해야 합니다」라고 쓰지 않는다. 법이 요구하는 의무가 아니다.
+    // 없는 의무를 있다고 알리면 업체가 쓸데없는 돈을 쓰고, 안내 전체의 신뢰가 깔긴다.
     out.push(
-      `통역자 ${uncheckedInterp.length}명의 이해관계 확인이 남아 있습니다. 상대방·현지 업체와 친족이거나 고용 관계면 배제해야 합니다.`,
+      `통역자 ${uncheckedInterp.length}명의 이해관계 확인이 남아 있습니다. 법이 배제를 요구하지는 않지만, 상대방·현지 업체와 친족이거나 고용 관계면 분쟁 시 「설명을 제대로 했는가」로 불리해집니다.`,
     );
   }
 

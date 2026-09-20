@@ -4,7 +4,6 @@ import {
   arrayUnion,
   collection,
   doc,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -13,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import { app, db } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 import type { AnchorKey, TimelineItem } from '@/types/schema';
 
@@ -24,21 +24,27 @@ export function useClientTimeline(clientId: string | undefined) {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [items, setItems] = useState<TimelineItemView[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId || !clientId) { setLoading(false); return; }
+    setError(null);
     const q = query(
       collection(db, `agencies/${agencyId}/clients/${clientId}/timeline`),
       orderBy('stage'),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as TimelineItem) })));
-      setLoading(false);
-    });
-    return () => unsub();
+    return liveQuery(
+      '법정의무 타임라인',
+      q,
+      (snap) => {
+        setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as TimelineItem) })));
+        setLoading(false);
+      },
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
+    );
   }, [agencyId, clientId]);
 
-  return { items, loading };
+  return { items, loading, error };
 }
 
 export async function updateTimelineItem(

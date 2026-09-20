@@ -15,13 +15,13 @@ import {
   collection,
   deleteDoc,
   doc,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 import type { SupportedLang } from './fields';
 import type { BackgroundSubject } from './useBackgroundInfo';
@@ -63,12 +63,14 @@ export function useDeliveries(clientId: string | undefined, infoId: string | und
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [items, setItems] = useState<DeliveryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId || !clientId || !infoId) {
       setLoading(false);
       return;
     }
+    setError(null);
     const q = query(
       collection(
         db,
@@ -76,14 +78,18 @@ export function useDeliveries(clientId: string | undefined, infoId: string | und
       ),
       orderBy('deliveredAt', 'desc'),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<DeliveryRecord, 'id'>) })));
-      setLoading(false);
-    });
-    return () => unsub();
+    return liveQuery(
+      '신상정보 제공 기록',
+      q,
+      (snap) => {
+        setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<DeliveryRecord, 'id'>) })));
+        setLoading(false);
+      },
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
+    );
   }, [agencyId, clientId, infoId]);
 
-  return { items, loading };
+  return { items, loading, error };
 }
 
 export async function addDelivery(params: {

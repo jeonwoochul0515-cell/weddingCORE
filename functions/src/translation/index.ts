@@ -9,10 +9,16 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import Anthropic from '@anthropic-ai/sdk';
+import { enforceCallLimit } from '../lib/rateLimit.js';
 
 const REGION = 'asia-northeast3';
 const ENFORCE_APP_CHECK = process.env.FUNCTIONS_EMULATOR !== 'true';
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+
+// 번역은 캐럿을 깎지 않는다. 누르는 만큼 Anthropic 호출이 그대로 나간다는 뜻이라,
+// 한도가 없으면 버튼 하나로 비용이 무한히 나간다. 사람이 누르는 속도로는 1시간에 60번이면 넘친다.
+// 업체 단위로 센다 — 한 업체의 직원 여럿이 나눠 돌려도 비용은 그 업체 하나에서 나온다.
+const TRANSLATE_LIMIT = { windowMs: 60 * 60_000, max: 60 };
 
 const LANG_NAMES: Record<string, string> = {
   ko: 'Korean',
@@ -106,6 +112,14 @@ export const translateBackgroundInfo = onCall(
           : '사람이 고친 번역입니다. 다시 만들면 고친 내용이 사라집니다.',
       );
     }
+
+    // 돈이 나가는 호출 직전에 본다. 서명본 덮어쓰기 거부로 돌아간 요청은 한도를 먹지 않는다.
+    await enforceCallLimit(
+      'translate',
+      agencyId,
+      TRANSLATE_LIMIT,
+      '번역을 너무 자주 요청했습니다. 잠시 뒤에 다시 시도해 주세요.',
+    );
 
     const targetLangName = LANG_NAMES[targetLang] ?? targetLang;
     const sourceLangName = LANG_NAMES[sourceLang] ?? sourceLang;

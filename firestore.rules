@@ -122,12 +122,25 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // 마케팅 신청. 화면에서 넣는 것은 「상담 요청」이고, 카드 결제로 들어온 건은
+    // 서버(confirmPayment)만 만든다.
+    //
+    // paid 계열 필드를 화면에서 못 쓰게 막는다. 이게 없으면 업체가 paid: true를
+    // 붙여 신청을 넣고 돈을 낸 것처럼 위장할 수 있다. 담당자는 결제건을 먼저
+    // 처리하므로, 돈을 안 내고 유료 작업을 받아가는 길이 된다.
     match /agencies/{aid}/marketingRequests/{requestId} {
       allow read: if isAgencyMember(aid) || isAdmin();
       allow create: if canWriteAgency(aid)
                     && request.resource.data.agencyId == aid
-                    && request.resource.data.status == 'requested';
-      allow update, delete: if isAgencyOwner(aid) || isAdmin();
+                    && request.resource.data.status == 'requested'
+                    && !request.resource.data.keys()
+                        .hasAny(['paid', 'paidAmount', 'orderId', 'billing']);
+      // 업체는 결제 표시를 나중에 붙이지도 못한다.
+      allow update: if (isAgencyOwner(aid)
+                        && !request.resource.data.diff(resource.data).affectedKeys()
+                            .hasAny(['paid', 'paidAmount', 'orderId', 'billing', 'agencyId']))
+                    || isAdmin();
+      allow delete: if isAgencyOwner(aid) || isAdmin();
     }
 
     // 홈페이지 빠른 점검 위젯에서 들어온 상담 접수. 서버(Admin SDK)만 만들고,
@@ -246,6 +259,30 @@ service cloud.firestore {
       allow read: if isAgencyMember(aid);
       allow write: if canWriteAgency(aid);
     }
+
+    // 영상통화 기록. 서버(Admin SDK)만 만들고 고친다.
+    //
+    // 화면에서 쓰게 하면 안 되는 이유가 분명하다. 이 문서의 status·retentionUntil이
+    // 파기 작업의 기준이고, contactLeaks는 「연락처를 주고받았다」는 증거다.
+    // 업체가 고칠 수 있으면 불리한 기록을 지우고 통화를 되살릴 수 있다.
+    match /agencies/{aid}/matches/{matchId}/calls/{callId} {
+      allow read: if isAgencyMember(aid) || isAdmin();
+      allow write: if false;
+      // 전사본도 마찬가지다. 번호를 부른 줄만 지워지면 증거가 통째로 무의미해진다.
+      match /transcript/{segmentId} {
+        allow read: if isAgencyMember(aid) || isAdmin();
+        allow write: if false;
+      }
+    }
+    // 영상통화 입장 링크. 화면에서는 읽지도 쓰지도 못한다.
+    //
+    // 이 문서의 id가 곧 입장 코드다. 목록을 읽을 수 있으면 남의 업체 맞선 통화에
+    // 그대로 들어갈 수 있다. 코드를 받은 사람은 joinVideoCall 함수를 거치고,
+    // 그 함수만이 통화가 살아 있는지 보고 토큰을 만든다.
+    match /callInvites/{code} {
+      allow read, write: if false;
+    }
+
     // 알림은 서버만 만든다. 구성원은 읽음 표시(readBy)만 바꿀 수 있다.
     // 이게 없으면 종의 빨간 점이 영영 안 꺼진다.
     match /agencies/{aid}/notifications/{notificationId} {
@@ -254,8 +291,9 @@ service cloud.firestore {
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']);
       allow create, delete: if false;
     }
-    // packId 목록은 화면의 가격표(AutomationCenterPage CARAT_PACKS)와 같아야 한다.
+    // packId 목록은 상품 정본(functions/src/domain/pricing.ts CARAT_PACKS)과 같아야 한다.
     // 어긋나면 「계좌이체로 신청」이 항상 거부된다(2026-09-05 점검에서 발견).
+    // 규칙 파일은 import가 안 돼 타입 검사가 못 잡는다. `npm run check:tracks`가 대조한다.
     match /agencies/{aid}/caratOrders/{orderId} {
       allow read: if isAgencyMember(aid) || isAdmin();
       allow create: if canWriteAgency(aid)
@@ -283,6 +321,12 @@ service cloud.firestore {
     match /auditLogs/{id} {
       allow read: if isAdmin();
       allow write: if false;
+    }
+
+    // 공개 엔드포인트 호출 빈도 기록. 서버(Admin SDK)만 다룬다.
+    // 화면에 열면 세는 값을 지워 한도를 무력화할 수 있다.
+    match /rateLimits/{id} {
+      allow read, write: if false;
     }
 
     // 명시되지 않은 모든 경로는 기본 거부된다.

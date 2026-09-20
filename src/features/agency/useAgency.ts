@@ -1,7 +1,8 @@
 // 로그인한 업체 문서(agencies/{id})를 구독하고, 대표가 고칠 수 있는 기본 정보를 저장한다
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { liveDoc, liveErrorMessage } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 import { formatPhone } from '@/lib/korean';
 import type { Agency } from '@/types/schema';
@@ -16,13 +17,16 @@ export function useAgency() {
 
   useEffect(() => {
     if (!agencyId) { setLoading(false); return; }
-    return onSnapshot(
+    setError(null);
+    return liveDoc(
+      '업체 정보',
       doc(db, 'agencies', agencyId),
       (snap) => {
         setAgency(snap.exists() ? ({ id: snap.id, ...(snap.data() as Agency) }) : null);
         setLoading(false);
       },
-      (err) => { setError(err.message); setLoading(false); },
+      // err.message를 그대로 넣으면 「Missing or insufficient permissions.」 같은 영문이 화면에 뜨는다.
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
     );
   }, [agencyId]);
 

@@ -42,6 +42,7 @@ export default function PendingApprovalPage() {
         displayName: auth.currentUser.displayName,
         agencyId: (token.claims.agencyId as string | undefined) ?? null,
         role: (token.claims.role as string | undefined) ?? null,
+        emailVerified: auth.currentUser.emailVerified,
       });
       navigate('/agency');
     } catch (err) {
@@ -55,8 +56,12 @@ export default function PendingApprovalPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
         <h1 className="mb-2 text-xl font-semibold text-slate-900">지금 바로 시작</h1>
-        <p className="mb-6 text-sm text-slate-600">
+        <p className="mb-6 text-sm leading-6 text-slate-600">
           제출하신 등록번호로 즉시 계정이 활성화됩니다.
+          <span className="mt-2 block text-xs text-slate-500">
+            홈페이지에 표시되는 「공시 인증」 배지는 여성가족부 공시 자료와 대조한 뒤에 따로 붙습니다.
+            배지가 없어도 모든 기능을 그대로 쓰실 수 있습니다.
+          </span>
         </p>
         {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
         <div className="flex flex-col gap-2">

@@ -10,12 +10,9 @@ import { useAgencyClients } from '@/features/agency/useAgencyClients';
 import { useAutomationJobs } from '@/features/automation/useAutomationJobs';
 import type { AutomationJobStatus } from '@/types/schema';
 import { RULE_READINESS, TRACKS, TRACK_LIST, firstDocument, won, type TrackId } from '@/domain/visaTracks';
-
-const CARAT_PACKS = [
-  { id: 'pack_110', carats: 110, price: 110_000, note: null },
-  { id: 'pack_330', carats: 330, price: 300_000, note: '9% 할인' },
-  { id: 'pack_550', carats: 550, price: 480_000, note: '13% 할인' },
-] as const;
+// 금액 정본은 domain/pricing이다. 여기서 다시 적지 않는다
+// (visaTracks의 won은 캐럿→원 환산이라 뜻이 다르다. 이름이 겹쳐 별칭으로 들여온다).
+import { CARAT_PACK_LIST, won as formatWon } from '@/domain/pricing';
 
 
 
@@ -81,7 +78,7 @@ export default function AutomationCenterPage() {
 
   const checkout = useCheckout();
 
-  async function orderCarats(pack: (typeof CARAT_PACKS)[number]) {
+  async function orderCarats(pack: (typeof CARAT_PACK_LIST)[number]) {
     if (!agencyId || !uid) return;
     setBusy('order');
     setNotice(null);
@@ -90,7 +87,7 @@ export default function AutomationCenterPage() {
         agencyId,
         packId: pack.id,
         carats: pack.carats,
-        price: pack.price,
+        price: pack.amount,
         status: 'requested',
         requestedBy: uid,
         createdAt: serverTimestamp(),
@@ -184,13 +181,13 @@ export default function AutomationCenterPage() {
           충전분은 돈을 내신 몫이라 월이 바뀌어도 사라지지 않습니다. 월 무료 제공량은 사전 고지 후 변경될 수 있습니다.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          {CARAT_PACKS.map((pack) => (
+          {CARAT_PACK_LIST.map((pack) => (
             <div key={pack.id} className="rounded-2xl border border-slate-200 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-2xl font-bold text-slate-950">{pack.carats}<span className="ml-1 text-xs font-medium text-slate-400">캐럿</span></span>
-                {pack.note && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{pack.note}</span>}
+                {pack.discountNote && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{pack.discountNote}</span>}
               </div>
-              <div className="mt-1 text-sm font-semibold text-slate-700">{pack.price.toLocaleString()}원</div>
+              <div className="mt-1 text-sm font-semibold text-slate-700">{formatWon(pack.amount)}</div>
               {/* 카드 결제가 주 경로. 큰 금액은 계좌이체를 선호하는 경우가 있어 함께 둔다. */}
               <button
                 type="button"

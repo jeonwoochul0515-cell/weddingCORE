@@ -92,8 +92,9 @@ export default function PrivacyPage() {
               rows={[
                 ['Google (Firebase)', '데이터 보관, 계정 인증, 서버 기능 실행'],
                 ['Cloudflare', '웹사이트 전송, 보안'],
-                ['Anthropic', 'AI 문서 초안·번역·상담 챗봇 응답 생성'],
+                ['Anthropic', 'AI 문서 초안·번역·상담 챗봇 응답 생성, 사업자등록증 사진 판독'],
                 ['Solapi (솔라피)', '상담 접수 알림 문자 발송'],
+                ['토스페이먼츠', '캐럿 충전·서비스 결제 처리'],
               ]}
             />
             <p className="mt-4">
@@ -105,8 +106,8 @@ export default function PrivacyPage() {
           <Section title="5. 보유 기간">
             <p>
               업체 가입 정보는 회원 탈퇴 시까지 보관하며, 탈퇴 후에는 관계 법령이 정한 기간을 제외하고
-              지체 없이 파기합니다. 상담 접수 정보는 문의 처리 후 1년간 보관 후 파기합니다.
-              동의를 받아 보관한 상담 대화는 상담 종료 후 1년간 보관합니다.
+              지체 없이 파기합니다. 상담 접수 정보와 동의를 받아 보관한 상담 대화는 마지막 대화로부터
+              1년이 지나면 매일 새벽 자동으로 파기합니다.
             </p>
           </Section>
 
@@ -127,7 +128,14 @@ export default function PrivacyPage() {
 
           <Section title="8. 문의">
             <p>
-              개인정보 관련 문의는 사이트의 상담 접수를 통해 남겨 주시면 확인 후 연락드립니다.
+              개인정보 보호책임자는 법률사무소 청송law 대표변호사 김창희입니다.
+              전화 <a href="tel:16604452" className="font-medium text-emerald-700 underline">1660-4452</a>로
+              연락하시거나, 아래 「상담 접수」에서 성함과 연락처를 남겨 주시면 확인 후 연락드립니다.
+            </p>
+            <p className="mt-3">
+              <Link to="/check" className="font-medium text-emerald-700 underline">
+                상담 접수 열기 — 요건 점검과 함께 연락처를 남길 수 있습니다
+              </Link>
             </p>
           </Section>
         </div>

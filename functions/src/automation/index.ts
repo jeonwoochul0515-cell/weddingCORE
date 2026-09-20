@@ -13,16 +13,14 @@ import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
 import { findDocument } from '../domain/visaTracks.js';
+import { CARAT_PACKS, type CaratPackId } from '../domain/pricing.js';
+import { DEFAULT_MONTHLY_ALLOWANCE } from '../domain/credits.js';
+import { computeConsumption, computeRestore } from '../domain/creditMath.js';
+
+// 예전엔 이 파일이 정의했다. 쓰던 곳이 있어 그대로 내보낸다.
+export { DEFAULT_MONTHLY_ALLOWANCE };
 
 const REGION = 'asia-northeast3';
-/**
- * 월간 기본 제공 캐럿. 무상 제공량은 운영 정책에 따라 조정하므로
- * 코드 상수가 아니라 환경변수(AI_MONTHLY_ALLOWANCE)로 먼저 읽는다.
- * 업체 문서에 monthlyAllowance가 있으면 그 값이 항상 우선한다.
- */
-const configuredAllowance = Number(process.env.AI_MONTHLY_ALLOWANCE);
-export const DEFAULT_MONTHLY_ALLOWANCE =
-  Number.isFinite(configuredAllowance) && configuredAllowance >= 0 ? configuredAllowance : 20;
 const ENFORCE_APP_CHECK = process.env.FUNCTIONS_EMULATOR !== 'true';
 
 // 문서 정의는 트랙(사업 종류)별 규칙 파일이 단일 출처다. 여기서 다시 적지 않는다.
@@ -81,29 +79,39 @@ async function consumeCredits(agencyId: string, cost: number) {
     const stored = snap.get('aiCredits') as StoredCredits | undefined;
     const allowance = stored?.monthlyAllowance ?? DEFAULT_MONTHLY_ALLOWANCE;
     const shouldReset = !stored?.resetAt || stored.resetAt.toMillis() <= now.getTime();
-    const used = shouldReset ? 0 : (stored?.used ?? 0);
-    const purchased = stored?.purchased ?? 0;
-    const monthlyRemaining = Math.max(0, allowance - used);
 
-    if (monthlyRemaining + purchased < cost) {
+    // 셀은 domain/creditMath가 한다. 여기서는 저장소만 다룬다.
+    const result = computeConsumption(
+      {
+        monthlyAllowance: allowance,
+        used: shouldReset ? 0 : (stored?.used ?? 0),
+        purchased: stored?.purchased ?? 0,
+      },
+      cost,
+    );
+    if (!result) {
+      const left = Math.max(0, allowance - (shouldReset ? 0 : (stored?.used ?? 0))) + (stored?.purchased ?? 0);
       throw new HttpsError(
         'resource-exhausted',
-        `AI 캐럿이 부족합니다. 잔여 ${monthlyRemaining + purchased}캐럿. 캐럿을 충전해 주세요.`,
+        `AI 캐럿이 부족합니다. 잔여 ${left}캐럿. 캐럿을 충전해 주세요.`,
       );
     }
 
-    const fromMonthly = Math.min(cost, monthlyRemaining);
-    const fromPurchased = cost - fromMonthly;
     const credits = {
       monthlyAllowance: allowance,
-      used: used + fromMonthly,
+      used: result.used,
       resetAt: shouldReset ? nextMonth(now) : stored!.resetAt,
-      purchased: purchased - fromPurchased,
+      purchased: result.purchased,
     };
     tx.update(ref, { aiCredits: credits, updatedAt: FieldValue.serverTimestamp() });
-    // 어디서 얼마를 뺐는지 그대로 넘긴다. 실패해서 되돌릴 때 이 숫자가 없으면 무료분과
-    // 충전분이 뒤바뀐다(아래 restoreCredits 주석).
-    return { ...credits, remaining: monthlyRemaining + purchased - cost, fromMonthly, fromPurchased };
+    // 어디서 얼마를 뻐는지 그대로 넘긴다. 실패해서 되돌릴 때 이 숫자가 없으면 무료분과
+    // 충전분이 뒤바뀜다(아래 restoreCredits 주석).
+    return {
+      ...credits,
+      remaining: result.remaining,
+      fromMonthly: result.fromMonthly,
+      fromPurchased: result.fromPurchased,
+    };
   });
 }
 
@@ -123,13 +131,14 @@ async function restoreCredits(agencyId: string, fromMonthly: number, fromPurchas
     const snap = await tx.get(ref);
     if (!snap.exists) return;
     const stored = snap.get('aiCredits') as StoredCredits | undefined;
-    const used = stored?.used ?? 0;
-    // 되돌리는 사이에 달이 바뀌어 사용량이 이미 0으로 초기화됐으면 음수로 내려가지 않게 막는다.
-    // 그때 못 돌려주는 무료분은 어차피 월말에 소멸하는 몫이고, 돈을 낸 충전분은 전액 돌아간다.
-    const backToMonthly = Math.min(fromMonthly, used);
+    const restored = computeRestore(
+      { used: stored?.used ?? 0, purchased: stored?.purchased ?? 0 },
+      fromMonthly,
+      fromPurchased,
+    );
     tx.update(ref, {
-      'aiCredits.used': used - backToMonthly,
-      'aiCredits.purchased': (stored?.purchased ?? 0) + fromPurchased,
+      'aiCredits.used': restored.used,
+      'aiCredits.purchased': restored.purchased,
       updatedAt: FieldValue.serverTimestamp(),
     });
   });
@@ -491,18 +500,6 @@ export const reviewLegalDocument = onCall({ region: REGION, enforceAppCheck: ENF
   await batch.commit();
   return { ok: true, status };
 });
-
-/**
- * 캐럿 충전 패키지. 결제는 아직 계좌이체로 받고 관리자가 확인 후 지급한다.
- * 1캐럿 = 1,000원 기준이며 대량 구매에만 할인을 준다.
- */
-export const CARAT_PACKS = {
-  pack_110: { carats: 110, price: 110_000 },
-  pack_330: { carats: 330, price: 300_000 },
-  pack_550: { carats: 550, price: 480_000 },
-} as const;
-
-type CaratPackId = keyof typeof CARAT_PACKS;
 
 /** 관리자가 입금을 확인한 뒤 충전분을 지급한다. 충전분은 월초에 소멸하지 않는다. */
 export const grantAiCarats = onCall(

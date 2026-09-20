@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Download, FileSpreadsheet, Upload, X } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { importClients } from './useAgencyClients';
+import { fetchClientPhones, importClients } from './useAgencyClients';
 import {
   CLIENT_CSV_TEMPLATE,
   parseClientCsv,
@@ -9,7 +9,6 @@ import {
 } from './clientCsv';
 
 type Props = {
-  existingPhones: string[];
   onClose: () => void;
   onImported: (count: number) => void;
 };
@@ -24,13 +23,25 @@ function downloadTemplate() {
   URL.revokeObjectURL(url);
 }
 
-export default function ImportClientsDialog({ existingPhones, onClose, onImported }: Props) {
+export default function ImportClientsDialog({ onClose, onImported }: Props) {
   const user = useAuthStore((s) => s.user);
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState('');
   const [result, setResult] = useState<ClientCsvResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 중복 확인용 기존 연락처. 창을 열 때 한 번만 읽는다.
+  const [existingPhones, setExistingPhones] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (!user?.agencyId) return;
+    let cancelled = false;
+    void fetchClientPhones(user.agencyId)
+      .then((phones) => { if (!cancelled) setExistingPhones(phones); })
+      // 목록을 못 읽어도 가져오기 자체는 된다. 중복만 걸러내지 못할 뿐이다.
+      .catch(() => { if (!cancelled) setExistingPhones([]); });
+    return () => { cancelled = true; };
+  }, [user?.agencyId]);
 
   async function readFile(file: File | null) {
     setResult(null);
@@ -46,7 +57,7 @@ export default function ImportClientsDialog({ existingPhones, onClose, onImporte
       return;
     }
     try {
-      const parsed = parseClientCsv(await file.text(), existingPhones);
+      const parsed = parseClientCsv(await file.text(), existingPhones ?? []);
       if (parsed.totalRows > 500) {
         setError('한 번에 500명까지 가져올 수 있습니다. 파일을 나누어 주세요.');
         return;
@@ -103,11 +114,14 @@ export default function ImportClientsDialog({ existingPhones, onClose, onImporte
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 px-4 py-8 text-center hover:border-emerald-400 hover:bg-emerald-50/30"
+            disabled={existingPhones === null}
+            className="flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 px-4 py-8 text-center hover:border-emerald-400 hover:bg-emerald-50/30 disabled:cursor-wait disabled:opacity-60"
           >
             <Upload size={24} className="mb-2 text-slate-400" />
             <span className="text-sm font-semibold text-slate-800">{fileName || 'CSV 파일 고르기'}</span>
-            <span className="mt-1 text-xs text-slate-500">CSV UTF-8 · 최대 2MB · 한 번에 500명</span>
+            <span className="mt-1 text-xs text-slate-500">
+              {existingPhones === null ? '기존 명단을 확인하는 중…' : 'CSV UTF-8 · 최대 2MB · 한 번에 500명'}
+            </span>
           </button>
           <input ref={inputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => readFile(event.target.files?.[0] ?? null)} />
 

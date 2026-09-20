@@ -69,7 +69,8 @@ export function checkConsistency(input: {
     if (missing.length > 0) {
       issues.push({
         level: 'critical',
-        title: `신상정보가 ${missing.join('·')} 쪽만 없습니다`,
+        // 「~쪽만 없습니다」는 반대로 읽힌다. 없는 쪽을 그대로 말한다.
+        title: `신상정보에 ${missing.join('·')} 쪽이 빠졌습니다`,
         detail:
           '결혼중개업법은 이용자와 상대방 양쪽의 신상정보를 서로에게 제공하도록 정하고 있습니다. 한쪽만 등록된 상태입니다.',
         basis: '결혼중개업법 제10조의2 제1항',

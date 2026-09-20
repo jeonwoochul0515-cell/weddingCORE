@@ -7,6 +7,7 @@ import {
   BarChart3,
   CheckCircle2,
   Compass,
+  ClipboardList,
   Copy,
   Globe2,
   Inbox,
@@ -20,6 +21,11 @@ import {
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
 import { useCheckout } from '@/features/payments/useCheckout';
+import { MARKETING_SERVICES } from '@/domain/pricing';
+import {
+  MARKETING_STATUS_LABEL,
+  useMarketingRequests,
+} from '@/features/marketing/useMarketingRequests';
 
 /**
  * 초기 프로모션. 정가는 2026년 국내 시세(홈페이지 제작 150만~800만원, 블로그·콘텐츠
@@ -56,8 +62,8 @@ const SERVICES = [
     description: '검색결과에 사이트가 잡히게 하고, 지도·플레이스에서 업체가 노출되도록 정비합니다.',
     icon: Search,
     items: ['서치어드바이저 등록·색인 점검', '스마트플레이스 업체정보 정비', '플레이스 광고 세팅·입찰 관리'],
-    listPrice: 500_000,
-    promoPrice: 500_000,
+    listPrice: MARKETING_SERVICES['naver-seo'].amount,
+    promoPrice: MARKETING_SERVICES['naver-seo'].amount,
     billing: 'once',
     benefit: null,
     priceNote: '초기 세팅 1회 · 네이버에 내는 광고비는 별도 실비',
@@ -68,8 +74,8 @@ const SERVICES = [
     description: '업체 홈페이지에 글 8건이 매달 자동으로 올라가고, 네이버 블로그용 원고를 따로 받습니다.',
     icon: PenLine,
     items: ['홈페이지 자동 발행 월 8건', '네이버 블로그용 원고 8건 별도 작성', '원고 나오면 문자로 알림'],
-    listPrice: 100_000,
-    promoPrice: 100_000,
+    listPrice: MARKETING_SERVICES['local-content'].amount,
+    promoPrice: MARKETING_SERVICES['local-content'].amount,
     billing: 'monthly',
     benefit: null,
     priceNote: '같은 내용을 두 벌로 다르게 씁니다(유사문서 회피) · 블로그 게시는 업주가 직접 · 자동이체가 아니라 달마다 결제',
@@ -81,7 +87,7 @@ const SERVICES = [
     icon: Sparkles,
     items: ['질문형 FAQ', '구조화된 답변', '전문성·출처 강화'],
     listPrice: 1_200_000,
-    promoPrice: 500_000,
+    promoPrice: MARKETING_SERVICES['aeo-geo'].amount,
     billing: 'once',
     benefit: 'promotion',
     priceNote: '핵심 질문 20개 구조화 · 스키마 적용 포함',
@@ -136,6 +142,8 @@ export default function MarketingCenterPage() {
   const { items: leads } = useAgencyLeads();
   const funnel = useMemo(() => monthlyFunnel(leads), [leads]);
   const [copied, setCopied] = useState(false);
+  // 낸 신청이 어떻게 됐는지. 결제하고도 화면에 흔적이 없으면 같은 신청을 또 넣게 된다.
+  const { items: requests } = useMarketingRequests();
 
   useEffect(() => {
     if (!agencyId) return;
@@ -313,6 +321,48 @@ export default function MarketingCenterPage() {
           })}
         </div>
       </section>
+
+      {requests.length > 0 && (
+        <section className="app-surface rounded-[24px] p-5 sm:p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <div className="eyebrow">신청 내역</div>
+              <h2 className="mt-1 text-lg font-bold text-slate-950">내가 낸 신청 {requests.length}건</h2>
+            </div>
+            <ClipboardList className="text-emerald-700" size={21} />
+          </div>
+          <ul className="space-y-2">
+            {requests.map((item) => {
+              const status = MARKETING_STATUS_LABEL[item.status] ?? MARKETING_STATUS_LABEL.requested!;
+              const titles = item.services
+                .map((id) => SERVICES.find((s) => s.id === id)?.title ?? id)
+                .join(', ');
+              return (
+                <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/70 px-3.5 py-3">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-slate-800">{titles || '마케팅 상담'}</span>
+                    <span className="mt-0.5 block text-[11px] text-slate-500">
+                      {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('ko-KR') : ''}
+                      {item.paid && item.paidAmount
+                        ? ` · ${won(item.paidAmount)} 결제됨${item.billing === 'monthly' ? ' (월)' : ''}`
+                        : ' · 상담 요청'}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {item.paid && (
+                      <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">결제완료</span>
+                    )}
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${status.cls}`}>{status.label}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-3 text-[11px] leading-4 text-slate-400">
+            결제한 신청은 담당자가 먼저 처리합니다. 진행 상황은 사무실(1660-4452)로 문의해 주세요.
+          </p>
+        </section>
+      )}
 
       <section className="app-surface rounded-[24px] p-5 sm:p-6">
         <div className="flex items-center justify-between"><div><div className="eyebrow">홈페이지 위젯</div><h2 className="mt-1 text-lg font-bold text-slate-950">홈페이지 요건 점검 위젯</h2></div><Inbox className="text-emerald-700" size={21} /></div>

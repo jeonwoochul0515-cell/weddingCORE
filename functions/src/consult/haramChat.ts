@@ -11,14 +11,15 @@
 
 import { onRequest } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
+import { isRateLimited, requesterIp } from '../lib/rateLimit.js';
 
 const REGION = 'asia-northeast3';
 const ALLOWED_REFERER = 'weddingcore.net';
 
 const MODEL = 'claude-sonnet-5';
 const MAX_TURNS = 20;
+// 호출마다 Anthropic 토큰이 나간다. 사람의 대화 속도로는 1분에 20번이면 넘친다.
 const RATE_LIMIT = { windowMs: 60_000, max: 20 };
-const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 
 const SYSTEM = `당신은 "하람"입니다. 국제결혼중개업체의 업무 자동화 서비스 weddingCORE의 상담 안내 캐릭터입니다.
 방문자에게는 밝고 친근한 도우미이면서, 결혼중개업 실무와 F-6 비자 절차를 아는 안내자입니다.
@@ -195,18 +196,6 @@ function parseExpression(text: string): { expression: string; body: string } {
   return { expression: m[1]!, body: text.slice(m[0].length).trim() };
 }
 
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const bucket = rateBuckets.get(ip) ?? { count: 0, resetAt: now + RATE_LIMIT.windowMs };
-  if (now > bucket.resetAt) {
-    bucket.count = 0;
-    bucket.resetAt = now + RATE_LIMIT.windowMs;
-  }
-  bucket.count += 1;
-  rateBuckets.set(ip, bucket);
-  return bucket.count > RATE_LIMIT.max;
-}
-
 const FALLBACK =
   '지금 답변을 준비하지 못했어요. 급하시면 무료 워크스페이스를 먼저 만들어 보시거나, 접수를 남겨 주시면 확인 후 연락드려요.';
 
@@ -228,8 +217,9 @@ export const haramChat = onRequest(
       res.status(403).send('Forbidden');
       return;
     }
-    const ip = String(req.get('x-visitor-ip') ?? req.ip ?? 'unknown');
-    if (rateLimited(ip)) {
+    // 인스턴스 메모리가 아니라 저장소로 센다.
+    // 메모리로 세면 스케일아웃한 인스턴스 수만큼 배로 뚚린다 — 하필 공격받을 때 가장 약해진다.
+    if (await isRateLimited('haram', requesterIp(req), RATE_LIMIT)) {
       res.status(429).json({ reply: '잠시 뒤에 다시 말씀해 주세요.', expression: '안심' });
       return;
     }

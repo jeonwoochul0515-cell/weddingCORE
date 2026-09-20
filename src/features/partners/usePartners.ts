@@ -9,7 +9,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -18,6 +17,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 
 /** 지금 이 후보를 소개할 수 있는가 */
@@ -90,21 +90,24 @@ export function usePartners() {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [items, setItems] = useState<PartnerItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId) { setLoading(false); return; }
+    setError(null);
     const q = query(collection(db, `agencies/${agencyId}/partners`), orderBy('name'));
-    return onSnapshot(
+    return liveQuery(
+      '외국인 후보 명부',
       q,
       (snap) => {
         setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Partner) })));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
     );
   }, [agencyId]);
 
-  return { items, loading };
+  return { items, loading, error };
 }
 
 function toDoc(agencyId: string, id: string, form: PartnerForm, photoUrl: string | null) {

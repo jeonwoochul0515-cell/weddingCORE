@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import {
   collection,
   limit,
-  onSnapshot,
   orderBy,
   query,
   where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 
 /** 법제처 개정 공시에서 감지한 변경. 법률과 행정규칙(하위법령)을 모두 담는다. */
 export type DeltaItem = {
@@ -31,8 +31,10 @@ export type DeltaItem = {
 export function useRegulatoryDeltas(options?: { statuteId?: string; max?: number }) {
   const [items, setItems] = useState<DeltaItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setError(null);
     const base = collection(db, 'regulatoryDelta');
     const q = options?.statuteId
       ? query(
@@ -43,14 +45,16 @@ export function useRegulatoryDeltas(options?: { statuteId?: string; max?: number
         )
       : query(base, orderBy('detectedAt', 'desc'), limit(options?.max ?? 50));
 
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(
-        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<DeltaItem, 'id'>) })),
-      );
-      setLoading(false);
-    });
-    return () => unsub();
+    return liveQuery(
+      '규제 변동',
+      q,
+      (snap) => {
+        setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<DeltaItem, 'id'>) })));
+        setLoading(false);
+      },
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
+    );
   }, [options?.statuteId, options?.max]);
 
-  return { items, loading };
+  return { items, loading, error };
 }

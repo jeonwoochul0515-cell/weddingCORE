@@ -336,6 +336,26 @@ export type Match = {
   nextActionAt?: Timestamp | null;
   mbtiScore: number | null;
   sajuScore: number | null;
+  /** 화상맞선에 붙일 통역자 (업체 통역자 명단의 id) */
+  interpreterId?: string | null;
+  /** 통역을 전문업체에 맡긴 경우 */
+  interpretationVendor?: { name: string; contractOnFile: boolean } | null;
+  /** 현지 파트너가 통역을 붙이는 경우 (현장에서 가장 흔하다) */
+  interpretationPartnerId?: string | null;
+  /** 통화에 배석할 담당 직원 (구성원 uid). 현장에서 「에이전트」라고 부르는 그 자리다 */
+  agentUid?: string | null;
+  /**
+   * 통화를 열기 전에 받아야 하는 동의.
+   * 판정은 서버가 한다(functions/src/domain/videoCallGate.ts).
+   */
+  callConsents?: {
+    /** 만남 서면 동의 (시행령 제3조의2) */
+    meeting?: { client: boolean; partner: boolean };
+    /** 녹화 동의 (개인정보) */
+    recording?: { client: boolean; partner: boolean };
+    /** 국외 이전 동의. 상대가 국내에 있으면 null */
+    crossBorder?: boolean | null;
+  } | null;
   createdBy: string;
   createdAt: Timestamp;
   updatedAt?: Timestamp;

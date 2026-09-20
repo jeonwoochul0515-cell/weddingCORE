@@ -3,7 +3,6 @@ import {
   addDoc,
   collection,
   doc,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -11,6 +10,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 import type { Match, MatchResult, MatchStage } from '@/types/schema';
 
@@ -20,31 +20,33 @@ export function useMatches(clientId?: string) {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const [items, setItems] = useState<MatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId) { setLoading(false); return; }
+    setError(null);
 
-    const colPath = clientId
-      ? `agencies/${agencyId}/matches`
-      : `agencies/${agencyId}/matches`;
+    // 맞선은 업체 단위 컴렉션 하나다. 고객별 보기는 받은 뒤 걸러낸다 —
+    // 한 고객이 clientId로도 partnerId로도 잔혀 있어 질의 한 번으로는 둘 다 못 가져온다.
+    const q = query(collection(db, `agencies/${agencyId}/matches`), orderBy('date', 'desc'));
 
-    let q = query(
-      collection(db, colPath),
-      orderBy('date', 'desc'),
+    return liveQuery(
+      '맞선 기록',
+      q,
+      (snap) => {
+        const docs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Match) }));
+        setItems(
+          clientId
+            ? docs.filter((m) => m.clientId === clientId || m.partnerId === clientId)
+            : docs,
+        );
+        setLoading(false);
+      },
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
     );
-
-    const unsub = onSnapshot(q, (snap) => {
-      let docs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Match) }));
-      if (clientId) {
-        docs = docs.filter((m) => m.clientId === clientId || m.partnerId === clientId);
-      }
-      setItems(docs);
-      setLoading(false);
-    });
-    return () => unsub();
   }, [agencyId, clientId]);
 
-  return { items, loading };
+  return { items, loading, error };
 }
 
 export function useAllMatches() {

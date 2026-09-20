@@ -7,13 +7,13 @@ import {
   collection,
   deleteDoc,
   doc,
-  onSnapshot,
   serverTimestamp,
   setDoc,
   Timestamp,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 
 export type StaffRole = 'manager' | 'staff' | 'readonly';
@@ -53,26 +53,32 @@ export function useStaff() {
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!agencyId) { setLoading(false); return; }
-    const unsubM = onSnapshot(
+    setError(null);
+    const unsubM = liveQuery(
+      '업체 구성원',
       collection(db, `agencies/${agencyId}/members`),
       (snap) => {
         setMembers(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Member, 'id'>) })));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => { setError(liveErrorMessage(err)); setLoading(false); },
     );
-    const unsubI = onSnapshot(
+    const unsubI = liveQuery(
+      '직원 초대장',
       collection(db, `agencies/${agencyId}/invites`),
       (snap) => setInvites(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Invite, 'id'>) }))),
-      () => undefined,
+      // 초대장은 대표만 본다. 관리자·직원이 사무소 화면을 열면 규칙이 막는데,
+      // 그건 고장이 아니라 정상이다. 빈 목록으로 두고 오류로 알리지 않는다.
+      () => setInvites([]),
     );
     return () => { unsubM(); unsubI(); };
   }, [agencyId]);
 
-  return { members, invites, loading };
+  return { members, invites, loading, error };
 }
 
 const normalize = (email: string) => email.trim().toLowerCase();

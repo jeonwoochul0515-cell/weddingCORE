@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, limit, orderBy, query } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { CheckCircle2, ClipboardCheck, FileSearch, Gavel, RotateCcw, ShieldAlert, Sparkles } from 'lucide-react';
 import { db, functions } from '@/lib/firebase';
+import { liveErrorMessage, liveQuery } from '@/lib/live';
 import type { AutomationJob } from '@/types/schema';
 
 type ReviewItem = AutomationJob & { id: string };
@@ -18,13 +19,18 @@ export default function LawyerWorkbenchPage() {
 
   useEffect(() => {
     const reviewsQuery = query(collection(db, 'legalReviews'), orderBy('updatedAt', 'desc'), limit(100));
-    return onSnapshot(reviewsQuery, (snapshot) => {
-      setItems(snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as AutomationJob) })));
-      setLoading(false);
-    }, (snapshotError) => {
-      setError(snapshotError.message);
-      setLoading(false);
-    });
+    return liveQuery(
+      '변호사 검토 대기열',
+      reviewsQuery,
+      (snapshot) => {
+        setItems(snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as AutomationJob) })));
+        setLoading(false);
+      },
+      (snapshotError) => {
+        setError(liveErrorMessage(snapshotError));
+        setLoading(false);
+      },
+    );
   }, []);
 
   const filtered = useMemo(() => items.filter((item) => {

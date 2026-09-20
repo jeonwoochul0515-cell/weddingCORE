@@ -68,7 +68,7 @@ function toFormValues(client: ClientListItem): CreateClientFormValues {
 export default function ClientDetailPage() {
   const { clientId } = useParams();
   const agencyId = useAuthStore((s) => s.user?.agencyId);
-  const { client, loading } = useClient(clientId);
+  const { client, loading, error } = useClient(clientId);
   const { items: documents } = useClientDocuments(clientId);
   const { updateClient } = useProfileUpdater();
   const [tab, setTab] = useState<'compliance' | 'matching' | 'activities'>('compliance');
@@ -84,6 +84,11 @@ export default function ClientDetailPage() {
   const [statusError, setStatusError] = useState<string | null>(null);
 
   if (loading) return <p className="text-sm text-slate-500">불러오는 중…</p>;
+  if (error) {
+    return (
+      <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+    );
+  }
   if (!client) return <p className="text-sm text-slate-500">고객을 찾을 수 없습니다.</p>;
 
   const k = client.koreanClient;

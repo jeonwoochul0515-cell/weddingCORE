@@ -6,7 +6,9 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { DEFAULT_MONTHLY_ALLOWANCE } from './automation/index.js';
+// 상수 하나 때문에 automation/index를 불러오면 Anthropic SDK가 모든 함수의
+// 콜드스타트에 딴려온다. 정의만 들어 있는 파일에서 읽는다.
+import { DEFAULT_MONTHLY_ALLOWANCE } from './domain/credits.js';
 
 initializeApp();
 const db = getFirestore();
@@ -164,7 +166,13 @@ export {
 } from './automation/index.js';
 
 // 상담 접수와 중앙 접수함 연동
-export { submitConsult, submitCheckLead, weddingcoreAdmin } from './consult/index.js';
+export {
+  submitConsult,
+  submitCheckLead,
+  weddingcoreAdmin,
+  purgeOldConsultSessions,
+  purgeRateLimits,
+} from './consult/index.js';
 // 상담 캐릭터 하람의 대화 엔진 (워커 /api/chat이 넘겨준다)
 export { haramChat } from './consult/haramChat.js';
 
@@ -175,3 +183,13 @@ export { searchPrecedents, precedentCounts, getPrecedent } from './regulations/p
 
 // 결제 (토스페이먼츠)
 export { createPaymentOrder, confirmPayment } from './payments/toss.js';
+
+// 영상통화 — 업체를 거쳐야만 연결된다. 법정의무를 다 마치기 전에는 방이 안 열린다.
+export {
+  checkVideoCallReadiness,
+  startVideoCall,
+  joinVideoCall,
+  appendCallTranscript,
+  endVideoCall,
+  purgeExpiredCallRecords,
+} from './video/index.js';

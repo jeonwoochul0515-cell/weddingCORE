@@ -93,12 +93,19 @@ export default function AdminAgenciesPage() {
         {seedResult && <p className="mt-2 text-xs text-slate-600">{seedResult}</p>}
       </div>
 
-      <h1 className="mb-4 text-2xl font-semibold text-slate-900">
-        가입 승인 대기 ({pending.length})
+      <h1 className="mb-1 text-2xl font-semibold text-slate-900">
+        공시 인증 검토 ({pending.length})
       </h1>
+      {/* 이 목록은 서비스 사용을 막고 있는 줄이 아니다. 사용 권한은 가입 즉시 나간다.
+          여기서 하는 일은 등록번호가 공시 자료와 맞는지 보고 「공시 인증」 배지를 주는 것이다.
+          반려하면 그때 접수 위젯과 직원 초대가 막힌다. */}
+      <p className="mb-4 text-xs leading-5 text-slate-500">
+        업체는 가입 즉시 서비스를 씁니다. 여기서는 등록번호가 공시 자료와 맞는지 확인해
+        「공시 인증」 배지를 줍니다. 반려하면 접수 위젯과 직원 초대가 막힙니다.
+      </p>
       {loading && <p className="text-sm text-slate-500">불러오는 중…</p>}
       {!loading && pending.length === 0 && (
-        <p className="text-sm text-slate-500">대기 중인 업체가 없습니다.</p>
+        <p className="text-sm text-slate-500">검토할 업체가 없습니다.</p>
       )}
       <div className="space-y-3">
         {pending.map((a) => (
@@ -122,7 +129,7 @@ export default function AdminAgenciesPage() {
                   disabled={processing === a.id}
                   className="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
                 >
-                  승인
+                  인증
                 </button>
                 <button
                   onClick={() => decide(a.id, 'reject')}
