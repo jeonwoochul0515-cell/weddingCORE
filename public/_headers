@@ -14,6 +14,18 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# 화상맞선 통화방. 여기만 카메라·마이크를 열고 LiveKit 시그널링을 통과시킨다.
+# 위 /* 규칙의 두 헤더를 떼어내고(!) 다시 적는다 — 떼지 않으면 합쳤을 때 더 엄한
+# camera=() 가 이겨 통화방이 열리지 않는다. 다른 경로는 그대로 카메라가 닫힌 채로 둔다.
+#
+# 자체 호스팅 LiveKit을 쓰면 그 도메인을 connect-src 에 직접 더해야 한다.
+# 빠뜨리면 토스 결제창 사고와 같은 증상이 난다 — 화면은 뜨는데 연결만 안 된다.
+/call/*
+  ! Content-Security-Policy
+  ! Permissions-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com wss://*.livekit.cloud https://*.livekit.cloud; frame-src https://*.firebaseapp.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Permissions-Policy: camera=(self), microphone=(self), geolocation=()
+
 # 회원 업체 홈페이지에 iframe으로 들어가는 빠른 점검. 이 경로만 프레임을 허용한다.
 # 위 규칙의 두 헤더를 떼어내고(!) 다시 적는다. 떼지 않으면 두 CSP가 합쳐져 'none'이 이긴다.
 /embed/*

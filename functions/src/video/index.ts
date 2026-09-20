@@ -30,21 +30,43 @@ import {
   type AgentAssignment,
 } from '../domain/videoCallGate.js';
 import { detectContactLeak } from '../domain/contactLeak.js';
-import { createAccessToken, livekitConfigured, livekitUrl } from './livekit.js';
+import {
+  createAccessToken,
+  livekitConfigured,
+  livekitUrl,
+  recordingConfigured,
+  startRoomRecording,
+  stopRoomRecording,
+} from './livekit.js';
 
 const REGION = 'asia-northeast3';
 const ENFORCE_APP_CHECK = process.env.FUNCTIONS_EMULATOR !== 'true';
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 /**
- * 녹화·전사본 보존기간.
+ * 보존기간 — 글과 영상을 나눈다. (2026-09-20 법령 원문 대조로 정리)
  *
- * 법 제10조의4 ① 3호가 「그 밖의 혼인 관련 서류」를 보존 대상으로 두고 시행규칙 제9조가
- * 5년으로 정한다. 통화 녹화가 여기 해당하는지는 확인 전이지만, 짧게 잡았다가 모자라면
- * 보존의무 위반이고 길게 잡았다가 남으면 개인정보 최소보관 위반이다. 둘 중 처분이 무거운
- * 쪽을 피한다 — 5년으로 두고 법률 회신이 오면 이 상수만 바꾼다.
+ * 법 제10조의4 ①은 ①결혼중개계약서 ②국제결혼 개인신상정보 확인서와 증빙 ③그 밖의 혼인 관련
+ * **서류**를 보존 대상으로 두고, 시행규칙 제9조가 그 서류를 **5년**으로 정한다.
+ *
+ * ★ 조문은 일관되게 「서류」라고 쓴다. 통화 녹화 영상을 여기 넣어 읽기는 문언상 무리다.
+ *   법 제14조 후단이 장부를 전자문서로 갈음할 수 있다고 하지만, 전자문서는 문서의 전자적
+ *   형태이지 영상이 아니다. 그래서 **영상 보관은 법정 의무가 아니라 우리 정책**으로 본다.
+ *
+ * 그러면 길게 둘 이유가 없다. 오히려 필요 없는 얼굴 영상을 오래 들고 있는 것이 개인정보
+ * 최소보관 원칙에 걸린다 — 지키려다 어기는 꼴이 된다. 그래서 이렇게 가른다.
+ *
+ *  - 영상 : 1년. 맞선 관련 다툼은 대개 그 안에 나온다.
+ *  - 전사본·통화 기록 : 5년. 텍스트라 용량이 거의 없고, 「무슨 말이 오갔나」와
+ *                      「업체를 거쳐 주선한 자리였나」를 증명하는 것은 이쪽이다.
+ *
+ * 영상을 지우는 일은 코드가 하지 않는다. R2 버킷의 수명주기 규칙(1년)이 맡는다 —
+ * 코드는 안 돌 수 있지만 버킷 규칙은 우리가 잊어도 돈다.
+ *
+ * 변호사 확인이 오면 바꿀 곳은 이 두 상수뿐이다.
  */
 const RETENTION_YEARS = 5;
+const VIDEO_RETENTION_YEARS = 1;
 
 /**
  * 입장 링크가 살아 있는 시간.
@@ -212,6 +234,9 @@ export const checkVideoCallReadiness = onCall(
       ...verdict,
       // 키가 없으면 통과해도 못 연다. 화면이 「준비 중」으로 안내하도록 같이 내려준다.
       serviceConfigured: livekitConfigured(),
+      // 녹화 저장소가 없으면 통화는 열리되 녹화가 안 된다. 동의를 받아 놓고 녹화를 못 하면
+      // 「녹화한다고 해 놓고 안 했다」가 되므로 미리 알린다.
+      recordingConfigured: recordingConfigured(),
     };
   },
 );
@@ -226,7 +251,16 @@ export const startVideoCall = onCall(
   {
     region: REGION,
     enforceAppCheck: ENFORCE_APP_CHECK,
-    secrets: ['LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET', 'LIVEKIT_URL'],
+    // R2 키를 같이 묶어야 녹화가 걸린다. 빠뜨리면 통화는 열리는데 녹화만 조용히 안 된다.
+    secrets: [
+      'LIVEKIT_API_KEY',
+      'LIVEKIT_API_SECRET',
+      'LIVEKIT_URL',
+      'R2_ACCOUNT_ID',
+      'R2_BUCKET',
+      'R2_ACCESS_KEY_ID',
+      'R2_SECRET_ACCESS_KEY',
+    ],
     timeoutSeconds: 60,
   },
   async (request) => {
@@ -277,6 +311,24 @@ export const startVideoCall = onCall(
     }
     await inviteBatch.commit();
 
+    // 녹화를 건다. 실패해도 통화는 연다 — 네 사람이 모였는데 녹화 때문에 못 만나는 것이
+    // 더 큰 손해다. 대신 녹화가 안 됐다는 사실을 기록에 남기고 화면에 알린다.
+    let egressId = '';
+    let recordingError = '';
+    if (verdict.room.recording && recordingConfigured()) {
+      try {
+        egressId = await startRoomRecording(roomName, callRef.id);
+      } catch (err) {
+        recordingError = (err as Error).message.slice(0, 200);
+        logger.error('통화 녹화 시작 실패', { agencyId, callId: callRef.id, recordingError });
+      }
+    } else if (verdict.room.recording) {
+      recordingError = '녹화 저장소가 설정되지 않았습니다.';
+    }
+
+    const videoUntil = new Date();
+    videoUntil.setFullYear(videoUntil.getFullYear() + VIDEO_RETENTION_YEARS);
+
     await callRef.set({
       callId: callRef.id,
       agencyId,
@@ -293,6 +345,15 @@ export const startVideoCall = onCall(
       agent: callRequest.agent,
       // 실제로 들어온 사람. joinVideoCall이 채운다. 배정과 실제는 다를 수 있다.
       joinedRoles: [],
+      // 녹화. egressId가 비어 있으면 녹화가 안 걸린 통화다.
+      recording: {
+        egressId,
+        // 저장소 안의 위치. 실제 파일은 통화가 끝나야 올라간다.
+        path: egressId ? `calls/${callRef.id}.mp4` : null,
+        error: recordingError || null,
+        // 이 날짜가 지나면 R2 수명주기 규칙이 영상을 지운다. 전사본은 남는다.
+        expiresAt: egressId ? Timestamp.fromDate(videoUntil) : null,
+      },
       transcriptCount: 0,
       // 연락처를 주고받은 정황. appendCallTranscript가 채운다.
       contactLeaks: [],
@@ -318,6 +379,9 @@ export const startVideoCall = onCall(
       invites,
       room: verdict.room,
       expiresAt: expiresAt.toMillis(),
+      // 화면이 「녹화 중」으로 안내할지, 「녹화 안 됨」을 경고할지 가른다.
+      recording: Boolean(egressId),
+      recordingError: recordingError || null,
     };
   },
 );
@@ -405,7 +469,13 @@ export const joinVideoCall = onCall(
       token,
       role,
       roleLabel: ROLE_LABEL[role],
-      room: call.get('room') ?? { recording: true, chat: false, fileTransfer: false, screenShare: false },
+      room: {
+        ...(call.get('room') ?? { chat: false, fileTransfer: false, screenShare: false }),
+        // ★ 정책값이 아니라 실제로 녹화가 걸렸는지를 내려보낸다.
+        // 통화방의 「녹화 중」 표시는 참가자에게 하는 고지다. 녹화가 실패했는데
+        // 정책값만 보고 「녹화 중」을 띄우면 안 찍히는 영상을 찍힌다고 말하는 셈이 된다.
+        recording: Boolean(call.get('recording.egressId')),
+      },
     };
   },
 );
@@ -497,7 +567,12 @@ export const appendCallTranscript = onCall(
 
 /** 통화를 닫고 보존기한을 박는다. 기한이 없으면 파기 작업이 손댈 수 없다 */
 export const endVideoCall = onCall(
-  { region: REGION, enforceAppCheck: ENFORCE_APP_CHECK },
+  {
+    region: REGION,
+    enforceAppCheck: ENFORCE_APP_CHECK,
+    // 녹화를 멈추려면 LiveKit 키가 있어야 한다.
+    secrets: ['LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET', 'LIVEKIT_URL'],
+  },
   async (request) => {
     const { agencyId } = requireAgencyWriter(request);
     const { matchId, callId } = request.data as { matchId?: string; callId?: string };
@@ -509,6 +584,17 @@ export const endVideoCall = onCall(
     const callRef = db.doc(`agencies/${agencyId}/matches/${matchId}/calls/${callId}`);
     const snap = await callRef.get();
     if (!snap.exists) throw new HttpsError('not-found', '통화를 찾을 수 없습니다.');
+    // 녹화를 멈춘다. 방이 비면 알아서도 멈추지만 여기서 확실히 한다.
+    // 실패해도 통화 종료는 계속한다 — 못 멈춘 녹화보다 안 닫힌 통화가 위험하다.
+    const egressId = String(snap.get('recording.egressId') ?? '');
+    if (egressId) {
+      try {
+        await stopRoomRecording(egressId);
+      } catch (err) {
+        logger.warn('녹화 중지 실패', { agencyId, callId, message: (err as Error).message });
+      }
+    }
+
     // ★ 입장 링크부터 거둔다. 상태를 먼저 바꾸면 안 된다 —
     // 링크 삭제가 실패했을 때 다음 호출이 바로 아래 alreadyEnded로 빠져나가
     // 링크가 영영 안 지워진다. 이 순서면 다시 불러서 치울 수 있다.

@@ -44,8 +44,13 @@ export const ROLE_HINT: Record<CallRole, string> = {
 };
 
 type Readiness =
-  | { allow: true; requiredParticipants: CallRole[]; serviceConfigured: boolean }
-  | { allow: false; blockers: Blocker[]; serviceConfigured: boolean };
+  | {
+      allow: true;
+      requiredParticipants: CallRole[];
+      serviceConfigured: boolean;
+      recordingConfigured: boolean;
+    }
+  | { allow: false; blockers: Blocker[]; serviceConfigured: boolean; recordingConfigured: boolean };
 
 export type CallSession = {
   callId: string;
@@ -58,6 +63,9 @@ export type CallSession = {
   invites: Partial<Record<CallRole, string>>;
   /** 링크가 살아 있는 시각(밀리초) */
   expiresAt: number;
+  /** 녹화가 실제로 걸렸는가. 동의만 받고 녹화가 안 되면 안 된다 */
+  recording: boolean;
+  recordingError: string | null;
 };
 
 /** 입장 코드로 만드는 주소. 받은 사람은 이 한 줄만 누르면 된다 */

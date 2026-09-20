@@ -42,7 +42,7 @@ const CONSENT_ROWS: ConsentRow[] = [
   {
     key: 'recordingClient',
     label: '한국인 고객이 녹화에 동의했습니다',
-    hint: '녹화 목적과 보관기간(5년)을 설명한 뒤 받습니다.',
+    hint: '녹화 목적과 보관기간(영상 1년, 대화 기록 5년)을 설명한 뒤 받습니다.',
   },
   {
     key: 'recordingPartner',

@@ -118,6 +118,14 @@ export default function CallReadinessPanel({ match, open }: Props) {
             </p>
           )}
 
+          {state.serviceConfigured && !state.recordingConfigured && (
+            <p className="mt-2 rounded-lg bg-amber-100/70 px-3 py-2 text-xs leading-5 text-amber-900">
+              <strong>녹화 저장소가 아직 연결되지 않았습니다.</strong> 지금 통화를 열면 영상이
+              남지 않습니다. 양측에게 녹화 동의를 받아 두고 녹화를 못 하면 나중에 문제가 되니,
+              사무실에 설정을 요청해 주세요.
+            </p>
+          )}
+
           {session ? (
             <div className="mt-3 space-y-3">
               <div>
@@ -134,6 +142,18 @@ export default function CallReadinessPanel({ match, open }: Props) {
                   까지 쓸 수 있습니다. 「통화 마치기」를 누르면 그 즉시 모두 막힙니다.
                 </p>
               </div>
+
+              {session.recording ? (
+                <p className="rounded-lg bg-white px-3 py-2 text-[11px] leading-4 text-slate-600">
+                  녹화 중입니다. 영상은 1년, 대화 기록은 5년 보관한 뒤 지워집니다.
+                </p>
+              ) : (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-[11px] leading-4 text-red-700">
+                  <strong>이 통화는 녹화되지 않습니다.</strong> 양측에 녹화한다고 안내하셨다면
+                  지금 사실대로 알려 주세요.
+                  {session.recordingError && ` (사유: ${session.recordingError})`}
+                </p>
+              )}
 
               <ul className="space-y-2">
                 {(Object.entries(session.invites) as Array<[CallRole, string]>).map(
