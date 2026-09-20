@@ -51,6 +51,11 @@ export type Partner = {
   maritalHistory: string;
   languages: string;
   height: number | null;
+  /**
+   * 몸무게. 현지 프로필 카드에 항상 적혀 오고, 키와 같이 봐야 건강 진술이
+   * 자료와 어긋나는지 볼 수 있다. 메모에만 적어 두면 아무도 안 본다.
+   */
+  weight: number | null;
   /** 어느 현지 업체를 통해 소개받았는가. 업체 정보의 현지 파트너와 이어 둔다 */
   localPartner: string;
   memo: string;
@@ -75,6 +80,7 @@ export type PartnerForm = {
   maritalHistory: string;
   languages: string;
   height: string;
+  weight: string;
   localPartner: string;
   memo: string;
   status: PartnerStatus;
@@ -82,7 +88,7 @@ export type PartnerForm = {
 
 export const EMPTY_PARTNER: PartnerForm = {
   name: '', nationality: '', birthDate: '', gender: '', region: '', occupation: '',
-  education: '', religion: '', maritalHistory: '', languages: '', height: '',
+  education: '', religion: '', maritalHistory: '', languages: '', height: '', weight: '',
   localPartner: '', memo: '', status: 'available',
 };
 
@@ -125,6 +131,7 @@ function toDoc(agencyId: string, id: string, form: PartnerForm, photoUrl: string
     maritalHistory: form.maritalHistory.trim(),
     languages: form.languages.trim(),
     height: form.height ? Number(form.height) : null,
+    weight: form.weight ? Number(form.weight) : null,
     localPartner: form.localPartner.trim(),
     memo: form.memo.trim(),
     status: form.status,

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import PhotoField from '@/features/photos/PhotoField';
+import PartnerIntakeBox, { type ProfileWarning } from './PartnerIntakeBox';
 import {
   EMPTY_PARTNER,
   newPartnerId,
@@ -31,6 +32,7 @@ const toForm = (p: PartnerItem): PartnerForm => ({
   maritalHistory: p.maritalHistory ?? '',
   languages: p.languages ?? '',
   height: p.height != null ? String(p.height) : '',
+  weight: p.weight != null ? String(p.weight) : '',
   localPartner: p.localPartner ?? '',
   memo: p.memo ?? '',
   status: p.status ?? 'available',
@@ -69,8 +71,27 @@ export default function PartnerDialog({ editing, onClose, onSaved }: Props) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(editing?.photoUrl ?? null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<ProfileWarning[]>([]);
 
   const set = (k: keyof PartnerForm) => (v: string) => setForm((s) => ({ ...s, [k]: v }));
+
+  /**
+   * 자동으로 채운 값은 **비어 있는 칸에만** 넣는다.
+   * 사람이 이미 고쳐 놓은 것을 기계가 덮어쓰면, 고친 것을 다시 고쳐야 한다.
+   */
+  function fill(values: Partial<PartnerForm>, found: ProfileWarning[]) {
+    setForm((s) => {
+      const next = { ...s };
+      for (const [k, v] of Object.entries(values) as Array<[keyof PartnerForm, string]>) {
+        if (!v) continue;
+        if (String(next[k] ?? '').trim()) continue;
+        // @ts-expect-error 같은 키의 문자열끼리 넣는다
+        next[k] = v;
+      }
+      return next;
+    });
+    setWarnings(found);
+  }
 
   async function save() {
     if (!agencyId) return;
@@ -98,6 +119,13 @@ export default function PartnerDialog({ editing, onClose, onSaved }: Props) {
           </button>
         </div>
 
+        {/* 새 후보를 넣을 때만 보인다. 고치는 중에 자동으로 칸을 덮을 이유가 없다 */}
+        {!editing && (
+          <div className="mb-5">
+            <PartnerIntakeBox onFilled={fill} />
+          </div>
+        )}
+
         <PhotoField
           agencyId={agencyId}
           kind="partners"
@@ -124,6 +152,7 @@ export default function PartnerDialog({ editing, onClose, onSaved }: Props) {
           <Field label="혼인 이력" value={String(form.maritalHistory)} onChange={set('maritalHistory')} placeholder="미혼 / 이혼 / 사별" />
           <Field label="가능한 언어" value={String(form.languages)} onChange={set('languages')} placeholder="베트남어, 한국어 초급" />
           <Field label="키(cm)" value={String(form.height)} onChange={set('height')} type="number" />
+          <Field label="몸무게(kg)" value={String(form.weight)} onChange={set('weight')} type="number" />
           <Field label="소개해 준 현지 업체" value={String(form.localPartner)} onChange={set('localPartner')} />
           <label className="text-xs font-semibold text-slate-600">상태
             <select value={form.status} onChange={(e) => set('status')(e.target.value as PartnerStatus)} className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-sm">
@@ -141,6 +170,21 @@ export default function PartnerDialog({ editing, onClose, onSaved }: Props) {
             />
           </label>
         </div>
+
+        {/* 자료에서 본 것을 저장 버튼 바로 위에 다시 둔다. 위쪽 상자만 있으면
+            칸을 채우는 동안 스크롤에 밀려 안 보인 채로 저장된다 */}
+        {warnings.length > 0 && (
+          <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+            <p className="text-xs font-bold text-amber-900">
+              저장 전에 확인할 것 {warnings.length}건
+            </p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[11px] leading-4 text-amber-900/90">
+              {warnings.map((w, i) => (
+                <li key={i}>{w.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
 

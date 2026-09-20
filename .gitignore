@@ -30,6 +30,16 @@ functions/.secret.local
 *secret*.png
 *secret*.jpg
 
+# 현지에서 온 후보 자료 — 사람 얼굴과 신상이다.
+#
+# 한 번 커밋하면 git 역사에 영원히 남는다. 나중에 지워도 이전 커밋을 받은 사람은
+# 그대로 갖고 있고, 본인은 삭제를 요구할 길이 없다. 후보 사진은 Storage에만 둔다.
+사진/
+**/후보사진/
+**/신부프로필/
+KakaoTalk_*.jpg
+KakaoTalk_*.png
+
 # 업체 접촉 명부 — 공시 자료지만 상호·대표자·번호가 묶여 있어 저장소에 넣지 않는다
 data/outreach-list.csv
 
