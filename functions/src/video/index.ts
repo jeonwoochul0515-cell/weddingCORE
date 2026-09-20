@@ -507,52 +507,61 @@ export const appendCallTranscript = onCall(
 
     const db = getFirestore();
     const callRef = db.doc(`agencies/${agencyId}/matches/${matchId}/calls/${callId}`);
-    const callSnap = await callRef.get();
-    if (!callSnap.exists) throw new HttpsError('not-found', '통화를 찾을 수 없습니다.');
-    if (callSnap.get('status') !== 'live') {
-      throw new HttpsError('failed-precondition', '이미 끝난 통화입니다.');
-    }
 
-    const startSeq = Number(callSnap.get('transcriptCount') ?? 0);
-    const batch = db.batch();
-    const leaks: Array<Record<string, unknown>> = [];
+    // ★ 트랜잭션으로 묶는다. 읽고 나서 쓰면 둘이 동시에 올 때 깨진다 —
+    // 같은 transcriptCount를 읽어 seq가 같은 줄이 두 개 생기고, 세어둔 개수도 한쪽만 남는다.
+    // 전사본은 「무슨 말이 오갔나」를 증명하는 기록이라 순서가 엉키면 쓸 수 없게 된다.
+    // 음성인식은 조각을 쉬지 않고 보내므로 동시 호출은 드물지 않다.
+    const leaks = await db.runTransaction(async (tx) => {
+      const callSnap = await tx.get(callRef);
+      if (!callSnap.exists) throw new HttpsError('not-found', '통화를 찾을 수 없습니다.');
+      if (callSnap.get('status') !== 'live') {
+        throw new HttpsError('failed-precondition', '이미 끝난 통화입니다.');
+      }
 
-    segments.forEach((segment, index) => {
-      const speaker = ['client', 'partner', 'interpreter', 'agent'].includes(String(segment.speaker))
-        ? String(segment.speaker)
-        : 'client';
-      const text = String(segment.text ?? '').slice(0, 2000);
-      const seq = startSeq + index + 1;
+      const startSeq = Number(callSnap.get('transcriptCount') ?? 0);
+      // 재시도로 이 함수가 다시 돌 수 있으므로 밖이 아니라 안에서 비운다.
+      const found: Array<Record<string, unknown>> = [];
 
-      batch.set(callRef.collection('transcript').doc(), {
-        seq,
-        speaker,
-        text,
-        lang: String(segment.lang ?? '').slice(0, 16),
-        translated: String(segment.translated ?? '').slice(0, 2000),
-        // AI 번역은 초안이다. 사람이 고치기 전까지 최종본으로 쓰지 않는다.
-        translatedBy: 'ai',
-        translationQuality: 'draft',
-        createdAt: FieldValue.serverTimestamp(),
+      segments.forEach((segment, index) => {
+        const speaker = ['client', 'partner', 'interpreter', 'agent'].includes(
+          String(segment.speaker),
+        )
+          ? String(segment.speaker)
+          : 'client';
+        const text = String(segment.text ?? '').slice(0, 2000);
+        const seq = startSeq + index + 1;
+
+        tx.set(callRef.collection('transcript').doc(), {
+          seq,
+          speaker,
+          text,
+          lang: String(segment.lang ?? '').slice(0, 16),
+          translated: String(segment.translated ?? '').slice(0, 2000),
+          // AI 번역은 초안이다. 사람이 고치기 전까지 최종본으로 쓰지 않는다.
+          translatedBy: 'ai',
+          translationQuality: 'draft',
+          createdAt: FieldValue.serverTimestamp(),
+        });
+
+        // 원문과 번역문을 모두 본다. 번역 쪽에만 번호가 남는 경우가 있다.
+        for (const leak of [
+          ...detectContactLeak(text),
+          ...detectContactLeak(String(segment.translated ?? '')),
+        ]) {
+          found.push({ ...leak, seq, speaker });
+        }
       });
 
-      // 원문과 번역문을 모두 본다. 번역 쪽에만 번호가 남는 경우가 있다.
-      for (const leak of [
-        ...detectContactLeak(text),
-        ...detectContactLeak(String(segment.translated ?? '')),
-      ]) {
-        leaks.push({ ...leak, seq, speaker });
-      }
+      tx.update(callRef, {
+        transcriptCount: startSeq + segments.length,
+        ...(found.length > 0
+          ? { contactLeaks: FieldValue.arrayUnion(...found.slice(0, 20)) }
+          : {}),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return found;
     });
-
-    batch.update(callRef, {
-      transcriptCount: startSeq + segments.length,
-      ...(leaks.length > 0
-        ? { contactLeaks: FieldValue.arrayUnion(...leaks.slice(0, 20)) }
-        : {}),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    await batch.commit();
 
     if (leaks.length > 0) {
       logger.warn('통화 중 연락처 교환 정황', {
