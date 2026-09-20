@@ -1,9 +1,18 @@
 // 후보 등록·수정 창 — 사진을 먼저 올리고 나머지를 채운다
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import PhotoField from '@/features/photos/PhotoField';
-import PartnerIntakeBox, { type ProfileWarning } from './PartnerIntakeBox';
+import PartnerIntakeBox from './PartnerIntakeBox';
+import {
+  encodeImage,
+  extractPartnerProfile,
+  FIELD_LABEL,
+  hasAnything,
+  toFormValues,
+  warningsForPhoto,
+  type ProfileWarning,
+} from './partnerIntake';
 import {
   EMPTY_PARTNER,
   newPartnerId,
@@ -72,6 +81,10 @@ export default function PartnerDialog({ editing, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<ProfileWarning[]>([]);
+  /** 올린 사진을 읽는 중인가. 사진이 크면 몇 초 걸려 아무 말도 없으면 고장으로 보인다 */
+  const [reading, setReading] = useState(false);
+  /** 방금 사진에서 채운 칸 이름. 무엇이 바뀜는지 보여 준다 */
+  const [filledFromPhoto, setFilledFromPhoto] = useState<string[]>([]);
 
   const set = (k: keyof PartnerForm) => (v: string) => setForm((s) => ({ ...s, [k]: v }));
 
@@ -91,6 +104,50 @@ export default function PartnerDialog({ editing, onClose, onSaved }: Props) {
       return next;
     });
     setWarnings(found);
+  }
+
+  /**
+   * 사진을 올리면 그 자리에서 읽는다.
+   *
+   * 현지에서 오는 「신부 프로필」 카드는 그림 안에 이름·나이·키·직업이 다 박혀 있다.
+   * 그걸 보면서 칸을 다시 치는 것은 같은 일을 두 번 하는 것이다.
+   *
+   * 얼굴만 찍힌 사진이면 조용히 지나간다 — 읽을 게 없는데 말을 걸면 성가시다.
+   */
+  async function readPhoto(file: File) {
+    setReading(true);
+    setFilledFromPhoto([]);
+    try {
+      const encoded = await encodeImage(file);
+      const result = await extractPartnerProfile({
+        images: [{ mimeType: encoded.mimeType, dataBase64: encoded.dataBase64 }],
+      });
+      if (!hasAnything(result.draft)) return;
+
+      const values = toFormValues(result.draft);
+      const filled: string[] = [];
+      setForm((s) => {
+        const next = { ...s };
+        for (const [k, v] of Object.entries(values) as Array<[keyof PartnerForm, string]>) {
+          if (!v) continue;
+          if (String(next[k] ?? '').trim()) continue;
+          // @ts-expect-error 같은 키의 문자열끼리 넣는다
+          next[k] = v;
+          filled.push(FIELD_LABEL[k] ?? k);
+        }
+        return next;
+      });
+      setFilledFromPhoto(filled);
+
+      // 사진 한 장에 대해 「범죄경력 증명서가 없습니다」 같은 말은 하지 않는다.
+      const shown = warningsForPhoto(result.warnings);
+      if (shown.length > 0) setWarnings((s) => [...s, ...shown]);
+    } catch {
+      // 읽기에 실패해도 사진은 이미 올라갔다. 칸은 손으로 치면 된다 —
+      // 여기서 빨간 오류를 띄우면 잘된 일을 잘못된 것처럼 보이게 한다.
+    } finally {
+      setReading(false);
+    }
   }
 
   async function save() {
@@ -119,12 +176,13 @@ export default function PartnerDialog({ editing, onClose, onSaved }: Props) {
           </button>
         </div>
 
-        {/* 새 후보를 넣을 때만 보인다. 고치는 중에 자동으로 칸을 덮을 이유가 없다 */}
-        {!editing && (
-          <div className="mb-5">
-            <PartnerIntakeBox onFilled={fill} />
-          </div>
-        )}
+        {/*
+          고칠 때도 보여 준다. 자료는 한 번에 오지 않는다 — 먼저 이름과 사진이 오고,
+          며칠 뒤에 건강진단서와 가족관계가 따로 온다. 빈 칸만 채우므로 고쳐 놓은 것은 안 건드린다.
+        */}
+        <div className="mb-5">
+          <PartnerIntakeBox onFilled={fill} editing={Boolean(editing)} />
+        </div>
 
         <PhotoField
           agencyId={agencyId}
@@ -132,7 +190,20 @@ export default function PartnerDialog({ editing, onClose, onSaved }: Props) {
           targetId={id}
           url={photoUrl}
           onChange={setPhotoUrl}
+          onPicked={(file) => void readPhoto(file)}
         />
+
+        {reading && (
+          <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-[11px] font-semibold text-slate-600">
+            <Loader2 size={12} className="animate-spin" />
+            사진에 적힐 것이 있는지 읽는 중입니다…
+          </p>
+        )}
+        {!reading && filledFromPhoto.length > 0 && (
+          <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-[11px] text-emerald-800">
+            사진에서 읽어 채운 칸: <strong>{filledFromPhoto.join(', ')}</strong>. 맞는지 봐 주세요.
+          </p>
+        )}
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <Field label="이름" value={String(form.name)} onChange={set('name')} placeholder="여권에 적힌 이름" />

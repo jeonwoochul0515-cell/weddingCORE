@@ -9,12 +9,26 @@ type Props = {
   targetId: string;
   /** 지금 저장돼 있는 사진 주소. 없으면 빈 자리를 보여 준다 */
   url?: string | null;
-  /** 올리거나 지운 뒤 새 주소(지웠으면 null)를 부모에게 알린다 */
+  /** 올리거나 지운 뒤 새 주소(지우으면 null)를 부모에게 알린다 */
   onChange: (url: string | null) => void;
+  /**
+   * 올린 파일 자체를 같이 넘긴다. 올리기가 끝난 뒤에 부른다.
+   * 사진에 정보가 박혀 있는 경우(현지 「신부 프로필」 카드)를 읽는 데 쓴다.
+   * 안 넘기면 지금까지와 똑같이 주소만 알리고 끝난다.
+   */
+  onPicked?: (file: File) => void;
   size?: 'sm' | 'lg';
 };
 
-export default function PhotoField({ agencyId, kind, targetId, url, onChange, size = 'lg' }: Props) {
+export default function PhotoField({
+  agencyId,
+  kind,
+  targetId,
+  url,
+  onChange,
+  onPicked,
+  size = 'lg',
+}: Props) {
   const input = useRef<HTMLInputElement>(null);
   const { upload, remove, busy, error } = usePhotoUpload(agencyId, kind);
   const [confirming, setConfirming] = useState(false);
@@ -23,7 +37,11 @@ export default function PhotoField({ agencyId, kind, targetId, url, onChange, si
   async function pick(file: File | undefined) {
     if (!file) return;
     const next = await upload(targetId, file);
-    if (next) onChange(next);
+    if (next) {
+      onChange(next);
+      // 올리기가 성공한 뒤에만 알린다. 올리지도 못한 사진을 읽힌 이유가 없다.
+      onPicked?.(file);
+    }
   }
 
   return (

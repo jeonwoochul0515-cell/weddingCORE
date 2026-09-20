@@ -7,43 +7,15 @@
 // 그리고 채우는 것보다 중요한 일을 같이 한다. 빠진 법정 서류와 자료끼리 어긋나는 곳을 짚는다.
 
 import { useRef, useState } from 'react';
-import { httpsCallable } from 'firebase/functions';
 import { ClipboardPaste, ImagePlus, Loader2, X } from 'lucide-react';
-import { functions } from '@/lib/firebase';
 import type { PartnerForm } from './usePartners';
-
-/** 서버가 돌려주는 값. functions/src/domain/partnerProfileCheck.ts 와 같은 모양이다 */
-type Draft = {
-  name: string | null;
-  nationality: string | null;
-  birthDate: string | null;
-  gender: 'M' | 'F' | null;
-  region: string | null;
-  occupation: string | null;
-  education: string | null;
-  religion: string | null;
-  maritalHistory: string | null;
-  languages: string | null;
-  heightCm: number | null;
-  weightKg: number | null;
-  memo: string | null;
-};
-
-export type ProfileWarning = {
-  kind: 'legal' | 'conflict' | 'safety' | 'missing';
-  field?: string;
-  message: string;
-  remedy: string;
-  legalBasis?: string;
-};
-
-type IntakeResult = {
-  draft: Draft;
-  fromText: Draft | null;
-  fromImages: Draft[];
-  warnings: ProfileWarning[];
-  confidence: 'high' | 'medium' | 'low';
-};
+import {
+  encodeImage,
+  extractPartnerProfile,
+  toFormValues,
+  type IntakeResult,
+  type ProfileWarning,
+} from './partnerIntake';
 
 type Photo = { name: string; mimeType: string; dataBase64: string; preview: string };
 
@@ -59,47 +31,19 @@ const WARNING_STYLE: Record<ProfileWarning['kind'], { box: string; label: string
   missing: { box: 'border-slate-300 bg-slate-50 text-slate-700', label: '빈 칸' },
 };
 
-/** 서버가 준 값을 화면 폼 모양으로 바꾼다. null은 빈 문자열이 된다 */
-function toForm(draft: Draft): Partial<PartnerForm> {
-  return {
-    name: draft.name ?? '',
-    nationality: draft.nationality ?? '',
-    birthDate: draft.birthDate ?? '',
-    gender: draft.gender ?? '',
-    region: draft.region ?? '',
-    occupation: draft.occupation ?? '',
-    education: draft.education ?? '',
-    religion: draft.religion ?? '',
-    maritalHistory: draft.maritalHistory ?? '',
-    languages: draft.languages ?? '',
-    height: draft.heightCm != null ? String(draft.heightCm) : '',
-    weight: draft.weightKg != null ? String(draft.weightKg) : '',
-    memo: draft.memo ?? '',
-  };
-}
-
 async function toPhoto(file: File): Promise<Photo> {
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error('사진을 읽지 못했습니다.'));
-    reader.readAsDataURL(file);
-  });
-  const comma = dataUrl.indexOf(',');
-  return {
-    name: file.name,
-    mimeType: file.type,
-    dataBase64: dataUrl.slice(comma + 1),
-    preview: dataUrl,
-  };
+  const encoded = await encodeImage(file);
+  return { name: file.name, ...encoded };
 }
 
 type Props = {
   /** 채워진 값을 폼에 넣는다. 덮어쓰지 않고 비어 있는 칸만 채울지는 부모가 정한다 */
   onFilled: (values: Partial<PartnerForm>, warnings: ProfileWarning[]) => void;
+  /** 고치는 중인가. 안내 문구가 달라진다 */
+  editing?: boolean;
 };
 
-export default function PartnerIntakeBox({ onFilled }: Props) {
+export default function PartnerIntakeBox({ onFilled, editing = false }: Props) {
   const [text, setText] = useState('');
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [busy, setBusy] = useState(false);
@@ -142,16 +86,12 @@ export default function PartnerIntakeBox({ onFilled }: Props) {
     setError(null);
     setResult(null);
     try {
-      const call = httpsCallable<
-        { text: string; images: Array<{ mimeType: string; dataBase64: string }> },
-        IntakeResult
-      >(functions, 'extractPartnerProfile');
-      const { data } = await call({
+      const data = await extractPartnerProfile({
         text,
         images: photos.map((p) => ({ mimeType: p.mimeType, dataBase64: p.dataBase64 })),
       });
       setResult(data);
-      onFilled(toForm(data.draft), data.warnings);
+      onFilled(toFormValues(data.draft), data.warnings);
     } catch (e) {
       setError((e as { message?: string }).message ?? '자료를 정리하지 못했습니다.');
     } finally {
@@ -166,8 +106,12 @@ export default function PartnerIntakeBox({ onFilled }: Props) {
         <h3 className="text-sm font-bold text-emerald-900">현지에서 온 자료 그대로 넣기</h3>
       </div>
       <p className="mt-1 text-[11px] leading-4 text-emerald-800/80">
-        카톡으로 받은 글과 프로필 카드 사진을 넣으면 아래 칸을 채웁니다. 채워진 값은 제안이니
-        저장 전에 꼭 확인해 주세요.
+        카톡으로 받은 글을 그대로 붙여 넣으세요. {editing ? '비어 있는 칸만' : '아래 칸을'} 채우고,
+        이미 적혀 있는 것은 건드리지 않습니다. 채워진 값은 제안이니 저장 전에 확인해 주세요.
+      </p>
+      <p className="mt-1 text-[11px] leading-4 text-emerald-800/70">
+        위의 <strong>사진 올리기</strong>에 프로필 카드를 넣으면 그쪽은 버튼 없이 바로 읽습니다.
+        여기 사진칸은 「명부에 저장하지 않고 읽기만 할 자료」에 씁니다 — 여러 장을 한번에 볼 때 쓰세요.
       </p>
 
       <textarea
