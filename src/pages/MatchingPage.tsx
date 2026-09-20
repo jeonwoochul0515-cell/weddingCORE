@@ -4,6 +4,10 @@
 //   「일정」은 오늘 무엇을 해야 하나를 본다. 매일 연다.
 //   「매칭」은 누구와 누구를 붙였나를 본다. 새 짝을 지을 때만 연다.
 // 한 화면에 섞어 두면 매일 보는 것이 가끔 보는 것에 밀린다.
+//
+// ★ 「맞선 만들기」는 탭 밖에 둔다. 탭 안에 넣었더니 기본 화면(일정)에서는
+//    보이지 않아 「맞선 만들기가 없더라」는 말을 들었다. 이 화면에서 가장 먼저
+//    하는 일을 한 번 더 눌러야 찾을 수 있게 두면 안 된다.
 
 import { useState } from 'react';
 import { CalendarDays, Heart, Plus } from 'lucide-react';
@@ -21,18 +25,23 @@ const TABS: Array<{ key: Tab; label: string; icon: typeof Heart; hint: string }>
 export default function MatchingPage() {
   const [tab, setTab] = useState<Tab>('schedule');
   const [creating, setCreating] = useState(false);
-  // 만들고 나면 목록을 다시 그린다. 구독이 살아 있지만 창이 닫힌 것을 눈으로 확인시켜 준다.
-  const [, setRefreshed] = useState(0);
 
   return (
     <div>
-      <div className="mb-1 flex items-center gap-2">
-        <Heart size={20} className="text-rose-500" />
-        <h1 className="text-2xl font-semibold text-slate-900">매칭 관리</h1>
+      <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        <div>
+          <div className="flex items-center gap-2">
+            <Heart size={20} className="text-rose-500" />
+            <h1 className="text-2xl font-semibold text-slate-900">매칭 관리</h1>
+          </div>
+          <p className="mt-1 text-sm text-slate-600">
+            짝을 짓고, 화상이든 직접 만남이든 약속을 잡아 일정으로 관리합니다.
+          </p>
+        </div>
+        <button type="button" onClick={() => setCreating(true)} className="primary-button shrink-0">
+          <Plus size={16} />맞선 만들기
+        </button>
       </div>
-      <p className="mb-4 text-sm text-slate-600">
-        짝을 짓고, 화상이든 직접 만남이든 약속을 잡아 일정으로 관리합니다.
-      </p>
 
       <div className="mb-5 flex gap-1 border-b border-slate-200">
         {TABS.map(({ key, label, icon: Icon, hint }) => (
@@ -54,16 +63,9 @@ export default function MatchingPage() {
       </div>
 
       {tab === 'schedule' ? (
-        <ScheduleBoard />
+        <ScheduleBoard onCreateMatch={() => setCreating(true)} />
       ) : (
-        <>
-          <div className="mb-4 flex justify-end">
-            <button type="button" onClick={() => setCreating(true)} className="primary-button">
-              <Plus size={16} />맞선 만들기
-            </button>
-          </div>
-          <MatchHistory />
-        </>
+        <MatchHistory />
       )}
 
       {creating && (
@@ -72,7 +74,8 @@ export default function MatchingPage() {
           onClose={() => setCreating(false)}
           onCreated={() => {
             setCreating(false);
-            setRefreshed((n) => n + 1);
+            // 만든 뒤에는 짝지은 결과를 보여 준다. 방금 한 일의 결과가 눈에 보여야 한다.
+            setTab('matches');
           }}
         />
       )}

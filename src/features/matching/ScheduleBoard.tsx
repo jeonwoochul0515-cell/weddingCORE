@@ -23,7 +23,12 @@ import {
 import { bucketOf, formatWhen, localTimeOf } from './scheduleMath';
 import type { Appointment } from '@/types/schema';
 
-export default function ScheduleBoard() {
+type Props = {
+  /** 맞선이 하나도 없을 때 그 자리에서 만들게 해 준다. 다른 탭으로 보내지 않는다 */
+  onCreateMatch?: () => void;
+};
+
+export default function ScheduleBoard({ onCreateMatch }: Props) {
   const agencyId = useAuthStore((s) => s.user?.agencyId);
   const { items, loading, error } = useAppointments();
   const { items: matches } = useAllMatches();
@@ -218,10 +223,16 @@ export default function ScheduleBoard() {
       </div>
 
       {matches.length === 0 && (
-        <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-약속은 맞선 위에 붙습니다. 위 「매칭」 탭 → 「맞선 만들기」로 고객과 후보를
-          짝지우면 여기서 날짜를 잡을 수 있습니다.
-        </p>
+        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
+          <p className="text-sm text-slate-600">
+            약속은 맞선 위에 붙습니다. 고객과 후보를 먼저 짝지우세요.
+          </p>
+          {onCreateMatch && (
+            <button type="button" onClick={onCreateMatch} className="primary-button mx-auto mt-3">
+              <Plus size={16} />맞선 만들기
+            </button>
+          )}
+        </div>
       )}
 
       {loading && <p className="text-sm text-slate-500">불러오는 중…</p>}
