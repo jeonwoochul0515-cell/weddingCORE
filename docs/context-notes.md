@@ -515,20 +515,40 @@ LiveKit 토큰은 15분이면 만료돼 미리 못 보내고, 새면 회수가 �
 다음 호출이 `alreadyEnded`로 빠져나가 코드가 영영 안 지워진다.
 
 **남은 것.**
-- **LiveKit 키는 있고 살아 있다** (`functions/.env`, `wss://weddingcore-622u6d67.livekit.cloud`).
-  2026-09-20 `ListRooms` 호출로 HTTP 200 확인. 막힌 것은 **R2 키 하나뿐**이다.
+- 실제 사람 넷이 들어가 말하는 통화는 아직 안 해 봤다. 서버·녹화·헤더는 다 뚚렸다.
 - 통역사가 현지 에이전시 쪽 사람인 경우(하루 100달러, 업체가 직접 지급 안 함)가
   많아 보인다. 지금은 업체 통역자 명단이나 전문업체 둘 중 하나로만 배정된다.
-- R2 버킷에 **1년 수명주기 규칙**을 걸어야 한다. 코드는 영상을 지우지 않는다.
-  규칙을 안 걸면 처리방침에 적은 「1년 뒤 삭제」가 거짓이 된다.
-  → `scripts/setupR2Recording.mjs`가 버킷 생성·규칙·`.env` 기록까지 한 번에 한다.
+---
 
-**R2 키를 찾은 결과 (2026-09-20).** 이 PC에 없다. 본 곳은 다음과 같다 —
-`functions/.env`·`.env.local`(LiveKit만 있음), GCP Secret Manager **26개 프로젝트 전수**,
-홈 디렉터리 전체 파일 검색, `Downloads`, wrangler OAuth 설정.
-`~/.cf-token`은 살아 있지만 **R2 권한이 없다**(버킷 조회가 10000 Authentication error).
-wrangler OAuth 토큰은 만료이고 scopes에 `r2:*`가 애초에 없다.
-즉 **R2 편집 권한을 포함한 토큰을 새로 발급받는 것 외에 길이 없다.**
+## 2026-09-20 (저녁) — 녹화를 붙이고 배포하면서 드러난 것들
+
+**R2 연결 완료.** 버킷 `weddingcore-calls`(APAC), 수명주기 `calls/` 아래 365일.
+LiveKit egress를 실제로 걸어 R2에 쓰기까지 도는 것을 확인했다(EGRESS_STARTING, 프로브 삭제까지).
+
+**R2 S3 자격증명을 토큰에서 만드는 법.** 대시보드에서 받은 `cfat_…` 토큰 하나면 된다.
+- Access Key ID = 토큰 ID. `GET /accounts/{acc}/tokens/verify` 의 `result.id`.
+  ★ `/user/tokens/verify`는 계정 토큰이라 **Invalid API Token**이 나온다. 계정 경로를 써야 한다.
+- Secret Access Key = 토큰 문자열 전체의 SHA-256 hex (`cfat_` 포함).
+
+**★ 시크릿을 `functions/.env`에 두면 배포가 통째로 죽는다.**
+firebase가 `.env`를 일반 환경변수로 같이 실어 보내서 Secret Manager의 같은 이름과 부딪힌다.
+  `Could not create Cloud Run service … Secret environment variable overlaps`
+  `non secret environment variable: LIVEKIT_URL`
+로컬용은 **`functions/.secret.local`**, 운영은 `firebase functions:secrets:set`. 둘을 섮지 않는다.
+
+**★ 워커의 `ROUTE_PREFIXES`에 `/call`이 없었다.** 없는 주소로 보고 404로 내보낸다.
+맞선 당일 손님이 링크를 눌렀는데 안 열린다는 뜻이다. **공개 라우트를 늘리면 여기도 늘린다.**
+대신 `robots.txt` 세 그룹 전부에 `Disallow: /call/`을 넣었다(RFC 9309 — 그룹은 상속되지 않는다).
+
+**LiveKit 시크릿이 운영에 없었다.** `.env`에만 있어 배포해도 통화가 안 열렸을 것이다.
+지금은 LIVEKIT 3개 · R2 4개 모두 Secret Manager에 올라 있다.
+
+**배포 후 운영 확인(2026-09-20 18:2x).**
+```
+/call/*  → 200, permissions-policy: camera=(self), microphone=(self)
+         → CSP 에 wss://*.livekit.cloud, media-src 'self' blob:
+/        → 200, permissions-policy: camera=(), microphone=()   (그대로 닫혀 있음)
+```
 
 ---
 
