@@ -6,9 +6,10 @@
 // 한 화면에 섞어 두면 매일 보는 것이 가끔 보는 것에 밀린다.
 
 import { useState } from 'react';
-import { CalendarDays, Heart } from 'lucide-react';
+import { CalendarDays, Heart, Plus } from 'lucide-react';
 import MatchHistory from '@/features/matching/MatchHistory';
 import ScheduleBoard from '@/features/matching/ScheduleBoard';
+import CreateMatchDialog from '@/features/matching/CreateMatchDialog';
 
 type Tab = 'schedule' | 'matches';
 
@@ -19,6 +20,9 @@ const TABS: Array<{ key: Tab; label: string; icon: typeof Heart; hint: string }>
 
 export default function MatchingPage() {
   const [tab, setTab] = useState<Tab>('schedule');
+  const [creating, setCreating] = useState(false);
+  // 만들고 나면 목록을 다시 그린다. 구독이 살아 있지만 창이 닫힌 것을 눈으로 확인시켜 준다.
+  const [, setRefreshed] = useState(0);
 
   return (
     <div>
@@ -49,7 +53,29 @@ export default function MatchingPage() {
         ))}
       </div>
 
-      {tab === 'schedule' ? <ScheduleBoard /> : <MatchHistory />}
+      {tab === 'schedule' ? (
+        <ScheduleBoard />
+      ) : (
+        <>
+          <div className="mb-4 flex justify-end">
+            <button type="button" onClick={() => setCreating(true)} className="primary-button">
+              <Plus size={16} />맞선 만들기
+            </button>
+          </div>
+          <MatchHistory />
+        </>
+      )}
+
+      {creating && (
+        <CreateMatchDialog
+          partnerId=""
+          onClose={() => setCreating(false)}
+          onCreated={() => {
+            setCreating(false);
+            setRefreshed((n) => n + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

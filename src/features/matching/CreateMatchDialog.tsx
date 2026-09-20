@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { createMatch } from './useMatches';
 import { useAuthStore } from '@/store/authStore';
 import { ageOf, usePartners } from '@/features/partners/usePartners';
+import { useAgencyClients } from '@/features/agency/useAgencyClients';
 import type { Match } from '@/types/schema';
 
 type FormValues = {
@@ -15,7 +16,11 @@ type FormValues = {
 };
 
 type Props = {
-  clientId: string;
+  /**
+   * 고객 상세에서 열 때는 그 고객이 정해져 있다.
+   * 비워서 열면(매칭 관리 화면) 창 안에서 고객도 고르게 한다.
+   */
+  clientId?: string;
   partnerId: string;
   defaultClientName?: string;
   defaultPartnerName?: string;
@@ -43,13 +48,24 @@ export default function CreateMatchDialog({
   // 후보 명부에서 고른다. 이름을 손으로 치면 오타가 나고 나중에 그 사람을 못 찾는다.
   const { items: partners } = usePartners();
   const [pickedId, setPickedId] = useState(partnerId);
+  // 고객도 마찬가지다. 바깥에서 정해 준 것이 없을 때만 고르게 한다.
+  const { items: clients } = useAgencyClients('active');
+  const [pickedClientId, setPickedClientId] = useState(clientId ?? '');
 
   async function onSubmit(v: FormValues) {
     if (!user?.agencyId) return;
     setError(null);
+    if (!pickedClientId) {
+      setError('어느 고객의 맞선인지 고라 주세요.');
+      return;
+    }
+    if (!pickedId) {
+      setError('후보 명부에서 상대방을 고라 주세요. 명부를 거쳐야 나중에 그 사람을 찾을 수 있습니다.');
+      return;
+    }
     try {
       await createMatch(user.agencyId, user.uid, {
-        clientId,
+        clientId: pickedClientId,
         partnerId: pickedId,
         clientName: v.clientName,
         partnerName: v.partnerName,
@@ -73,6 +89,36 @@ export default function CreateMatchDialog({
           <button onClick={onClose} className="rounded-md p-1 hover:bg-slate-100"><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 p-6">
+          {/* 바깥에서 고객을 정해 주지 않았을 때만 고르게 한다 */}
+          {!clientId && (
+            <div>
+              <Fd label="어느 고객">
+                <select
+                  className="input"
+                  value={pickedClientId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setPickedClientId(id);
+                    const c = clients.find((x) => x.id === id);
+                    if (c) setValue('clientName', c.koreanClient?.name ?? '');
+                  }}
+                >
+                  <option value="">고르세요</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.koreanClient?.name ?? '(이름없음)'}
+                      {c.koreanClient?.phone ? ` · ${c.koreanClient.phone}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </Fd>
+              {clients.length === 0 && (
+                <p className="mt-1 text-xs text-slate-400">
+                  고객이 없습니다. 왼쪽 메뉴 「고객」에서 먼저 등록해 주세요.
+                </p>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Fd label="한국측 이름">
               <input className="input" {...register('clientName', { required: true })} />

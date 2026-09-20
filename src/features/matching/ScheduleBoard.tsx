@@ -219,7 +219,8 @@ export default function ScheduleBoard() {
 
       {matches.length === 0 && (
         <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-          맞선을 먼저 만들어야 약속을 잡을 수 있습니다. 위 「매칭」 탭에서 한 건 만들어 주세요.
+약속은 맞선 위에 붙습니다. 위 「매칭」 탭 → 「맞선 만들기」로 고객과 후보를
+          짝지우면 여기서 날짜를 잡을 수 있습니다.
         </p>
       )}
 
