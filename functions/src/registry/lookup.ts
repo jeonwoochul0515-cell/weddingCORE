@@ -150,6 +150,97 @@ export const searchBrokerRegistry = onCall(
 );
 
 /**
+ * ★ 이 공시는 **국제**결혼중개업체만 담는다. (2026-09-20 확인)
+ *
+ * 부산 연제구를 조회하면 「우리국제결혼중개사무소」 1건만 나오고, 같은 대표가 같은 주소에서
+ * 운영하는 국내 신고 업체 「우리 결혼중개사무소」는 여기 없다. 전국 499건이라는 규모도
+ * 국내까지 담기에는 너무 작다.
+ *
+ * 그래서 **여기서 찾히면 국제결혼중개업 등록이 있다는 뜻**이다.
+ * 무등록 국제중개는 5년 이하 징역 또는 5천만원 이하 벌금이다(법 제26조 제1항).
+ */
+
+/** 상호를 비교할 수 있게 다듬는다. 공시는 「우리국제…」, 등록증은 「우리 국제…」처럼 띄어쓰기가 다르다 */
+function squash(value: string): string {
+  return value.replace(/[\s()　]/g, '').replace(/㈜|주식회사/g, '').toLowerCase();
+}
+
+export type RegistryMatch = {
+  found: boolean;
+  /** 이름은 맞는데 대표자가 다른 경우. 동명 업체일 수 있어 사람이 봐야 한다 */
+  ownerMismatch: boolean;
+  hit: BrokerHit | null;
+  /** 업체명으로 찾은 후보들. 못 찾았을 때 「혹시 이거인가」를 보여 준다 */
+  candidates: BrokerHit[];
+};
+
+/**
+ * 업체명과 대표자로 공시를 대조한다.
+ *
+ * 이름만 보면 안 된다 — 「우리결혼정보」 같은 상호는 여러 곳이다. 대표자까지 같아야 같은 업체로 본다.
+ */
+export async function matchBrokerRegistry(
+  entrpsNm: string,
+  rprsvNm?: string | null,
+): Promise<RegistryMatch> {
+  const key = process.env.DATA_GO_KR_KEY;
+  if (!key) throw new Error('DATA_GO_KR_KEY 미설정');
+
+  // 공시 검색은 부분일치다. 전체 상호로 못 찾으면 범위를 줄여 한 번 더 찾는다 —
+  // 「우리 국제결혼중개사무소」로 검색해 비었을 때 「우리」로는 나오는 일이 있다.
+  const shortName = entrpsNm.trim().split(/\s+/)[0];
+  const keywords = [entrpsNm.trim()];
+  if (shortName && shortName.length >= 2 && shortName !== entrpsNm.trim()) {
+    keywords.push(shortName);
+  }
+
+  const seen = new Map<string, BrokerHit>();
+  for (const keyword of keywords) {
+    const qs = new URLSearchParams({
+      serviceKey: key,
+      pageNo: '1',
+      numOfRows: '50',
+      type: 'json',
+      entrpsNm: keyword,
+    });
+    const res = await fetch(`${BASE}?${qs.toString()}`, { headers: { Accept: 'application/json' } });
+    if (!res.ok) continue;
+    const json = (await res.json()) as {
+      response?: { body?: { items?: { item?: BrokerRaw[] | BrokerRaw } } };
+    };
+    const rawItems = json.response?.body?.items?.item;
+    const arr: BrokerRaw[] = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
+    for (const raw of arr) {
+      const hit = normalize(raw);
+      if (hit.entrpsNm) seen.set(`${hit.entrpsNm}|${hit.rprsvNm}`, hit);
+    }
+    if (seen.size > 0 && keyword === entrpsNm.trim()) break;
+  }
+
+  const candidates = [...seen.values()];
+  const wantName = squash(entrpsNm);
+  const wantOwner = rprsvNm ? squash(rprsvNm) : '';
+
+  const byName = candidates.filter((c) => squash(c.entrpsNm) === wantName);
+  if (byName.length > 0) {
+    const exact = wantOwner
+      ? byName.find((c) => squash(c.rprsvNm) === wantOwner)
+      : byName[0];
+    if (exact) return { found: true, ownerMismatch: false, hit: exact, candidates };
+    // 상호는 같은데 대표가 다르다. 동명일 수도, 대표가 바뀜을 수도 있다.
+    return { found: false, ownerMismatch: true, hit: byName[0], candidates };
+  }
+
+  // 상호가 어긋나도 대표자가 같으면 같은 사람이 이름만 바꿔 올렸을 수 있다.
+  if (wantOwner) {
+    const byOwner = candidates.find((c) => squash(c.rprsvNm) === wantOwner);
+    if (byOwner) return { found: true, ownerMismatch: false, hit: byOwner, candidates };
+  }
+
+  return { found: false, ownerMismatch: false, hit: null, candidates };
+}
+
+/**
  * 단일 업체의 공시 스냅샷을 가져온다 (업체명 정확일치 first hit).
  * - 회원가입 확정 시 publicProfile 생성에 사용
  * - 야간 sync 함수에서도 재사용

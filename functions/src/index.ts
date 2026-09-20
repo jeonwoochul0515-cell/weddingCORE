@@ -3,12 +3,14 @@
  */
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { logger } from 'firebase-functions/v2';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 // 상수 하나 때문에 automation/index를 불러오면 Anthropic SDK가 모든 함수의
 // 콜드스타트에 딴려온다. 정의만 들어 있는 파일에서 읽는다.
 import { DEFAULT_MONTHLY_ALLOWANCE } from './domain/credits.js';
+import { matchBrokerRegistry } from './registry/lookup.js';
 
 initializeApp();
 const db = getFirestore();
@@ -66,9 +68,15 @@ export const selfProvisionAgency = onCall({ region: REGION }, async (request) =>
   return { ok: true, agencyId, verificationStatus: 'pending' };
 });
 
-export const approveAgency = onCall({ region: REGION }, async (request) => {
+export const approveAgency = onCall(
+  { region: REGION, secrets: ['DATA_GO_KR_KEY'], timeoutSeconds: 30 },
+  async (request) => {
   await requireAdmin(request.auth);
-  const { agencyId } = request.data as { agencyId?: string };
+  const { agencyId, force, forceReason } = request.data as {
+    agencyId?: string;
+    force?: boolean;
+    forceReason?: string;
+  };
   if (!agencyId) throw new HttpsError('invalid-argument', 'agencyId가 필요합니다.');
 
   const agencySnap = await db.doc(`agencies/${agencyId}`).get();
@@ -78,12 +86,61 @@ export const approveAgency = onCall({ region: REGION }, async (request) => {
     return { ok: true, message: '이미 승인된 업체입니다.' };
   }
 
+  // ★ 공시에서 찾히는가. 이 공시는 국제결혼중개업체만 담으므로,
+  // 찾히지 않으면 국제 등록이 없다는 뜻이다. 무등록 국제중개는 법 제26조 제1항으로
+  // 5년 이하 징역 또는 5천만원 이하 벌금이다. 우리가 배지를 주면 그걸 거든는 꼴이 된다.
+  //
+  // 막지 않고 멈추기만 한다. 새로 등록한 업체는 공시 반영이 늦을 수 있어,
+  // 사람이 등록증을 눈으로 보고 사유를 적어 넘길 길을 둔다.
+  let registry: Awaited<ReturnType<typeof matchBrokerRegistry>> | null = null;
+  try {
+    registry = await matchBrokerRegistry(
+      String(agency.name ?? ''),
+      String(agency.ownerName ?? '') || null,
+    );
+  } catch (err) {
+    // 공시 API가 죽었다고 승인을 못 하게 만들지는 않는다. 확인 못 했다고만 적는다.
+    logger.warn('공시 대조 실패', { agencyId, message: (err as Error).message });
+  }
+
+  if (registry && !registry.found && !force) {
+    const hint = registry.ownerMismatch
+      ? `공시에 같은 상호가 있지만 대표자가 다릅니다(공시: ${registry.hit?.rprsvNm}).`
+      : registry.candidates.length > 0
+        ? `비슷한 업체: ${registry.candidates.slice(0, 3).map((c) => `${c.entrpsNm}(${c.rprsvNm})`).join(', ')}`
+        : '공시에서 찾지 못했습니다.';
+    throw new HttpsError(
+      'failed-precondition',
+      `국제결혼중개업 등록을 공시에서 확인하지 못했습니다. ${hint} ` +
+        '등록증을 직접 확인하셨으면 사유를 적어 다시 인증해 주세요.',
+    );
+  }
+
   const ownerUid = agency.ownerUid as string;
   await adminAuth.setCustomUserClaims(ownerUid, { agencyId, role: 'owner' });
 
   await db.doc(`agencies/${agencyId}`).update({
     verificationStatus: 'verified',
     verifiedAt: FieldValue.serverTimestamp(),
+    registryVerified: registry?.found
+      ? {
+          source: '성평등가족부 결혼중개업 공시',
+          entrpsNm: registry.hit?.entrpsNm ?? '',
+          rprsvNm: registry.hit?.rprsvNm ?? '',
+          region: registry.hit?.region ?? '',
+          registeredOn: registry.hit?.mrbrkRegYmd ?? null,
+          operating: registry.hit?.operYn ?? false,
+          hasSanctions: registry.hit?.hasSanctions ?? false,
+          checkedAt: FieldValue.serverTimestamp(),
+        }
+      : {
+          source: '성평등가족부 결혼중개업 공시',
+          found: false,
+          // 사람이 눈으로 보고 넘겼다면 그 사유를 남긴다. 나중에 누가 왜 통과시켰는지 묻는다.
+          forcedBy: request.auth!.uid,
+          forceReason: String(forceReason ?? '').slice(0, 300),
+          checkedAt: FieldValue.serverTimestamp(),
+        },
   });
 
   await db.collection('auditLogs').add({
@@ -98,8 +155,9 @@ export const approveAgency = onCall({ region: REGION }, async (request) => {
     createdAt: FieldValue.serverTimestamp(),
   });
 
-  return { ok: true };
-});
+    return { ok: true, registryFound: registry?.found ?? null };
+  },
+);
 
 export const rejectAgency = onCall({ region: REGION }, async (request) => {
   await requireAdmin(request.auth);

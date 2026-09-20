@@ -27,6 +27,11 @@ export default function AdminAgenciesPage() {
 
   useEffect(() => { load(); }, []);
 
+  /**
+   * 인증은 공시 대조를 거친다. 공시에 없는 업체는 국제결혼중개업 등록이 없다는 뜻이라
+   * 서버가 한 번 막는다. 등록증을 눈으로 확인했을 때만 사유를 적어 넘긴다 —
+   * 그 사유는 업체 문서에 남아 나중에 「누가 왜 통과시켰나」를 대답한다.
+   */
   async function decide(agencyId: string, decision: 'approve' | 'reject') {
     setProcessing(agencyId);
     try {
@@ -34,7 +39,24 @@ export default function AdminAgenciesPage() {
       await fn({ agencyId });
       await load();
     } catch (err) {
-      alert((err as Error).message);
+      const message = (err as Error).message;
+      const blockedByRegistry = message.includes('공시');
+      if (decision === 'approve' && blockedByRegistry) {
+        const reason = window.prompt(
+          `${message}\n\n등록증을 직접 확인하셨다면 그 근거를 적어 주세요.\n` +
+            '(예: 국제결혼중개업 등록증 사본 확인, 부산-연제-국제-26-0001호)',
+        );
+        if (!reason?.trim()) return;
+        try {
+          const fn2 = httpsCallable(functions, 'approveAgency');
+          await fn2({ agencyId, force: true, forceReason: reason.trim() });
+          await load();
+        } catch (e2) {
+          alert((e2 as Error).message);
+        }
+        return;
+      }
+      alert(message);
     } finally {
       setProcessing(null);
     }
