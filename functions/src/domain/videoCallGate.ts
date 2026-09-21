@@ -146,7 +146,24 @@ export const PRE_MEETING_CODES = [
 // 인자로 따로 받는다. 템플릿을 추가하면 기존 고객 타임라인 전개에 영향이 가므로
 // 별도 작업으로 다룬다.
 
-/** 막힌 이유 하나. 사장이 읽고 바로 무엇을 할지 알 수 있어야 한다 */
+/**
+ * 이 항목을 건너뛰면 어떻게 되는가.
+ *
+ * 「영업정지 사유가 됩니다」만으로는 사람이 움직이지 않는다. 실제 처분 수위와
+ * 그것이 유지된 사건을 같이 적는다. 지키는 일에는 이유가 보여야 한다.
+ *
+ * 근거 없는 겁주기는 하지 않는다 — 우리 정책인 항목은 penalty를 비운다.
+ */
+export type Penalty = {
+  /** 형사처벌. 없으면 null */
+  criminal: string | null;
+  /** 행정처분 */
+  administrative: string | null;
+  /** 실제로 이러한 사건이 있었는가 */
+  precedent: string | null;
+};
+
+/** 막힐 이유 하나. 사장이 읽고 바로 무엇을 할지 알 수 있어야 한다 */
 export type Blocker = {
   /** 화면에서 묶어 보여주기 위한 분류 */
   kind: 'obligation' | 'consent' | 'interpretation' | 'agent' | 'recording' | 'privacy';
@@ -156,6 +173,27 @@ export type Blocker = {
   remedy: string;
   /** 왜 필요한지. 근거 없는 요구는 하지 않는다 */
   legalBasis: string;
+  /** 건너뛰면 받는 처분. 우리 정책인 항목은 없다 */
+  penalty?: Penalty;
+};
+
+/**
+ * 신상정보 의무(법 제10조지2) 위반 시 받는 것.
+ *
+ * 법령 해설 데이터(src/content/lawArticles.ts)와 재결례(src/content/rulings.ts)에
+ * 적혀 있는 것을 그대로 옮긴다. 없는 말을 더하지 않는다.
+ */
+const PENALTY_BG_INFO: Penalty = {
+  criminal: '3년 이하 징역 또는 3천만원 이하 벌금 (법 제26조 제2항)',
+  administrative: '영업정지. 법 제10조지2는 영업정지 사유 중 가장 많이 나오는 조항이다.',
+  precedent:
+    '「통역이 설명했다」·「나중에 번역해 줬다」는 항변이 재결례에서 모두 기각되고 영업정지 45일~3개월이 유지됐다.',
+};
+
+const PENALTY_INTERPRETATION: Penalty = {
+  criminal: null,
+  administrative: '법 제10조지3 위반. 시정명령·영업정지 대상이다.',
+  precedent: null,
 };
 
 export type CallVerdict =
@@ -208,8 +246,9 @@ export function evaluateCallRequest(
       blockers.push({
         kind: 'obligation',
         reason: `${OBLIGATION_LABEL[code] ?? code}가 끝나지 않았습니다.`,
-        remedy: '고객 상세 화면의 법정의무 타임라인에서 해당 항목을 완료해 주세요.',
-        legalBasis: '결혼중개업법 제10조의2, 시행령 제3조의2',
+        remedy: '서류함에 증빙을 올리고 「서류로 자동 확인」을 누르면 채워집니다.',
+        legalBasis: '결혼중개업법 제10조지2, 시행령 제3조지2',
+        penalty: PENALTY_BG_INFO,
       });
     }
 
@@ -219,7 +258,8 @@ export function evaluateCallRequest(
         kind: 'consent',
         reason: '한국인 고객의 만남 서면 동의가 없습니다.',
         remedy: '만남 동의서를 받아 등록해 주세요.',
-        legalBasis: '시행령 제3조의2 (양쪽이 모두 만남에 서면 동의한 경우에만 주선)',
+        legalBasis: '시행령 제3조지2 (양쪽이 모두 만남에 서면 동의한 경우에만 주선)',
+        penalty: PENALTY_BG_INFO,
       });
     }
     if (!request.meetingConsent.partner) {
@@ -227,7 +267,8 @@ export function evaluateCallRequest(
         kind: 'consent',
         reason: '외국인 후보의 만남 서면 동의가 없습니다.',
         remedy: '현지 파트너를 통해 만남 동의서를 받아 등록해 주세요.',
-        legalBasis: '시행령 제3조의2 (양쪽이 모두 만남에 서면 동의한 경우에만 주선)',
+        legalBasis: '시행령 제3조지2 (양쪽이 모두 만남에 서면 동의한 경우에만 주선)',
+        penalty: PENALTY_BG_INFO,
       });
     }
   }
@@ -241,7 +282,8 @@ export function evaluateCallRequest(
       kind: 'interpretation',
       reason: '통역·번역서비스 제공 계획이 없습니다.',
       remedy: '사무소 화면에서 통역자를 배정하거나 통역·번역 전문업체를 지정해 주세요.',
-      legalBasis: '결혼중개업법 제10조의3, 시행규칙 제9조의3 ①',
+      legalBasis: '결혼중개업법 제10조지3, 시행규칙 제9조지3 ①',
+      penalty: PENALTY_INTERPRETATION,
     });
   } else if (plan.mode === 'in_house' && !plan.active) {
     blockers.push({

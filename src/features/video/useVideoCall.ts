@@ -9,11 +9,19 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase';
 
 /** 무엇이 막는지. 사장이 읽고 바로 무엇을 할지 알 수 있어야 한다 */
+export type Penalty = {
+  criminal: string | null;
+  administrative: string | null;
+  precedent: string | null;
+};
+
 export type Blocker = {
   kind: 'obligation' | 'consent' | 'interpretation' | 'agent' | 'recording' | 'privacy';
   reason: string;
   remedy: string;
   legalBasis: string;
+  /** 건너뛰면 받는 처분. 우리 정책인 항목은 없다 */
+  penalty?: Penalty;
 };
 
 export const BLOCKER_GROUP: Record<Blocker['kind'], string> = {

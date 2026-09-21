@@ -271,6 +271,15 @@ export default function CallReadinessPanel({ match, open }: Props) {
           <p className="mt-1 text-xs leading-5 text-amber-800">
             신상정보 제공과 양측 서면 동의가 끝나기 전에 만남을 주선하면 영업정지 사유가 됩니다.
           </p>
+          {/*
+            지키는 일이 방어가 된다는 것까지 말해 준다. 양벌규정 단서가
+            「상당한 주의와 감독」을 면책 사유로 두고 있어, 여기서 남는 기록이
+            사고가 난 뒤에 업체를 구하는 자료가 된다.
+          */}
+          <p className="mt-1 text-[11px] leading-4 text-amber-700/90">
+            여기서 처리한 기록은 누가 언제 무엇을 확인했는지까지 남습니다. 직원의 실수로
+            문제가 생겨도 업체가 「상당한 주의와 감독」을 다했다는 근거가 됩니다(법 제27조 단서).
+          </p>
 
           {/*
             나열하기 전에 먼저 채운다. 서류함에 이미 있는 증빙으로 끝낼 수 있는 항목은
@@ -365,6 +374,30 @@ export default function CallReadinessPanel({ match, open }: Props) {
                       <p className="text-xs font-medium text-slate-800">{blocker.reason}</p>
                       <p className="mt-0.5 text-[11px] leading-4 text-slate-600">{blocker.remedy}</p>
                       <p className="mt-0.5 text-[11px] text-slate-400">{blocker.legalBasis}</p>
+                      {/*
+                        건너뛰면 어떻게 되는지를 적는다. 「영업정지 사유가 됩니다」만으로는
+                        사람이 움직이지 않는다. 근거 없는 겁주기를 하지 않으려고
+                        우리 정책인 항목에는 penalty를 붙이지 않았다.
+                      */}
+                      {blocker.penalty && (
+                        <div className="mt-1.5 rounded bg-red-50/70 px-2 py-1.5">
+                          {blocker.penalty.criminal && (
+                            <p className="text-[11px] font-semibold leading-4 text-red-900">
+                              {blocker.penalty.criminal}
+                            </p>
+                          )}
+                          {blocker.penalty.administrative && (
+                            <p className="text-[11px] leading-4 text-red-800/90">
+                              {blocker.penalty.administrative}
+                            </p>
+                          )}
+                          {blocker.penalty.precedent && (
+                            <p className="mt-0.5 text-[11px] leading-4 text-red-700/80">
+                              {blocker.penalty.precedent}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
