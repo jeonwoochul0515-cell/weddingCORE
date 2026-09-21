@@ -500,7 +500,7 @@ const MARRIAGE_BROKERAGE_OBLIGATIONS: ObligationTemplateSeed[] = [
       '미제공 시 제18조 제1항 제12호의 등록취소·영업정지 사유. ' +
       '세부 수위는 시행규칙 제12조 별표(행정처분 기준)가 정한다.',
     disputeRisk:
-      '자격이 아니라 「원활한 의사소통을 지원했는가」가 다후진다. ' +
+      '자격이 아니라 「원활한 의사소통을 지원했는가」가 다퉈진다. ' +
       '제공 기록이 없으면 서비스를 줘도 준 적이 없는 것이 된다. ' +
       '오역으로 신상정보가 잘못 전달되면 혼인무효·수수료 반환 쟁점으로 번진다.',
     dueDateRule: { type: 'relative', anchor: 'meeting_scheduled', offsetDays: 0 },
