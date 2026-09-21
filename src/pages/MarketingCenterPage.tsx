@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
+import AdCopyCheckPanel from '@/features/marketing/AdCopyCheckPanel';
 import { useCheckout } from '@/features/payments/useCheckout';
 import { MARKETING_SERVICES } from '@/domain/pricing';
 import {
@@ -254,6 +255,12 @@ export default function MarketingCenterPage() {
           </div>
         </div>
       </section>
+
+      {/*
+        상품보다 먼저 둔다. 마케팅을 맡기지 않는 업체도 글은 올린다 — 그 글로 처분을
+        받는 것이 제12조다. 파는 것보다 막는 것이 앞에 서야 한다.
+      */}
+      <AdCopyCheckPanel />
 
       <section>
         <div className="mb-4 flex items-end justify-between gap-4">
