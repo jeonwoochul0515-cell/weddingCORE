@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { liveErrorMessage, liveQuery } from '@/lib/live';
+import { ageOfDateString, ageOnDate, isIntroducible } from '@/domain/introductionAge';
 import { useAuthStore } from '@/store/authStore';
 
 /** 지금 이 후보를 소개할 수 있는가 */
@@ -151,6 +152,16 @@ export async function savePartner(
   photoUrl: string | null,
   isNew: boolean,
 ) {
+  // 법 제12조의2 ① 1호는 18세 미만 소개를 금지한다. 명부에 올려 두면 언젠가 소개된다 —
+  // 경고만 띄우고 저장을 허용하면 막은 것이 아니다. 화면이 먼저 걸러내지만 여기서도 막는다.
+  const age = ageOfDateString(form.birthDate);
+  if (!isIntroducible(age)) {
+    throw new Error(
+      age === null
+        ? '생년월일을 여권에 적힌 대로 넣어 주세요. 나이를 확인하지 않은 후보는 등록할 수 없습니다.'
+        : `만 ${age}세입니다. 18세 미만은 소개할 수 없어 명부에 올리지 않습니다. (결혼중개업법 제12조의2 ① 1호)`,
+    );
+  }
   const ref = doc(db, `agencies/${agencyId}/partners/${id}`);
   const data = toDoc(agencyId, id, form, photoUrl);
   if (isNew) await setDoc(ref, { ...data, createdAt: serverTimestamp() });
@@ -165,10 +176,5 @@ export async function removePartner(agencyId: string, id: string) {
 export function ageOf(birth: Timestamp | null | undefined): number | null {
   const d = birth?.toDate?.();
   if (!d) return null;
-  const now = new Date();
-  let age = now.getFullYear() - d.getFullYear();
-  const before = now.getMonth() < d.getMonth()
-    || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate());
-  if (before) age -= 1;
-  return age;
+  return ageOnDate(d);
 }

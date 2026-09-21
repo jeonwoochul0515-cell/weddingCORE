@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { createMatch } from './useMatches';
 import { useAuthStore } from '@/store/authStore';
 import { ageOf, usePartners } from '@/features/partners/usePartners';
+import { isIntroducible } from '@/domain/introductionAge';
 import { useAgencyClients } from '@/features/agency/useAgencyClients';
 import type { Match } from '@/types/schema';
 
@@ -56,11 +57,21 @@ export default function CreateMatchDialog({
     if (!user?.agencyId) return;
     setError(null);
     if (!pickedClientId) {
-      setError('어느 고객의 맞선인지 고라 주세요.');
+      setError('어느 고객의 맞선인지 골라 주세요.');
       return;
     }
     if (!pickedId) {
-      setError('후보 명부에서 상대방을 고라 주세요. 명부를 거쳐야 나중에 그 사람을 찾을 수 있습니다.');
+      setError('후보 명부에서 상대방을 골라 주세요. 명부를 거쳐야 나중에 그 사람을 찾을 수 있습니다.');
+      return;
+    }
+    // 맞선 기록이 생기는 것이 곧 소개다. 18세 미만은 여기서 멈춰야 한다.
+    const pickedAge = ageOf(partners.find((p) => p.id === pickedId)?.birthDate);
+    if (!isIntroducible(pickedAge)) {
+      setError(
+        pickedAge === null
+          ? '후보의 생년월일이 명부에 없습니다. 「후보 명부」에서 여권대로 채우고 다시 만들어 주세요.'
+          : `후보가 만 ${pickedAge}세입니다. 18세 미만은 소개할 수 없습니다. (결혼중개업법 제12조의2 ① 1호)`,
+      );
       return;
     }
     try {
@@ -142,9 +153,12 @@ export default function CreateMatchDialog({
                 <option value="">직접 입력</option>
                 {partners.map((p) => {
                   const age = ageOf(p.birthDate);
+                  // 고를 수 없는 사람은 고를 수 없게 둔다. 동시에 왜라는지를 같은 줄에 적는다.
+                  const blocked = !isIntroducible(age);
                   return (
-                    <option key={p.id} value={p.id}>
+                    <option key={p.id} value={p.id} disabled={blocked}>
                       {p.name}{p.nationality ? ` · ${p.nationality}` : ''}{age != null ? ` · ${age}세` : ''}
+                      {blocked ? (age === null ? ' · 생년월일 없음' : ' · 18세 미만 — 소개 불가') : ''}
                     </option>
                   );
                 })}

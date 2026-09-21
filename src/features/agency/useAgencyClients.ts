@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { liveDoc, liveErrorMessage, liveQuery } from '@/lib/live';
+import { ageOnDate, MINIMUM_INTRODUCTION_AGE } from '@/domain/introductionAge';
 import { useAuthStore } from '@/store/authStore';
 import type { Client, ClientIntake } from '@/types/schema';
 
@@ -36,6 +37,22 @@ export type ClientBasics = {
 };
 
 export type ClientScope = 'active' | 'closed';
+
+/**
+ * 만 18세 미만은 고객으로도 받지 않는다.
+ *
+ * 조문은 「18세 미만인 사람을 소개하는 행위」를 금지할 뿐 소개되는 쪽을 가리지 않는다.
+ * 엑셀 가져오기는 이미 거르고 있었는데(clientCsv.ts) 직접 등록은 그냥 들어왔다.
+ * 들어오는 문을 하나로 맞춘다.
+ */
+function assertIntroducible(birthDate: Date) {
+  const age = ageOnDate(birthDate);
+  if (age < MINIMUM_INTRODUCTION_AGE) {
+    throw new Error(
+      `만 ${age}세입니다. 18세 미만은 소개할 수 없어 등록하지 않습니다. (결혼중개업법 제12조의2 ① 1호)`,
+    );
+  }
+}
 
 function clientDocument(
   clientId: string,
@@ -159,6 +176,7 @@ export async function createClient(
   /** 등록 창이 미리 잡아 둔 id와 먼저 올린 사진 */
   preset?: { clientId?: string; photoUrl?: string | null },
 ) {
+  assertIntroducible(data.birthDate);
   const ref = preset?.clientId
     ? doc(db, `agencies/${agencyId}/clients/${preset.clientId}`)
     : doc(collection(db, `agencies/${agencyId}/clients`));
@@ -182,6 +200,7 @@ export async function createClient(
  * 각 고객 문서가 만들어지면 기존 onClientCreated 함수가 법정의무 타임라인을 전개한다.
  */
 export async function importClients(agencyId: string, uid: string, clients: ClientBasics[]) {
+  for (const client of clients) assertIntroducible(client.birthDate);
   const chunkSize = 200;
   for (let start = 0; start < clients.length; start += chunkSize) {
     const batch = writeBatch(db);
@@ -208,6 +227,7 @@ export async function updateClientBasics(
   /** 넘기지 않으면 지금 사진을 그대로 둔다. null이면 사진을 뗀다 */
   photoUrl?: string | null,
 ) {
+  assertIntroducible(data.birthDate);
   const ref = doc(db, `agencies/${agencyId}/clients/${clientId}`);
   await updateDoc(ref, {
     ...(photoUrl === undefined ? {} : { photoUrl }),

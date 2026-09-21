@@ -1,3 +1,4 @@
+import { ageOnDate, MINIMUM_INTRODUCTION_AGE } from '@/domain/introductionAge';
 import type { ClientBasics } from './useAgencyClients';
 
 export type ClientCsvRow = ClientBasics & { rowNumber: number };
@@ -112,15 +113,6 @@ function normalizedPhone(value: string) {
   return value.replace(/[^\d+]/g, '');
 }
 
-function ageOn(date: Date) {
-  const today = new Date();
-  let age = today.getFullYear() - date.getFullYear();
-  const beforeBirthday = today.getMonth() < date.getMonth()
-    || (today.getMonth() === date.getMonth() && today.getDate() < date.getDate());
-  if (beforeBirthday) age -= 1;
-  return age;
-}
-
 export function parseClientCsv(text: string, existingPhones: Iterable<string> = []): ClientCsvResult {
   if (text.includes('\uFFFD')) {
     return { rows: [], totalRows: 0, issues: [{ rowNumber: 1, message: '한글 인코딩을 읽을 수 없습니다. 엑셀에서 CSV UTF-8 형식으로 다시 저장해 주세요.' }] };
@@ -157,7 +149,7 @@ export function parseClientCsv(text: string, existingPhones: Iterable<string> = 
 
     if (!name) rowIssues.push('이름 없음');
     if (!birthDate) rowIssues.push('생년월일 형식 오류');
-    else if (ageOn(birthDate) < 18) rowIssues.push('만 18세 미만');
+    else if (ageOnDate(birthDate) < MINIMUM_INTRODUCTION_AGE) rowIssues.push('만 18세 미만');
     if (!gender) rowIssues.push('성별은 남/여로 입력');
     if (phone.length < 8 || phone.length > 15) rowIssues.push('연락처 형식 오류');
     if (phone && (knownPhones.has(phone) || filePhones.has(phone))) rowIssues.push('연락처 중복');

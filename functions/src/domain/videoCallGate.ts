@@ -36,6 +36,12 @@
 // ★ 미확정 : 영상통화가 시행령 제3조의2의 '만남'에 해당하는지는 아직 확인 전이다.
 //   제휴 법률사무소 회신 전까지 CONSERVATIVE_POLICY(만남으로 본다)를 기본값으로 쓴다.
 //   회신이 「만남이 아니다」로 오면 policy.treatAsMeeting만 false로 바꾸면 된다.
+//
+// ★ 나이는 정책과 무관하다. 법 제12조의2 ① 1호는 18세 미만인 사람을 **소개하는 행위**
+//   자체를 금지한다. 만남으로 보든 안 보든, 신상정보를 다 갖췄든 아니든 걸린다.
+//   그래서 policy 분기 밖에서 맨 먼저 본다.
+
+import { ageOn } from './partnerProfileCheck.js';
 
 /** 타임라인 항목 중 이 판정에 필요한 것만. 저장소 형태에 기대지 않는다. */
 export type ObligationState = {
@@ -123,6 +129,13 @@ export type CallRequest = {
    * 상대가 국내에 있으면 null을 넣는다.
    */
   crossBorderConsent: boolean | null;
+  /**
+   * 소개하려는 두 사람의 생년월일 ('YYYY-MM-DD'). 확인된 것이 없으면 null.
+   *
+   * 없으면 막는다. 재결례는 나이를 현지 파트너의 말이 아니라 서류로 확인해 보관하라고 한다 —
+   * 「몰랐다」는 항변이 서지 않기 때문이다. 모르는 채로 여는 것이 곧 위반의 입구다.
+   */
+  birthDates: { client: string | null; partner: string | null };
 };
 
 /**
@@ -166,7 +179,7 @@ export type Penalty = {
 /** 막힐 이유 하나. 사장이 읽고 바로 무엇을 할지 알 수 있어야 한다 */
 export type Blocker = {
   /** 화면에서 묶어 보여주기 위한 분류 */
-  kind: 'obligation' | 'consent' | 'interpretation' | 'agent' | 'recording' | 'privacy';
+  kind: 'age' | 'obligation' | 'consent' | 'interpretation' | 'agent' | 'recording' | 'privacy';
   /** 무엇이 막혔는지 */
   reason: string;
   /** 무엇을 하면 풀리는지 */
@@ -178,21 +191,35 @@ export type Blocker = {
 };
 
 /**
- * 신상정보 의무(법 제10조지2) 위반 시 받는 것.
+ * 신상정보 의무(법 제10조의2) 위반 시 받는 것.
  *
  * 법령 해설 데이터(src/content/lawArticles.ts)와 재결례(src/content/rulings.ts)에
  * 적혀 있는 것을 그대로 옮긴다. 없는 말을 더하지 않는다.
  */
 const PENALTY_BG_INFO: Penalty = {
   criminal: '3년 이하 징역 또는 3천만원 이하 벌금 (법 제26조 제2항)',
-  administrative: '영업정지. 법 제10조지2는 영업정지 사유 중 가장 많이 나오는 조항이다.',
+  administrative: '영업정지. 법 제10조의2는 영업정지 사유 중 가장 많이 나오는 조항이다.',
   precedent:
     '「통역이 설명했다」·「나중에 번역해 줬다」는 항변이 재결례에서 모두 기각되고 영업정지 45일~3개월이 유지됐다.',
 };
 
+/**
+ * 18세 미만 소개(법 제12조의2 ① 1호) 위반 시 받는 것.
+ *
+ * 조문 번호는 src/content/lawArticles.ts의 원문을 그대로 따른다 —
+ * 제18조 ① 18호(등록취소·영업정지), 제26조 ② 9호(벌칙).
+ * 재결례는 src/content/rulings.ts에 적힌 사건이다.
+ */
+const PENALTY_MINOR: Penalty = {
+  criminal: '3년 이하 징역 또는 3천만원 이하 벌금 (법 제26조 제2항 제9호)',
+  administrative: '등록취소 또는 영업정지 (법 제18조 제1항 제18호)',
+  precedent:
+    '18세 미만 상대를 소개한 사실이 인정되어 영업정지 3개월이 유지됐다. 벌금 50만원 처분도 함께 있었던 사건이다.',
+};
+
 const PENALTY_INTERPRETATION: Penalty = {
   criminal: null,
-  administrative: '법 제10조지3 위반. 시정명령·영업정지 대상이다.',
+  administrative: '법 제10조의3 위반. 시정명령·영업정지 대상이다.',
   precedent: null,
 };
 
@@ -212,6 +239,9 @@ export type CallVerdict =
   | { allow: false; blockers: Blocker[] };
 
 const DONE = 'done';
+
+/** 소개할 수 있는 최저 나이. 법 제12조의2 ① 1호 · 민법 제807조가 같은 18세다 */
+const MINIMUM_AGE = 18;
 
 /** 의무 코드 → 사장이 읽는 이름. 코드만 보여주면 무엇을 하라는지 모른다 */
 const OBLIGATION_LABEL: Record<string, string> = {
@@ -234,11 +264,40 @@ const OBLIGATION_LABEL: Record<string, string> = {
 export function evaluateCallRequest(
   request: CallRequest,
   policy: CallPolicy = CONSERVATIVE_POLICY,
+  now: Date = new Date(),
 ): CallVerdict {
   const blockers: Blocker[] = [];
   const done = new Set(
     request.obligations.filter((item) => item.status === DONE).map((item) => item.templateCode),
   );
+
+  // 나이부터 본다. 정책으로 끄지 않는다 — 소개 행위 자체가 금지된 것이라
+  // 만남으로 보든 안 보든, 다른 요건을 다 갖췄든 아니든 열 수 없다.
+  for (const side of ['client', 'partner'] as const) {
+    const who = side === 'client' ? '한국인 고객' : '외국인 후보';
+    const birthDate = request.birthDates[side];
+    const age = birthDate ? ageOn(birthDate, now) : null;
+    if (age === null) {
+      blockers.push({
+        kind: 'age',
+        reason: `${who}의 생년월일이 확인되지 않았습니다.`,
+        remedy:
+          '여권에 적힌 생년월일을 받아 등록해 주세요. 현지 파트너의 말이 아니라 서류로 확인해 보관해야 다툴 때 근거가 됩니다.',
+        legalBasis: '결혼중개업법 제12조의2 ① 1호 (18세 미만 소개 금지)',
+        penalty: PENALTY_MINOR,
+      });
+    } else if (age < MINIMUM_AGE) {
+      blockers.push({
+        kind: 'age',
+        reason: `${who}가 만 ${age}세입니다. 18세 미만은 소개할 수 없습니다.`,
+        remedy:
+          '이 건은 진행하지 마세요. 생년월일을 잘못 입력한 것이라면 여권으로 확인해 고쳐 주세요.',
+        legalBasis:
+          '결혼중개업법 제12조의2 ① 1호 (18세 미만 소개 금지), 민법 제807조 (혼인적령)',
+        penalty: PENALTY_MINOR,
+      });
+    }
+  }
 
   if (policy.treatAsMeeting) {
     for (const code of PRE_MEETING_CODES) {
@@ -247,7 +306,7 @@ export function evaluateCallRequest(
         kind: 'obligation',
         reason: `${OBLIGATION_LABEL[code] ?? code}가 끝나지 않았습니다.`,
         remedy: '서류함에 증빙을 올리고 「서류로 자동 확인」을 누르면 채워집니다.',
-        legalBasis: '결혼중개업법 제10조지2, 시행령 제3조지2',
+        legalBasis: '결혼중개업법 제10조의2, 시행령 제3조의2',
         penalty: PENALTY_BG_INFO,
       });
     }
@@ -258,7 +317,7 @@ export function evaluateCallRequest(
         kind: 'consent',
         reason: '한국인 고객의 만남 서면 동의가 없습니다.',
         remedy: '만남 동의서를 받아 등록해 주세요.',
-        legalBasis: '시행령 제3조지2 (양쪽이 모두 만남에 서면 동의한 경우에만 주선)',
+        legalBasis: '시행령 제3조의2 (양쪽이 모두 만남에 서면 동의한 경우에만 주선)',
         penalty: PENALTY_BG_INFO,
       });
     }
@@ -267,7 +326,7 @@ export function evaluateCallRequest(
         kind: 'consent',
         reason: '외국인 후보의 만남 서면 동의가 없습니다.',
         remedy: '현지 파트너를 통해 만남 동의서를 받아 등록해 주세요.',
-        legalBasis: '시행령 제3조지2 (양쪽이 모두 만남에 서면 동의한 경우에만 주선)',
+        legalBasis: '시행령 제3조의2 (양쪽이 모두 만남에 서면 동의한 경우에만 주선)',
         penalty: PENALTY_BG_INFO,
       });
     }
@@ -282,7 +341,7 @@ export function evaluateCallRequest(
       kind: 'interpretation',
       reason: '통역·번역서비스 제공 계획이 없습니다.',
       remedy: '사무소 화면에서 통역자를 배정하거나 통역·번역 전문업체를 지정해 주세요.',
-      legalBasis: '결혼중개업법 제10조지3, 시행규칙 제9조지3 ①',
+      legalBasis: '결혼중개업법 제10조의3, 시행규칙 제9조의3 ①',
       penalty: PENALTY_INTERPRETATION,
     });
   } else if (plan.mode === 'in_house' && !plan.active) {

@@ -16,7 +16,7 @@ export type Penalty = {
 };
 
 export type Blocker = {
-  kind: 'obligation' | 'consent' | 'interpretation' | 'agent' | 'recording' | 'privacy';
+  kind: 'age' | 'obligation' | 'consent' | 'interpretation' | 'agent' | 'recording' | 'privacy';
   reason: string;
   remedy: string;
   legalBasis: string;
@@ -25,6 +25,7 @@ export type Blocker = {
 };
 
 export const BLOCKER_GROUP: Record<Blocker['kind'], string> = {
+  age: '나이 확인',
   obligation: '법정의무',
   consent: '만남 동의',
   interpretation: '통역·번역',

@@ -21,6 +21,9 @@ const ALL_CODES = [
 const allDone = (): ObligationState[] =>
   ALL_CODES.map((templateCode) => ({ templateCode, status: 'done' }));
 
+/** 시험의 기준 시각. 나이는 해가 바뀌면 달라지므로 고정해 둔다 */
+const NOW = new Date('2026-09-21T00:00:00Z');
+
 /** 전부 통과하는 요청. 각 시험은 여기서 하나씩만 무너뜨린다 */
 const ready = (over: Partial<CallRequest> = {}): CallRequest => ({
   obligations: allDone(),
@@ -29,6 +32,7 @@ const ready = (over: Partial<CallRequest> = {}): CallRequest => ({
   agent: { assigned: true, staffId: 'stf_1', active: true },
   recordingConsent: { client: true, partner: true },
   crossBorderConsent: true,
+  birthDates: { client: '1988-04-11', partner: '1996-01-16' },
   ...over,
 });
 
@@ -357,7 +361,7 @@ describe('직접 만남 정책 — 녹화만 빠지고 나머지는 같다', () 
     expect(v.allow).toBe(true);
   });
 
-  it('다 갖췔으면 통과하고 방 설정에 녹화가 꺼져 있다', () => {
+  it('다 갖췄으면 통과하고 방 설정에 녹화가 꺼져 있다', () => {
     const v = evaluateCallRequest(ready({}), OFFLINE);
     expect(v.allow).toBe(true);
     if (v.allow) expect(v.room.recording).toBe(false);
@@ -384,5 +388,84 @@ describe('evaluateCallRequest — 정책 전환', () => {
   it('정책을 안 넘기면 보수적 기본값이 걸린다', () => {
     const bare = ready({ obligations: [] });
     expect(evaluateCallRequest(bare).allow).toBe(false);
+  });
+});
+
+// 18세 미만 소개는 금지 행위다(법 제12조의2 ① 1호). 신상정보 게이트와 달리
+// 정책으로 끌 수 없고, 다른 요건을 다 갖춰도 열리지 않아야 한다.
+describe('evaluateCallRequest — 18세 미만 소개 금지', () => {
+  const ageBlockers = (r: ReturnType<typeof evaluateCallRequest>) =>
+    r.allow ? [] : r.blockers.filter((b) => b.kind === 'age');
+
+  it('외국인 후보가 만 17세면 막는다', () => {
+    const v = evaluateCallRequest(
+      ready({ birthDates: { client: '1988-04-11', partner: '2009-05-01' } }),
+      CONSERVATIVE_POLICY,
+      NOW,
+    );
+    expect(v.allow).toBe(false);
+    const [blocker] = ageBlockers(v);
+    expect(blocker?.reason).toContain('만 17세');
+    expect(blocker?.legalBasis).toContain('제12조의2');
+    expect(blocker?.penalty?.criminal).toContain('제26조');
+  });
+
+  it('한국인 고객이 만 17세여도 막는다 — 조문은 소개되는 사람을 가리지 않는다', () => {
+    const v = evaluateCallRequest(
+      ready({ birthDates: { client: '2009-05-01', partner: '1996-01-16' } }),
+      CONSERVATIVE_POLICY,
+      NOW,
+    );
+    expect(ageBlockers(v).map((b) => b.reason).join(' ')).toContain('한국인 고객');
+  });
+
+  it('생일 당일에 만 18세가 되면 그때부터 열린다 (경계)', () => {
+    const v = evaluateCallRequest(
+      ready({ birthDates: { client: '1988-04-11', partner: '2008-09-21' } }),
+      CONSERVATIVE_POLICY,
+      NOW,
+    );
+    expect(v.allow).toBe(true);
+  });
+
+  it('생일 하루 전이면 아직 만 17세다 (경계)', () => {
+    const v = evaluateCallRequest(
+      ready({ birthDates: { client: '1988-04-11', partner: '2008-09-22' } }),
+      CONSERVATIVE_POLICY,
+      NOW,
+    );
+    expect(ageBlockers(v)).toHaveLength(1);
+  });
+
+  it('생년월일을 모르면 막는다 — 모르는 채로 여는 것이 위반의 입구다', () => {
+    const v = evaluateCallRequest(
+      ready({ birthDates: { client: '1988-04-11', partner: null } }),
+      CONSERVATIVE_POLICY,
+      NOW,
+    );
+    expect(ageBlockers(v)[0]?.reason).toContain('확인되지 않았습니다');
+  });
+
+  it('읽을 수 없는 날짜도 모르는 것으로 본다', () => {
+    const v = evaluateCallRequest(
+      ready({ birthDates: { client: '1988-04-11', partner: '아무거나' } }),
+      CONSERVATIVE_POLICY,
+      NOW,
+    );
+    expect(ageBlockers(v)).toHaveLength(1);
+  });
+
+  it('★ 만남이 아니라고 보기로 해도 나이는 그대로 막는다 — 소개 행위 자체가 금지다', () => {
+    const v = evaluateCallRequest(
+      ready({
+        obligations: [],
+        meetingConsent: { client: false, partner: false },
+        birthDates: { client: '1988-04-11', partner: '2009-05-01' },
+      }),
+      { treatAsMeeting: false, requireRecording: false, requireAgentAttendance: false },
+      NOW,
+    );
+    expect(v.allow).toBe(false);
+    expect(ageBlockers(v)).toHaveLength(1);
   });
 });

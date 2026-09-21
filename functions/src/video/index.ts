@@ -132,7 +132,7 @@ export async function collectCallRequest(
     throw new HttpsError('failed-precondition', '맞선 건에 고객 또는 후보가 없습니다.');
   }
 
-  const [timelineSnap, interpreterSnap, agentSnap, interpPartnerSnap] = await Promise.all([
+  const [timelineSnap, interpreterSnap, agentSnap, interpPartnerSnap, clientSnap, partnerSnap] = await Promise.all([
     db.collection(`agencies/${agencyId}/clients/${clientId}/timeline`).get(),
     // 통역 배정은 맞선 건에 적어 둔다. 없으면 배정 안 한 것이다.
     match.interpreterId
@@ -150,6 +150,10 @@ export async function collectCallRequest(
           .doc(`agencies/${agencyId}/localPartners/${String(match.interpretationPartnerId)}`)
           .get()
       : Promise.resolve(null),
+    // 18세 미만 소개 금지(법 제12조의2 ① 1호) 판정에 쓸 생년월일.
+    // 맞선 문서에 적힌 이름이 아니라 원본 문서에서 직접 읽는다 — 복사본은 뒤늘어진다.
+    db.doc(`agencies/${agencyId}/clients/${clientId}`).get(),
+    db.doc(`agencies/${agencyId}/partners/${partnerId}`).get(),
   ]);
 
   let interpretation: InterpretationPlan = { mode: 'none' };
@@ -206,8 +210,25 @@ export async function collectCallRequest(
       },
       crossBorderConsent:
         consents.crossBorder === undefined ? null : (consents.crossBorder as boolean | null),
+      birthDates: {
+        client: toBirthDate(clientSnap.get('koreanClient.birthDate')),
+        partner: toBirthDate(partnerSnap.get('birthDate')),
+      },
     },
   };
+}
+
+/**
+ * Firestore에 어떤 모양으로 있든 'YYYY-MM-DD'로 맞춘다. 읽을 수 없으면 null이다.
+ *
+ * 모르면 null로 두고 게이트가 막게 한다. 여기서 추측해 넣으면 나이를 확인한 적 없는 건이
+ * 확인된 것처럼 통과한다.
+ */
+function toBirthDate(value: unknown): string | null {
+  if (value instanceof Timestamp) return value.toDate().toISOString().slice(0, 10);
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  return null;
 }
 
 /**

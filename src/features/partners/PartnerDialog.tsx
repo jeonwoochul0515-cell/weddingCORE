@@ -13,6 +13,7 @@ import {
   warningsForPhoto,
   type ProfileWarning,
 } from './partnerIntake';
+import { ageOfDateString, isIntroducible } from '@/domain/introductionAge';
 import {
   EMPTY_PARTNER,
   newPartnerId,
@@ -155,6 +156,20 @@ export default function PartnerDialog({ editing, onClose, onSaved }: Props) {
     setError(null);
     if (!form.name.trim()) { setError('이름을 적어 주세요.'); return; }
     if (!form.nationality.trim()) { setError('국적을 적어 주세요.'); return; }
+    /*
+      나이는 경고로 끝낼 수 없다. 법 제12조의2 ① 1호가 18세 미만 소개를 금지하고,
+      실제로 영업정지 3개월이 유지된 사건이 있다. 명부에 올라가면 언젠가 소개된다.
+      생년월일을 모르는 채로 두는 것도 막는다 — 나중에 「몰랐다」는 말은 재결례에서 서지 않았다.
+    */
+    const age = ageOfDateString(form.birthDate);
+    if (!isIntroducible(age)) {
+      setError(
+        age === null
+          ? '생년월일을 여권에 적힌 대로 넣어 주세요. 나이를 확인해야 명부에 올릴 수 있습니다.'
+          : `만 ${age}세입니다. 18세 미만은 소개할 수 없어 등록하지 않습니다. 생년월일이 잘못 적혀 있으면 여권으로 확인해 고쳐 주세요. (결혼중개업법 제12조의2 ① 1호 — 영업정지 3개월 사례가 있습니다)`,
+      );
+      return;
+    }
     setSaving(true);
     try {
       await savePartner(agencyId, id, form, photoUrl, !editing);

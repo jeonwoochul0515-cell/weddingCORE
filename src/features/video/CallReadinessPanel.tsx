@@ -271,6 +271,17 @@ export default function CallReadinessPanel({ match, open }: Props) {
           <p className="mt-1 text-xs leading-5 text-amber-800">
             신상정보 제공과 양측 서면 동의가 끝나기 전에 만남을 주선하면 영업정지 사유가 됩니다.
           </p>
+
+          {/*
+            나이는 다른 항목과 성격이 다르다. 서류를 더 받아도 풀리지 않는다 —
+            소개 행위 자체가 금지된 것이라 멈춰야 끝난다. 목록 위에 먼저 말해 둔다.
+          */}
+          {state.blockers.some((b) => b.kind === 'age') && (
+            <p className="mt-2 rounded-lg bg-red-100 px-3 py-2 text-xs font-bold leading-5 text-red-900">
+              18세 미만은 소개할 수 없습니다. 이 건은 서류를 더 채워도 열리지 않습니다.
+              생년월일을 여권으로 확인해 고치거나, 진행을 멈춰 주세요.
+            </p>
+          )}
           {/*
             지키는 일이 방어가 된다는 것까지 말해 준다. 양벌규정 단서가
             「상당한 주의와 감독」을 면책 사유로 두고 있어, 여기서 남는 기록이
