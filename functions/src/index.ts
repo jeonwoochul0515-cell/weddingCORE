@@ -222,6 +222,9 @@ export { syncObligationsFromDocuments } from './video/obligationSync.js';
 // 직접 만나는 약속도 화상통화와 같은 문을 지난다
 export { checkMeetingReadiness, confirmAppointment } from './video/meetingGate.js';
 
+// 보존기간(5년)이 끝난 고객 자료를 지운다. 모으는 쪽만 있고 지우는 쪽이 없었다.
+export { purgeExpiredClientRecords } from './privacy/purgeClients.js';
+
 // 직원 초대·역할·내보내기. 클레임을 다루므로 서버에서만 한다.
 export { claimStaffInvite, removeStaff, changeStaffRole } from './agency/staff.js';
 
