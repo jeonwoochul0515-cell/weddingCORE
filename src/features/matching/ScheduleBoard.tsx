@@ -4,12 +4,14 @@
 // 지난 약속은 접어 둔다. 필요할 때만 펼친다.
 
 import { useMemo, useState } from 'react';
-import { CalendarDays, Globe, MapPin, Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CalendarDays, Globe, Loader2, MapPin, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { usePartners } from '@/features/partners/usePartners';
 import AppointmentDialog from './AppointmentDialog';
 import { useAllMatches } from './useMatches';
 import {
+  confirmAppointment,
   isUpcoming,
   KIND_LABEL,
   MODE_LABEL,
@@ -19,6 +21,7 @@ import {
   STATUS_LABEL,
   useAppointments,
   type AppointmentItem,
+  type MeetingBlocker,
 } from './useAppointments';
 import { bucketOf, formatWhen, localTimeOf } from './scheduleMath';
 import type { Appointment } from '@/types/schema';
@@ -37,6 +40,9 @@ export default function ScheduleBoard({ onCreateMatch }: Props) {
   const [dialog, setDialog] = useState<{ editing?: AppointmentItem } | null>(null);
   const [showPast, setShowPast] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  /** 확정하려다 막힌 약속과 그 이유 */
+  const [blocked, setBlocked] = useState<{ id: string; blockers: MeetingBlocker[] } | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
   const now = new Date();
 
   const { upcoming, past } = useMemo(() => {
@@ -64,7 +70,10 @@ export default function ScheduleBoard({ onCreateMatch }: Props) {
     return map;
   }, [upcoming, now]);
 
-  async function changeStatus(a: AppointmentItem, status: Appointment['status']) {
+  async function changeStatus(
+    a: AppointmentItem,
+    status: Exclude<Appointment['status'], 'confirmed'>,
+  ) {
     if (!agencyId) return;
     let reason = '';
     if (status === 'canceled' || status === 'noshow') {
@@ -72,6 +81,26 @@ export default function ScheduleBoard({ onCreateMatch }: Props) {
       if (!reason.trim()) return;
     }
     await setAppointmentStatus(agencyId, a.id, status, reason);
+  }
+
+  /**
+   * 확정은 서버를 거친다.
+   *
+   * 법은 온라인과 오프라인을 가르지 않는다. 현지에 나가 직접 만나는 자리가
+   * 오히려 더 무거운 만남이다. 잡는 것은 막지 않고 확정을 막는다 —
+   * 잡는 것까지 막으면 기록을 안 남기고 만난다.
+   */
+  async function confirm(a: AppointmentItem) {
+    setConfirming(a.id);
+    setBlocked(null);
+    try {
+      const result = await confirmAppointment(a.id);
+      if (!result.confirmed) setBlocked({ id: a.id, blockers: result.blockers });
+    } catch (e) {
+      window.alert((e as { message?: string }).message ?? '확정하지 못했습니다.');
+    } finally {
+      setConfirming(null);
+    }
   }
 
   async function remove(id: string) {
@@ -128,15 +157,47 @@ export default function ScheduleBoard({ onCreateMatch }: Props) {
                 사유: {a.canceledReason}
               </p>
             )}
+
+            {/*
+              확정이 막혔을 때만 보인다. 평소에는 길게 늘어놓지 않는다 —
+              일정판은 「오늘 뭐 하나」를 보는 화면이지 법 공부하는 화면이 아니다.
+            */}
+            {blocked?.id === a.id && (
+              <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+                <p className="text-[11px] font-bold text-amber-900">
+                  만나기 전에 마쳐야 할 것이 {blocked.blockers.length}건 있습니다
+                </p>
+                <p className="mt-0.5 text-[11px] leading-4 text-amber-800">
+                  직접 만나는 자리도 화상맞선과 같은 요건을 받습니다. 법은 둘을 가르지 않습니다.
+                </p>
+                <ul className="mt-1.5 space-y-1">
+                  {blocked.blockers.map((b) => (
+                    <li key={b.reason} className="rounded bg-white px-2 py-1.5">
+                      <p className="text-[11px] font-medium text-slate-800">{b.reason}</p>
+                      <p className="text-[11px] leading-4 text-slate-500">{b.remedy}</p>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  to="/agency/matching"
+                  onClick={() => setBlocked(null)}
+                  className="mt-2 inline-block text-[11px] font-semibold text-amber-900 underline"
+                >
+                  매칭 탭에서 이 맞선을 열어 처리하기
+                </Link>
+              </div>
+            )}
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-1">
             {a.status === 'planned' && (
               <button
                 type="button"
-                onClick={() => void changeStatus(a, 'confirmed')}
-                className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white"
+                onClick={() => void confirm(a)}
+                disabled={confirming === a.id}
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
               >
+                {confirming === a.id && <Loader2 size={11} className="animate-spin" />}
                 확정
               </button>
             )}

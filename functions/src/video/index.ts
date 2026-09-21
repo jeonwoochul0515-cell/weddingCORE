@@ -98,7 +98,7 @@ function newInviteCode(): string {
   return randomBytes(24).toString('base64url');
 }
 
-function requireAgencyWriter(request: { auth?: { uid: string; token: Record<string, unknown> } }) {
+export function requireAgencyWriter(request: { auth?: { uid: string; token: Record<string, unknown> } }) {
   if (!request.auth?.uid) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
   const role = request.auth.token.role as string | undefined;
   const agencyId = request.auth.token.agencyId as string | undefined;
@@ -108,7 +108,7 @@ function requireAgencyWriter(request: { auth?: { uid: string; token: Record<stri
   return { uid: request.auth.uid, agencyId };
 }
 
-function requireSafeId(value: string, label: string) {
+export function requireSafeId(value: string, label: string) {
   if (!SAFE_ID.test(value)) {
     throw new HttpsError('invalid-argument', `${label} 형식이 올바르지 않습니다.`);
   }
@@ -118,7 +118,7 @@ function requireSafeId(value: string, label: string) {
  * 게이트에 넣을 자료를 모은다.
  * 고객 타임라인, 만남 동의, 통역 배정, 녹화 동의를 한 번에 읽는다.
  */
-async function collectCallRequest(
+export async function collectCallRequest(
   agencyId: string,
   matchId: string,
 ): Promise<{ request: CallRequest; clientId: string; partnerId: string }> {

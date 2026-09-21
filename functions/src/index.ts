@@ -219,6 +219,8 @@ export { extractBusinessRegistration } from './agency/registrationOcr.js';
 export { extractPartnerProfile } from './agency/partnerIntake.js';
 // 서류함에 올려 둔 증빙으로 법정의무를 한 번에 채운다
 export { syncObligationsFromDocuments } from './video/obligationSync.js';
+// 직접 만나는 약속도 화상통화와 같은 문을 지난다
+export { checkMeetingReadiness, confirmAppointment } from './video/meetingGate.js';
 
 // 직원 초대·역할·내보내기. 클레임을 다루므로 서버에서만 한다.
 export { claimStaffInvite, removeStaff, changeStaffRole } from './agency/staff.js';

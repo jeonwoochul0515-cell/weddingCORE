@@ -262,9 +262,21 @@ service cloud.firestore {
 
     // 약속. 맞선 밑이 아니라 업체 밑에 둔다 — 「이번 주 일정」을 한 번에 읽으려면
     // 모든 맞선을 뒤지지 않고 한 자리에서 가져올 수 있어야 한다.
+    //
+    // ★ 「확정」만은 화면에서 못 한다. 서버(confirmAppointment)만 바꿀 수 있다.
+    //
+    // 왜냐하면 확정은 「이 날 만납니다」를 업체가 선언하는 일이고, 그 앞에는
+    // 신상정보 제공·양측 만남동의·통역 제공이 끝나 있어야 하기 때문이다(시행령 제3조지2,
+    // 대법원 2018도7989). 화면에서 바로 고칠 수 있게 두면 버튼을 잠가도 콘솔로 뚫린다.
+    // 잡는 것(planned)은 막지 않는다 — 막으면 기록을 안 남기고 만난다.
     match /agencies/{aid}/appointments/{appointmentId} {
       allow read: if isAgencyMember(aid);
-      allow write: if canWriteAgency(aid);
+      allow create: if canWriteAgency(aid)
+                    && request.resource.data.status != 'confirmed';
+      allow update: if canWriteAgency(aid)
+                    && !(request.resource.data.status == 'confirmed'
+                         && resource.data.status != 'confirmed');
+      allow delete: if canWriteAgency(aid);
     }
 
     // 영상통화 기록. 서버(Admin SDK)만 만들고 고친다.

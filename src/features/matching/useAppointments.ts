@@ -16,7 +16,8 @@ import {
   Timestamp,
   updateDoc,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '@/lib/firebase';
 import { liveErrorMessage, liveQuery } from '@/lib/live';
 import { useAuthStore } from '@/store/authStore';
 import type { Appointment } from '@/types/schema';
@@ -148,11 +149,49 @@ export async function updateAppointment(
   await updateDoc(doc(db, `agencies/${agencyId}/appointments/${id}`), patch);
 }
 
-/** 상태만 바꾼다. 취소·불참은 왜 그랬는지를 같이 받는다 — 나중에 누구 책임인지 가린다 */
+export type MeetingBlocker = {
+  kind: 'obligation' | 'consent' | 'interpretation' | 'agent' | 'recording' | 'privacy';
+  reason: string;
+  remedy: string;
+  legalBasis: string;
+};
+
+/**
+ * 약속을 확정한다. 서버가 법정 요건을 보고 가른다.
+ *
+ * ★ 화면에서 Firestore를 직접 고치지 않는다. 그러면 이 검사를 건너뛰게 된다.
+ * 확정은 「이 날 만납니다」를 업체가 선언하는 일이라 서버가 한 번 봐야 한다.
+ */
+export async function confirmAppointment(
+  appointmentId: string,
+): Promise<{ confirmed: boolean; blockers: MeetingBlocker[] }> {
+  const call = httpsCallable<
+    { appointmentId: string },
+    { confirmed: boolean; blockers: MeetingBlocker[] }
+  >(functions, 'confirmAppointment');
+  const { data } = await call({ appointmentId });
+  return data;
+}
+
+/** 확정해도 되는지만 미리 본다. 아무것도 바꾸지 않는다 */
+export async function checkMeetingReadiness(
+  matchId: string,
+  mode: Appointment['mode'],
+): Promise<{ allow: boolean; blockers?: MeetingBlocker[] }> {
+  const call = httpsCallable<
+    { matchId: string; mode: Appointment['mode'] },
+    { allow: boolean; blockers?: MeetingBlocker[] }
+  >(functions, 'checkMeetingReadiness');
+  const { data } = await call({ matchId, mode });
+  return data;
+}
+
+/** 상태만 바꿼다. 취소·불참은 왜 그랬는지를 같이 받는다 — 나중에 누구 책임인지 가린다 */
 export async function setAppointmentStatus(
   agencyId: string,
   id: string,
-  status: Appointment['status'],
+  // 확정은 여기서 못 한다. confirmAppointment 를 거쳐야 법정 검사를 받는다.
+  status: Exclude<Appointment['status'], 'confirmed'>,
   canceledReason = '',
 ) {
   await updateDoc(doc(db, `agencies/${agencyId}/appointments/${id}`), {

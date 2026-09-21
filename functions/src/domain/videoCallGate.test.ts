@@ -299,6 +299,71 @@ describe('evaluateCallRequest — 녹화와 개인정보', () => {
   });
 });
 
+// ── 직접 만나는 자리 ────────────────────────
+//
+// 이 제품의 코어는 「사이트대로 하면 법에 어긋나지 않는다」이다. 그러려면 문이
+// 한 군데만 있으면 안 된다. 법은 온라인과 오프라인을 가르지 않으므로,
+// 현지에 나가 직접 만나는 약속도 같은 판정을 받는다. 다른 것은 녹화뿐이다.
+describe('직접 만남 정책 — 녹화만 빠지고 나머지는 같다', () => {
+  const OFFLINE = {
+    treatAsMeeting: true,
+    requireRecording: false,
+    requireAgentAttendance: true,
+  } as const;
+
+  it('★ 신상정보 의무를 그대로 본다 — 현지에 나가 만나는 것이 더 무거운 만남이다', () => {
+    const v = evaluateCallRequest(ready({ obligations: [] }), OFFLINE);
+    expect(v.allow).toBe(false);
+    if (!v.allow) {
+      expect(v.blockers.some((b) => b.kind === 'obligation')).toBe(true);
+    }
+  });
+
+  it('★ 양측 만남 동의도 그대로 본다', () => {
+    const v = evaluateCallRequest(
+      ready({ meetingConsent: { client: true, partner: false } }),
+      OFFLINE,
+    );
+    expect(v.allow).toBe(false);
+    if (!v.allow) {
+      expect(v.blockers.some((b) => b.kind === 'consent')).toBe(true);
+    }
+  });
+
+  it('통역 제공도 그대로 본다 — 말이 안 통하는 자리를 만들어 주면 안 된다', () => {
+    const v = evaluateCallRequest(ready({ interpretation: { mode: 'none' } }), OFFLINE);
+    expect(v.allow).toBe(false);
+    if (!v.allow) {
+      expect(v.blockers.some((b) => b.kind === 'interpretation')).toBe(true);
+    }
+  });
+
+  it('담당자 동행도 그대로 본다 — 손님 혼자 현지에 보내지 않는다', () => {
+    const v = evaluateCallRequest(ready({ agent: { assigned: false } }), OFFLINE);
+    expect(v.allow).toBe(false);
+    if (!v.allow) {
+      expect(v.blockers.some((b) => b.kind === 'agent')).toBe(true);
+    }
+  });
+
+  it('★ 녹화 동의는 묻지 않는다 — 호텔 로비에서 만나는 자리를 녹화할 방법도 근거도 없다', () => {
+    const v = evaluateCallRequest(
+      ready({
+        recordingConsent: { client: false, partner: false },
+        crossBorderConsent: false,
+      }),
+      OFFLINE,
+    );
+    expect(v.allow).toBe(true);
+  });
+
+  it('다 갖췔으면 통과하고 방 설정에 녹화가 꺼져 있다', () => {
+    const v = evaluateCallRequest(ready({}), OFFLINE);
+    expect(v.allow).toBe(true);
+    if (v.allow) expect(v.room.recording).toBe(false);
+  });
+});
+
 describe('evaluateCallRequest — 정책 전환', () => {
   it('기본값은 보수적이다 — 법률 회신 전까지 만남으로 본다', () => {
     expect(CONSERVATIVE_POLICY).toEqual({
