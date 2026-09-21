@@ -59,10 +59,15 @@ describe('obligationsFor — 서류 한 장이 채우는 의무', () => {
     expect(obligationsFor({ docId: 'd1', type: 'background_info', subject: 'korean' })).toEqual([]);
   });
 
-  it('★ 계약서와 여권은 아무 의무도 채우지 않는다', () => {
-    // 중요한 서류지만 제10조의2가 말하는 신상정보가 아니다.
+  it('계약서는 서면계약 의무를 채운다 (법 제10조 ①)', () => {
+    expect(obligationsFor({ docId: 'd1', type: 'contract', subject: 'both' })).toEqual([
+      'CONTRACT_WRITTEN',
+    ]);
+  });
+
+  it('★ 여권과 기타 서류는 아무 의무도 채우지 않는다', () => {
+    // 중요한 서류지만 제10조의의 가 말하는 신상정보가 아니다.
     // 채운 것으로 만들면 아무도 다시 안 본다.
-    expect(obligationsFor({ docId: 'd1', type: 'contract', subject: 'both' })).toEqual([]);
     expect(obligationsFor({ docId: 'd1', type: 'passport', subject: 'partner' })).toEqual([]);
     expect(obligationsFor({ docId: 'd1', type: 'other', subject: 'both' })).toEqual([]);
   });

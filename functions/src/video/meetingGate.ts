@@ -15,8 +15,13 @@
 
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { evaluateCallRequest, type CallPolicy } from '../domain/videoCallGate.js';
+import {
+  checkIntroductionLimits,
+  dayKeyKst,
+  type ScheduledMeeting,
+} from '../domain/introductionLimits.js';
 import { collectCallRequest, requireAgencyWriter, requireSafeId } from './index.js';
 
 const REGION = 'asia-northeast3';
@@ -59,6 +64,46 @@ export const checkMeetingReadiness = onCall(
   },
 );
 
+/** 약속 문서 하나를 판정에 넣을 모양으로 바꿼다 */
+function toScheduled(id: string, data: FirebaseFirestore.DocumentData): ScheduledMeeting {
+  const start = data.startAt;
+  const place = (data.place ?? null) as { name?: string; address?: string } | null;
+  const placeText = place ? [place.name, place.address].filter(Boolean).join(' ').trim() : '';
+  return {
+    id,
+    clientId: String(data.clientId ?? ''),
+    partnerId: String(data.partnerId ?? ''),
+    clientName: String(data.clientName ?? ''),
+    partnerName: String(data.partnerName ?? ''),
+    startMs: start?.toMillis ? start.toMillis() : null,
+    durationMinutes: Number(data.durationMinutes ?? 60),
+    place: placeText.length > 0 ? placeText : null,
+    mode: data.mode === 'offline' ? 'offline' : 'online',
+    status: String(data.status ?? ''),
+  };
+}
+
+/**
+ * 같은 업체의 이웃 약속을 모은다.
+ *
+ * 2호는 시간이 겹치는 것만, 3호는 같은 날만 본다. 그래서 그날 하루면 충분하고,
+ * 시간대 경계를 넘는 건이 있으니 앞뒤 하루씩 더 잎어 온다. 전체를 읽지 않는다 —
+ * 명단이 큰 업체일수록 확정 한 번에 수천 건을 읽는 일이 된다.
+ */
+async function neighborMeetings(
+  db: FirebaseFirestore.Firestore,
+  agencyId: string,
+  startMs: number,
+): Promise<ScheduledMeeting[]> {
+  const DAY = 24 * 60 * 60 * 1000;
+  const snap = await db
+    .collection(`agencies/${agencyId}/appointments`)
+    .where('startAt', '>=', Timestamp.fromMillis(startMs - DAY))
+    .where('startAt', '<=', Timestamp.fromMillis(startMs + DAY))
+    .get();
+  return snap.docs.map((doc) => toScheduled(doc.id, doc.data()));
+}
+
 /**
  * 약속을 확정한다. 요건을 갖추지 못했으면 확정하지 않는다.
  *
@@ -86,9 +131,24 @@ export const confirmAppointment = onCall(
     const policy = mode === 'offline' ? OFFLINE_MEETING_POLICY : ONLINE_MEETING_POLICY;
     const verdict = evaluateCallRequest(callRequest, policy);
 
-    if (!verdict.allow) {
+    // 자리 자체가 금지된 모양인지도 본다(제12조의2 ① 2·3호).
+    // 이것은 한 맞선만 봐서는 알 수 없고 일정판 전체를 봐야 보인다.
+    const target = toScheduled(snap.id, snap.data()!);
+    const limitBlockers =
+      target.startMs === null
+        ? checkIntroductionLimits(target, [])
+        : checkIntroductionLimits(target, await neighborMeetings(db, agencyId, target.startMs));
+
+    const blockers = [...limitBlockers, ...(verdict.allow ? [] : verdict.blockers)];
+    if (blockers.length > 0) {
       // 무엇이 막는지 그대로 돌려준다. 화면이 같은 목록을 보여 주고 거기서 처리한다.
-      return { confirmed: false, blockers: verdict.blockers };
+      logger.warn('약속 확정 거부', {
+        agencyId,
+        appointmentId,
+        day: target.startMs === null ? null : dayKeyKst(target.startMs),
+        kinds: blockers.map((b) => b.kind),
+      });
+      return { confirmed: false, blockers };
     }
 
     await ref.update({

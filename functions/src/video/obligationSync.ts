@@ -19,7 +19,7 @@ import {
   type TimelineRow,
   type TranslationRecord,
 } from '../domain/obligationEvidence.js';
-import { PRE_MEETING_CODES } from '../domain/videoCallGate.js';
+import { CONTRACT_CODES, PRE_MEETING_CODES } from '../domain/videoCallGate.js';
 
 const REGION = 'asia-northeast3';
 const ENFORCE_APP_CHECK = process.env.FUNCTIONS_EMULATOR !== 'true';
@@ -179,7 +179,12 @@ export const syncObligationsFromDocuments = onCall(
       ).map((e) => String(e?.docId ?? '')),
     }));
 
-    const plan = planObligationSync(documents, timeline, [...PRE_MEETING_CODES]);
+    // 계약서도 서류함에 있으면 그것으로 채운다. 게이트가 요구하는 것과 채울 수 있는 것이
+    // 어긋나면 사장은 「올렸는데 왜 안 되느냐」가 된다.
+    const plan = planObligationSync(documents, timeline, [
+      ...CONTRACT_CODES,
+      ...PRE_MEETING_CODES,
+    ]);
 
     // ── 서류함 밖의 근거 ──────────────────────
     //

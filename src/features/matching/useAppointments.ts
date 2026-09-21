@@ -150,7 +150,19 @@ export async function updateAppointment(
 }
 
 export type MeetingBlocker = {
-  kind: 'obligation' | 'consent' | 'interpretation' | 'agent' | 'recording' | 'privacy';
+  kind:
+    /** 18세 미만 소개 금지 (법 제12조의2 ① 1호) */
+    | 'age'
+    /** 같은 시간·같은 날 같은 장소에 여러 명 (같은 조 2·3호) */
+    | 'introduction'
+    /** 서면계약 (같은 법 제10조 ①) */
+    | 'contract'
+    | 'obligation'
+    | 'consent'
+    | 'interpretation'
+    | 'agent'
+    | 'recording'
+    | 'privacy';
   reason: string;
   remedy: string;
   legalBasis: string;

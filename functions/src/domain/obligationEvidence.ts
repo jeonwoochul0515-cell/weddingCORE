@@ -58,6 +58,9 @@ export function obligationsFor(doc: EvidenceDoc): string[] {
       korean.push('BG_KOR_MARITAL_HISTORY');
       partner.push('BG_PARTNER_MARITAL_HISTORY');
       break;
+    case 'contract':
+      // 서면계약(법 제10조 ①). 누구 것이냐를 따지지 않는다 — 계약은 양쪽이 함께 쓴다.
+      return ['CONTRACT_WRITTEN'];
     case 'background_info':
       // 신상정보 확인서를 양쪽에 주고받았다는 서면. 한쪽 것만 올렸다면
       // 아직 「상호」가 아니므로 both 일 때만 채운다.

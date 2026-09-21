@@ -153,6 +153,18 @@ export const PRE_MEETING_CODES = [
   'BG_CERTIFICATE',
 ] as const;
 
+/**
+ * 계약이 없으면 중개도 없다.
+ *
+ * 법 제10조 ①은 결혼중개계약을 **서면으로** 맺고 교부하라고 한다. 그것도 안 하고
+ * 만남부터 주선하는 것은 순서가 바뀜 것이 아니라 중개의 근거 자체가 없는 상태다.
+ * 서면계약 부존재는 민사에서 소비자 주장대로 사실인정되고, 환불 소송에서 업체가
+ * 거의 전패한다(의무 템플릿 CONTRACT_WRITTEN의 disputeRisk).
+ *
+ * 시행령 제3조의2의 항목이 아니라 따로 둔다 — 근거 조문이 다르면 줄도 나눈다.
+ */
+export const CONTRACT_CODES = ['CONTRACT_WRITTEN'] as const;
+
 // MISSING_TEMPLATE
 // 시행령 제3조의2는 「양쪽이 모두 만남에 서면 동의」를 만남 주선의 마지막 선행 조건으로
 // 두는데, 여기에 대응하는 의무 템플릿이 없다(44개 중 없음). 그래서 meetingConsent를
@@ -179,7 +191,18 @@ export type Penalty = {
 /** 막힐 이유 하나. 사장이 읽고 바로 무엇을 할지 알 수 있어야 한다 */
 export type Blocker = {
   /** 화면에서 묶어 보여주기 위한 분류 */
-  kind: 'age' | 'obligation' | 'consent' | 'interpretation' | 'agent' | 'recording' | 'privacy';
+  kind:
+    | 'age'
+    /** 제12조의2 ① 2·3호 — 같은 시간·같은 날 같은 장소에 여러 명 (introductionLimits.ts) */
+    | 'introduction'
+    /** 제10조 ① — 서면계약 */
+    | 'contract'
+    | 'obligation'
+    | 'consent'
+    | 'interpretation'
+    | 'agent'
+    | 'recording'
+    | 'privacy';
   /** 무엇이 막혔는지 */
   reason: string;
   /** 무엇을 하면 풀리는지 */
@@ -217,6 +240,15 @@ const PENALTY_MINOR: Penalty = {
     '18세 미만 상대를 소개한 사실이 인정되어 영업정지 3개월이 유지됐다. 벌금 50만원 처분도 함께 있었던 사건이다.',
 };
 
+/** 서면계약(법 제10조 ①) 위반 시 받는 것 */
+const PENALTY_CONTRACT: Penalty = {
+  criminal: null,
+  administrative:
+    '1차 영업정지 1개월 → 2차 3개월 → 3차 6개월 → 4차 등록취소',
+  precedent:
+    '서면계약이 없으면 환불 다툼에서 소비자 주장대로 사실인정된다. 실무상 최고빈도 분쟁 유형이다.',
+};
+
 const PENALTY_INTERPRETATION: Penalty = {
   criminal: null,
   administrative: '법 제10조의3 위반. 시정명령·영업정지 대상이다.',
@@ -245,6 +277,7 @@ const MINIMUM_AGE = 18;
 
 /** 의무 코드 → 사장이 읽는 이름. 코드만 보여주면 무엇을 하라는지 모른다 */
 const OBLIGATION_LABEL: Record<string, string> = {
+  CONTRACT_WRITTEN: '서면으로 된 결혼중개계약',
   BG_KOR_CRIMINAL: '한국인 측 범죄경력 서면제공',
   BG_KOR_INCOME: '한국인 측 직업·소득·재산 서면제공',
   BG_PARTNER_MARITAL_HISTORY: '외국인 측 혼인경력 확인',
@@ -297,6 +330,20 @@ export function evaluateCallRequest(
         penalty: PENALTY_MINOR,
       });
     }
+  }
+
+  // 계약도 정책 밖이다. 「만남이 아니다」로 보아도 중개 서비스를 제공하는 것은 맞고,
+  // 계약 없는 중개는 그 자체가 제10조 위반이다.
+  for (const code of CONTRACT_CODES) {
+    if (done.has(code)) continue;
+    blockers.push({
+      kind: 'contract',
+      reason: `${OBLIGATION_LABEL[code] ?? code}가 끝나지 않았습니다.`,
+      remedy:
+        '서명·날인한 계약서를 서류함에 올리고 「서류로 자동 확인」을 누르면 채워집니다.',
+      legalBasis: '결혼중개업법 제10조 ① (서면계약 체결·교부), 시행규칙 제7조 별지 서식',
+      penalty: PENALTY_CONTRACT,
+    });
   }
 
   if (policy.treatAsMeeting) {

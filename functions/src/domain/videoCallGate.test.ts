@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   CONSERVATIVE_POLICY,
   evaluateCallRequest,
+  PRE_MEETING_CODES,
   type CallRequest,
   type ObligationState,
 } from './videoCallGate.js';
 
 const ALL_CODES = [
+  'CONTRACT_WRITTEN',
   'BG_KOR_CRIMINAL',
   'BG_KOR_INCOME',
   'BG_PARTNER_MARITAL_HISTORY',
@@ -90,11 +92,15 @@ describe('evaluateCallRequest — 법정의무 게이트', () => {
     }
   });
 
-  it('의무 기록이 통째로 없으면 8건 전부를 막을 이유로 돌려준다', () => {
+  it('의무 기록이 통째로 없으면 만남 선행 의무 8건 전부를 막을 이유로 돌려준다', () => {
     const v = evaluateCallRequest(ready({ obligations: [] }));
     expect(v.allow).toBe(false);
     if (v.allow) return;
-    expect(v.blockers.filter((b) => b.kind === 'obligation')).toHaveLength(ALL_CODES.length);
+    // 계약서는 근거 조문이 달라 따로 셈다(kind: 'contract').
+    expect(v.blockers.filter((b) => b.kind === 'obligation')).toHaveLength(
+      PRE_MEETING_CODES.length,
+    );
+    expect(v.blockers.filter((b) => b.kind === 'contract')).toHaveLength(1);
   });
 
   it('막을 이유를 한 번에 모아 돌려준다 — 하나씩 고치고 다시 누르게 하지 않는다', () => {
@@ -109,7 +115,9 @@ describe('evaluateCallRequest — 법정의무 게이트', () => {
     expect(v.allow).toBe(false);
     if (v.allow) return;
     const kinds = new Set(v.blockers.map((b) => b.kind));
-    expect(kinds).toEqual(new Set(['obligation', 'consent', 'interpretation', 'recording']));
+    expect(kinds).toEqual(
+      new Set(['contract', 'obligation', 'consent', 'interpretation', 'recording']),
+    );
   });
 
   it('막을 이유에는 무엇을 하면 풀리는지와 근거가 같이 온다', () => {
@@ -217,7 +225,7 @@ describe('evaluateCallRequest — 통역·번역서비스 (법 제10조의3)', (
 
   it('만남이 아니라고 보더라도 통역·번역서비스는 여전히 필요하다', () => {
     // 제10조의3은 '만남'을 전제하지 않는다. 의사소통이 있으면 적용된다.
-    const v = evaluateCallRequest(ready({ obligations: [], interpretation: { mode: 'none' } }), {
+    const v = evaluateCallRequest(ready({ interpretation: { mode: 'none' } }), {
       treatAsMeeting: false,
       requireRecording: false,
       requireAgentAttendance: true,
@@ -379,7 +387,11 @@ describe('evaluateCallRequest — 정책 전환', () => {
 
   it('만남이 아니라고 보면 신상정보·만남동의 게이트가 풀린다', () => {
     const v = evaluateCallRequest(
-      ready({ obligations: [], meetingConsent: { client: false, partner: false } }),
+      ready({
+        // 계약서는 만남 여부와 무관하게 요구된다. 나머지만 비운다.
+        obligations: [{ templateCode: 'CONTRACT_WRITTEN', status: 'done' }],
+        meetingConsent: { client: false, partner: false },
+      }),
       { treatAsMeeting: false, requireRecording: true, requireAgentAttendance: true },
     );
     expect(v.allow).toBe(true);
@@ -453,6 +465,30 @@ describe('evaluateCallRequest — 18세 미만 소개 금지', () => {
       NOW,
     );
     expect(ageBlockers(v)).toHaveLength(1);
+  });
+
+  it('계약서가 없으면 막는다 — 계약 없는 중개는 제10조 위반이다', () => {
+    const v = evaluateCallRequest(
+      ready({ obligations: allDone().filter((o) => o.templateCode !== 'CONTRACT_WRITTEN') }),
+      CONSERVATIVE_POLICY,
+      NOW,
+    );
+    expect(v.allow).toBe(false);
+    if (v.allow) return;
+    const b = v.blockers.find((x) => x.kind === 'contract');
+    expect(b?.legalBasis).toContain('제10조');
+    expect(b?.reason).toContain('서면으로 된 결혼중개계약');
+  });
+
+  it('★ 만남이 아니라고 보아도 계약서는 그대로 요구한다', () => {
+    const v = evaluateCallRequest(
+      ready({ obligations: [] }),
+      { treatAsMeeting: false, requireRecording: false, requireAgentAttendance: false },
+      NOW,
+    );
+    expect(v.allow).toBe(false);
+    if (v.allow) return;
+    expect(v.blockers.map((b) => b.kind)).toEqual(['contract']);
   });
 
   it('★ 만남이 아니라고 보기로 해도 나이는 그대로 막는다 — 소개 행위 자체가 금지다', () => {

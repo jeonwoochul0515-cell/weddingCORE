@@ -170,13 +170,35 @@ export default function ScheduleBoard({ onCreateMatch }: Props) {
                 <p className="mt-0.5 text-[11px] leading-4 text-amber-800">
                   직접 만나는 자리도 화상맞선과 같은 요건을 받습니다. 법은 둘을 가르지 않습니다.
                 </p>
+                {/*
+                  서류를 채워서 풀리는 것과 자리 자체를 바꿔야 풀리는 것을 가른다.
+                  나이·중복 소개는 서류를 더 받아도 안 풀린다 — 일정을 옥기거나 멈춰야 한다.
+                */}
+                {blocked.blockers.some((b) => b.kind === 'age' || b.kind === 'introduction') && (
+                  <p className="mt-1.5 rounded bg-red-100 px-2 py-1.5 text-[11px] font-bold leading-4 text-red-900">
+                    아래 「금지된 자리」 항목은 서류를 더 채워도 풀리지 않습니다.
+                    일정을 나누거나 진행을 멈춰 주세요.
+                  </p>
+                )}
                 <ul className="mt-1.5 space-y-1">
-                  {blocked.blockers.map((b) => (
-                    <li key={b.reason} className="rounded bg-white px-2 py-1.5">
-                      <p className="text-[11px] font-medium text-slate-800">{b.reason}</p>
-                      <p className="text-[11px] leading-4 text-slate-500">{b.remedy}</p>
-                    </li>
-                  ))}
+                  {blocked.blockers.map((b) => {
+                    const hard = b.kind === 'age' || b.kind === 'introduction';
+                    return (
+                      <li
+                        key={b.reason}
+                        className={`rounded px-2 py-1.5 ${hard ? 'bg-red-50 ring-1 ring-red-200' : 'bg-white'}`}
+                      >
+                        {hard && (
+                          <p className="text-[10px] font-bold text-red-700">금지된 자리</p>
+                        )}
+                        <p className="text-[11px] font-medium text-slate-800">{b.reason}</p>
+                        <p className="text-[11px] leading-4 text-slate-500">{b.remedy}</p>
+                        {hard && (
+                          <p className="mt-0.5 text-[10px] leading-4 text-red-700/80">{b.legalBasis}</p>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
                 <Link
                   to="/agency/matching"
