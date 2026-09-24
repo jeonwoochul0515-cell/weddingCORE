@@ -1,7 +1,7 @@
 // 상담 접수와 중앙 접수함 연동
 //
-// 하람(상담 캐릭터)이 받은 연락처를 저장하고, 사무실에 문자로 알리고,
-// 중앙 접수함(lead-inbox)이 읽어갈 수 있게 어드민 API를 노출한다.
+// 하람(상담 캐릭터)이 받은 연락처를 저장하고, 중앙 접수함(lead-inbox)에 넘겨 규칙 틀의 문자로 알리고,
+// 중앙 접수함이 대화를 읽어갈 수 있게 어드민 API를 노출한다.
 //
 // 지켜야 할 선
 //  - 대화 전달은 별도 동의(기본 해제)를 받은 건만 저장한다. 대화에는 고객 신상이 섞일 수 있다.
@@ -14,9 +14,40 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { isRateLimited, requesterIp } from '../lib/rateLimit.js';
+import { buildInboxPayload, needsFallbackSms, type InboxPayload } from '../domain/leadInbox.js';
 
 const REGION = 'asia-northeast3';
 const SOLAPI_BASE = 'https://api.solapi.com';
+const LEAD_INBOX_URL = 'https://lead-inbox.jeonwoochul0515.workers.dev/api/lead';
+
+/**
+ * 중앙 접수함에 접수를 넘긴다(2026-09-24 문자 규칙). 접수함이 규칙 틀의 긴 문자를 보내고 목록에 남긴다.
+ * 돌려주는 값은 접수함 응답의 alert(queued·skipped·off)와 기록 여부. 실패·8초 초과면 alert가 null이다.
+ */
+async function postToLeadInbox(payload: InboxPayload): Promise<{ recorded: boolean; alert: string | null }> {
+  const token = (process.env.LEAD_INBOX_TOKEN ?? '').trim();
+  if (!token) {
+    logger.warn('접수함 토큰이 없어 중앙 접수함 전송을 건너뜀');
+    return { recorded: false, alert: null };
+  }
+  try {
+    const res = await fetch(LEAD_INBOX_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-ingest-token': token },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = (await res.json().catch(() => null)) as { ok?: boolean; alert?: string } | null;
+    if (!res.ok || !data?.ok) {
+      logger.error('중앙 접수함 전송 실패', { status: res.status });
+      return { recorded: false, alert: null };
+    }
+    return { recorded: true, alert: typeof data.alert === 'string' ? data.alert : null };
+  } catch (error) {
+    logger.error('중앙 접수함 전송 예외', { error: String(error).slice(0, 200) });
+    return { recorded: false, alert: null };
+  }
+}
 
 // 접수는 사람이 손으로 하는 일이다. 한 사람이 10분에 여러 번 보낼 이유가 없다.
 // 호출당 문자 한 통씩 나가므로 막지 않으면 남이 우리 지갑을 열 수 있다.
@@ -113,7 +144,7 @@ export const submitConsult = onRequest(
     region: REGION,
     timeoutSeconds: 60,
     cors: false,
-    secrets: ['SOLAPI_API_KEY', 'SOLAPI_API_SECRET', 'SOLAPI_SENDER', 'ADMIN_NOTIFY_PHONE'],
+    secrets: ['SOLAPI_API_KEY', 'SOLAPI_API_SECRET', 'SOLAPI_SENDER', 'ADMIN_NOTIFY_PHONE', 'LEAD_INBOX_TOKEN'],
   },
   async (req, res) => {
     cors(res);
@@ -201,12 +232,29 @@ export const submitConsult = onRequest(
       logger.error('상담 접수 저장 실패', error);
     }
 
-    const head = stored ? '[weddingCORE 상담]' : '[weddingCORE 상담][주의] 저장 실패 — 이 문자가 유일한 기록';
-    const smsOk = await sendSms(
-      `${head}\n${name} ${phone}\n대화전달 ${shareChat ? '동의' : '미동의'}\n접수함에서 확인해 주세요.`,
+    // 중앙 접수함에 남기고, 사무실 문자는 접수함이 규칙 틀로 보낸다.
+    // 접수함이 못 보냈거나(off) 응답이 없을 때만 종전 문자를 비상용으로 보낸다.
+    const inbox = await postToLeadInbox(
+      buildInboxPayload({
+        name,
+        phone,
+        transcript,
+        shareChat,
+        page: String(body.page ?? ''),
+        sessionId: stored ? sessionId : null,
+        storeFailed: !stored,
+        alertTo: (process.env.ADMIN_NOTIFY_PHONE ?? '').trim() || '01026085099',
+      }),
     );
+    let smsOk = false;
+    if (needsFallbackSms(inbox.alert)) {
+      const head = stored ? '[weddingCORE 상담]' : '[weddingCORE 상담][주의] 저장 실패 — 이 문자가 유일한 기록';
+      smsOk = await sendSms(
+        `${head}\n${name} ${phone}\n대화전달 ${shareChat ? '동의' : '미동의'}\n접수함에서 확인해 주세요.`,
+      );
+    }
 
-    if (!stored && !smsOk) {
+    if (!stored && !smsOk && !inbox.recorded) {
       res.status(500).json({
         ok: false,
         error: '지금 접수가 되지 않았어요. 잠시 후 다시 시도해 주세요.',
@@ -225,6 +273,13 @@ type CheckLeadInput = {
   level?: string;
   summary?: string;
   page?: string;
+  /** 접수 경로. 'agency_site'(업체 홈페이지 서버가 넘긴 접수)만 받고 나머지는 'quick_check' */
+  source?: string;
+  /**
+   * false면 업체 전화로 문자를 보내지 않는다. 업체 홈페이지 서버가 저장 결과(leadId)를 받아
+   * 규칙 틀의 문자를 직접 보낼 때 쓴다 — 같은 건으로 문자가 두 통 가지 않게.
+   */
+  notify?: boolean;
   /** 사람에게 보이지 않는 칸. 값이 있으면 봇이다. */
   company?: string;
 };
@@ -273,13 +328,6 @@ export const submitCheckLead = onRequest(
       res.status(400).json({ ok: false, error: '업체 식별자가 올바르지 않습니다.' });
       return;
     }
-  /** 접수 경로. 'agency_site'(업체 홈페이지 서버가 넘긴 접수)만 받고 나머지는 'quick_check' */
-  source?: string;
-  /**
-   * false면 업체 전화로 문자를 보내지 않는다. 업체 홈페이지 서버가 저장 결과(leadId)를 받아
-   * 규칙 틀의 문자를 직접 보낼 때 쓴다 — 같은 건으로 문자가 두 통 가지 않게.
-   */
-  notify?: boolean;
     if (!name || !PHONE_RE.test(phoneRaw.replace(/\s/g, ''))) {
       res.status(400).json({ ok: false, error: '성함과 연락처를 확인해 주세요.' });
       return;
@@ -314,8 +362,12 @@ export const submitCheckLead = onRequest(
     const agencyPhone = String(agency.phone ?? '').trim();
     const agencyName = String(agency.name ?? '');
 
+    const source = body.source === 'agency_site' ? 'agency_site' : 'quick_check';
+    const notify = body.notify !== false;
+
     // 저장을 먼저. 연락처는 어떤 경우에도 살아남아야 한다.
     let stored = false;
+    let leadId: string | null = null;
     try {
       const now = Timestamp.now();
       const ref = await db.collection('agencies/' + agencyId + '/leads').add({
@@ -331,9 +383,21 @@ export const submitCheckLead = onRequest(
         createdAt: now,
         updatedAt: now,
       });
+      leadId = ref.id;
       stored = true;
     } catch (error) {
       logger.error('점검 접수 저장 실패', { agencyId, error });
+    }
+
+    // 문자를 부른 쪽이 보내겠다고 했으면 저장 결과만 돌려준다. 저장도 못 했으면 실패로 알려
+    // 부른 쪽이 자기 문자에 "저장 실패"를 적게 한다.
+    if (!notify) {
+      if (!stored) {
+        res.status(500).json({ ok: false, error: '지금 접수가 되지 않았어요. 잠시 후 다시 시도해 주세요.' });
+        return;
+      }
+      res.json({ ok: true, agencyName, leadId });
+      return;
     }
 
     const head = stored ? '[요건점검 상담접수]' : '[요건점검 상담접수][주의] 저장 실패 — 이 문자가 유일한 기록';
@@ -362,12 +426,8 @@ function authorized(req: { get: (k: string) => string | undefined }): boolean {
   if (gotId.length !== id.length || gotKey.length !== key.length) return false;
   let diff = 0;
   for (let i = 0; i < id.length; i += 1) diff |= gotId.charCodeAt(i) ^ id.charCodeAt(i);
-    const source = body.source === 'agency_site' ? 'agency_site' : 'quick_check';
-    const notify = body.notify !== false;
-
   for (let i = 0; i < key.length; i += 1) diff |= gotKey.charCodeAt(i) ^ key.charCodeAt(i);
   return diff === 0;
-    let leadId: string | null = null;
 }
 
 /** UTC "YYYY-MM-DD HH:MM:SS". 접수함 UI가 이 형식을 파싱한다. */
@@ -383,23 +443,11 @@ function utc(ts: Timestamp | null | undefined): string {
 export const weddingcoreAdmin = onRequest(
   { region: REGION, timeoutSeconds: 120, cors: false, secrets: ['HQ_ADMIN_ID', 'HQ_ADMIN_KEY'] },
   async (req, res) => {
-      leadId = ref.id;
     cors(res);
     if (req.method === 'OPTIONS') {
       res.status(204).send('');
       return;
     }
-    // 문자를 부른 쪽이 보내겠다고 했으면 저장 결과만 돌려준다. 저장도 못 했으면 실패로 알려
-    // 부른 쪽이 자기 문자에 "저장 실패"를 적게 한다.
-    if (!notify) {
-      if (!stored) {
-        res.status(500).json({ ok: false, error: '지금 접수가 되지 않았어요. 잠시 후 다시 시도해 주세요.' });
-        return;
-      }
-      res.json({ ok: true, agencyName, leadId });
-      return;
-    }
-
     if (!authorized(req)) {
       res.status(401).json({ error: 'unauthorized' });
       return;
