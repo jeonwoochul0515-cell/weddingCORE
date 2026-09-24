@@ -10,11 +10,12 @@
 
 import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, type Query } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { isRateLimited, requesterIp } from '../lib/rateLimit.js';
 import { buildInboxPayload, needsFallbackSms, type InboxPayload } from '../domain/leadInbox.js';
+import { buildWeeklyNotes, parseWeeklyRange } from '../domain/weeklyReport.js';
 
 const REGION = 'asia-northeast3';
 const SOLAPI_BASE = 'https://api.solapi.com';
@@ -561,6 +562,72 @@ export const weddingcoreAdmin = onRequest(
         // 결제건을 앞으로. 그 안에서는 최신순이다.
         items.sort((a, b) => Number(b.paid) - Number(a.paid));
         res.json({ requests: items, paidCount: items.filter((i) => i.paid).length });
+        return;
+      }
+
+      // 주간 지표. 접수함이 월요일 주간 보고를 만들 때 부른다(admin-api-v2.md "주간 지표").
+      // 이미 저장된 기록만 센다. 하람 대화·AI 호출은 대화별 기록을 남기지 않아 잴 수 없다 → null.
+      if (path.endsWith('/weekly')) {
+        const range = parseWeeklyRange(req.query.since, req.query.until);
+        if (!range) {
+          res.status(400).json({ ok: false, error: 'bad range' });
+          return;
+        }
+        const since = Timestamp.fromDate(range.since);
+        const until = Timestamp.fromDate(range.until);
+        const inRange = (q: Query) =>
+          q.where('createdAt', '>=', since).where('createdAt', '<', until);
+
+        // 접수함은 8초에서 끊는다. 그 전에 못 센 값은 null(notes는 빈 배열)로 보내 나머지라도 살린다.
+        const deadline = <T,>(p: Promise<T>, fallback: T): Promise<T> =>
+          Promise.race([
+            p.catch((error) => {
+              logger.error('주간 지표 조회 실패', { error: String(error).slice(0, 300) });
+              return fallback;
+            }),
+            new Promise<T>((resolve) => setTimeout(() => resolve(fallback), 6500)),
+          ]);
+
+        // 웨딩코어 자체 상담 접수(submitConsult)
+        const leadsP = inRange(db.collection('liveSessions'))
+          .count()
+          .get()
+          .then((s): number | null => s.data().count);
+
+        const notesP = (async () => {
+          const [agencies, marketing, drafts] = await Promise.all([
+            db.collection('agencies').select('name').get(),
+            // 이미 있는 COLLECTION_GROUP createdAt 내림차순 인덱스를 쓴다
+            inRange(db.collectionGroup('marketingRequests')).orderBy('createdAt', 'desc').select('paid').get(),
+            inRange(db.collection('legalReviews')).select('status').get(),
+          ]);
+          // 업체 접수는 업체마다 센다. collectionGroup('leads')는 새 인덱스가 필요해서 쓰지 않는다.
+          const agencyLeads = await Promise.all(
+            agencies.docs.map(async (a) => ({
+              name: String(a.get('name') ?? ''),
+              count: (await inRange(a.ref.collection('leads')).count().get()).data().count,
+            })),
+          );
+          return buildWeeklyNotes({
+            agencyLeads,
+            marketing: {
+              total: marketing.size,
+              paid: marketing.docs.filter((d) => d.get('paid') === true).length,
+            },
+            legalDrafts: {
+              total: drafts.size,
+              awaitingReview: drafts.docs.filter((d) => d.get('status') === 'awaiting_review').length,
+            },
+          });
+        })();
+
+        const [leads, notes] = await Promise.all([deadline(leadsP, null), deadline(notesP, [] as string[])]);
+        res.json({
+          ok: true,
+          chat: { conversations: null, leads },
+          ai: { calls: null },
+          notes,
+        });
         return;
       }
 
