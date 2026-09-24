@@ -81,7 +81,7 @@ export default function LoginForm() {
       </div>
       <div className="app-surface rounded-[26px] p-5 sm:p-7">
       <form onSubmit={onSubmit} className="space-y-4">
-        <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-700">이메일</span><span className="relative block"><Mail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" /><input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" className="field-control !pl-10" /></span></label>
+        <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-700">{mode === 'login' ? '이메일 또는 아이디' : '이메일'}</span><span className="relative block"><Mail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" /><input type={mode === 'login' ? 'text' : 'email'} autoComplete={mode === 'login' ? 'username' : 'email'} required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" className="field-control !pl-10" /></span></label>
         {mode !== 'reset' && (
           <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-700">비밀번호</span><span className="relative block"><LockKeyhole size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" /><input type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="6자 이상 입력" className="field-control !pl-10" /></span></label>
         )}

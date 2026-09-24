@@ -11,6 +11,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { auth } from './firebase';
+import { toLoginEmail } from './loginId';
 
 export type AuthUser = {
   uid: string;
@@ -49,7 +50,7 @@ export function subscribeToAuth(callback: (user: AuthUser) => void) {
 }
 
 export function signInEmail(email: string, password: string) {
-  return signInWithEmailAndPassword(auth, email, password);
+  return signInWithEmailAndPassword(auth, toLoginEmail(email), password);
 }
 /**
  * 가입하면 곳바로 인증 메일을 보낸다.
