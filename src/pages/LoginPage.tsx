@@ -1,10 +1,11 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import LoginForm from '@/components/auth/LoginForm';
 import { useAuthStore } from '@/store/authStore';
 import { ArrowLeft, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BrandMark from '@/components/brand/BrandMark';
 import { usePageMeta } from '@/lib/usePageMeta';
+import { agencyReturnPath } from '@/lib/returnPath';
 
 export default function LoginPage() {
   usePageMeta({
@@ -14,6 +15,7 @@ export default function LoginPage() {
   });
 
   const { user, initialized } = useAuthStore();
+  const location = useLocation();
 
   if (!initialized) return null;
   if (user) {
@@ -21,7 +23,9 @@ export default function LoginPage() {
     if (user.role === 'lawyer') return <Navigate to="/lawyer/reviews" replace />;
     if (!user.agencyId) return <Navigate to="/signup/agency" replace />;
     if (!user.role) return <Navigate to="/pending-approval" replace />;
-    return <Navigate to="/agency" replace />;
+    // 문자 속 접수 링크처럼 로그인 전에 열려던 업체 화면이 있으면 그리로 돌려보낸다.
+    const back = agencyReturnPath((location.state as { from?: { pathname?: unknown; search?: unknown } } | null)?.from);
+    return <Navigate to={back ?? '/agency'} replace />;
   }
 
   return (

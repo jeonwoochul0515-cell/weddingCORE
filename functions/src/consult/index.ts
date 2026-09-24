@@ -273,6 +273,13 @@ export const submitCheckLead = onRequest(
       res.status(400).json({ ok: false, error: '업체 식별자가 올바르지 않습니다.' });
       return;
     }
+  /** 접수 경로. 'agency_site'(업체 홈페이지 서버가 넘긴 접수)만 받고 나머지는 'quick_check' */
+  source?: string;
+  /**
+   * false면 업체 전화로 문자를 보내지 않는다. 업체 홈페이지 서버가 저장 결과(leadId)를 받아
+   * 규칙 틀의 문자를 직접 보낼 때 쓴다 — 같은 건으로 문자가 두 통 가지 않게.
+   */
+  notify?: boolean;
     if (!name || !PHONE_RE.test(phoneRaw.replace(/\s/g, ''))) {
       res.status(400).json({ ok: false, error: '성함과 연락처를 확인해 주세요.' });
       return;
@@ -311,9 +318,9 @@ export const submitCheckLead = onRequest(
     let stored = false;
     try {
       const now = Timestamp.now();
-      await db.collection('agencies/' + agencyId + '/leads').add({
+      const ref = await db.collection('agencies/' + agencyId + '/leads').add({
         agencyId,
-        source: 'quick_check',
+        source,
         name,
         phone,
         level,
@@ -341,7 +348,7 @@ export const submitCheckLead = onRequest(
       res.status(500).json({ ok: false, error: '지금 접수가 되지 않았어요. 잠시 후 다시 시도해 주세요.' });
       return;
     }
-    res.json({ ok: true, agencyName });
+    res.json({ ok: true, agencyName, leadId });
   },
 );
 
@@ -355,8 +362,12 @@ function authorized(req: { get: (k: string) => string | undefined }): boolean {
   if (gotId.length !== id.length || gotKey.length !== key.length) return false;
   let diff = 0;
   for (let i = 0; i < id.length; i += 1) diff |= gotId.charCodeAt(i) ^ id.charCodeAt(i);
+    const source = body.source === 'agency_site' ? 'agency_site' : 'quick_check';
+    const notify = body.notify !== false;
+
   for (let i = 0; i < key.length; i += 1) diff |= gotKey.charCodeAt(i) ^ key.charCodeAt(i);
   return diff === 0;
+    let leadId: string | null = null;
 }
 
 /** UTC "YYYY-MM-DD HH:MM:SS". 접수함 UI가 이 형식을 파싱한다. */
@@ -372,11 +383,23 @@ function utc(ts: Timestamp | null | undefined): string {
 export const weddingcoreAdmin = onRequest(
   { region: REGION, timeoutSeconds: 120, cors: false, secrets: ['HQ_ADMIN_ID', 'HQ_ADMIN_KEY'] },
   async (req, res) => {
+      leadId = ref.id;
     cors(res);
     if (req.method === 'OPTIONS') {
       res.status(204).send('');
       return;
     }
+    // 문자를 부른 쪽이 보내겠다고 했으면 저장 결과만 돌려준다. 저장도 못 했으면 실패로 알려
+    // 부른 쪽이 자기 문자에 "저장 실패"를 적게 한다.
+    if (!notify) {
+      if (!stored) {
+        res.status(500).json({ ok: false, error: '지금 접수가 되지 않았어요. 잠시 후 다시 시도해 주세요.' });
+        return;
+      }
+      res.json({ ok: true, agencyName, leadId });
+      return;
+    }
+
     if (!authorized(req)) {
       res.status(401).json({ error: 'unauthorized' });
       return;

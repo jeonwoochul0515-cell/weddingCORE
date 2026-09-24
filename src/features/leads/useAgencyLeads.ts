@@ -46,6 +46,7 @@ export const LEAD_LEVEL_LABEL: Record<string, { label: string; cls: string }> = 
 export const LEAD_SOURCE_LABEL: Record<string, string> = {
   quick_check: '홈페이지 점검 위젯',
   woori_site: '우리결혼중개 홈페이지',
+  agency_site: '업체 홈페이지 상담',
 };
 
 export function useAgencyLeads(max = 200) {

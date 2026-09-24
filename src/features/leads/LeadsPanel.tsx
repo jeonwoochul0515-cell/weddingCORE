@@ -3,8 +3,8 @@
 // 한 줄에 이름·전화·판정·경과 시간·상태가 보이고, 펼치면 접수 보고서와 메모, 다음 칸으로 가는 버튼이 있다.
 // 24시간 넘게 연락하지 않은 접수와 다음 연락일이 지난 손님은 붉게 표시한다.
 
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Inbox, Phone, UserPlus } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import type { LeadCloseReason, LeadStatus } from '@/types/schema';
@@ -52,8 +52,16 @@ type Props = {
 
 export default function LeadsPanel({ onConvert }: Props) {
   const { items, loading } = useAgencyLeads();
-  const [filter, setFilter] = useState<Filter>('active');
-  const [openId, setOpenId] = useState<string | null>(null);
+  // 문자 속 링크(?lead=문서id)로 들어오면 그 건을 펼쳐 둔다. 이미 끝난 건일 수 있어 「전체」에서 찾는다.
+  const [params] = useSearchParams();
+  const linkedId = params.get('lead');
+  const [filter, setFilter] = useState<Filter>(linkedId ? 'all' : 'active');
+  const [openId, setOpenId] = useState<string | null>(linkedId);
+
+  useEffect(() => {
+    if (!linkedId || loading) return;
+    document.getElementById(`lead-${linkedId}`)?.scrollIntoView({ block: 'center' });
+  }, [linkedId, loading]);
 
   const counts = useMemo(() => ({
     active: items.filter((l) => l.status === 'new' || l.status === 'contacted' || l.status === 'consulting').length,
@@ -85,6 +93,11 @@ export default function LeadsPanel({ onConvert }: Props) {
       </div>
 
       {loading && <p className="text-sm text-slate-500">불러오는 중…</p>}
+      {!loading && linkedId && !items.some((l) => l.id === linkedId) && (
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          문자로 받은 접수를 최근 목록에서 찾지 못했습니다. 다른 업체 계정으로 로그인했는지 확인하시거나, 아래 목록에서 성함으로 찾아 주세요.
+        </p>
+      )}
       {!loading && visible.length === 0 && (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center">
           <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><Inbox /></span>
@@ -148,7 +161,7 @@ function LeadRow({ lead, open, onToggle, onConvert }: { lead: LeadListItem; open
   const nextActionLabel = lead.nextActionAt?.toDate ? lead.nextActionAt.toDate().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '';
 
   return (
-    <div className={`app-surface rounded-2xl ${unanswered || due ? 'ring-1 ring-red-200' : ''}`}>
+    <div id={`lead-${lead.id}`} className={`app-surface rounded-2xl ${unanswered || due ? 'ring-1 ring-red-200' : ''}`}>
       <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl text-sm font-bold ${unanswered ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>{lead.name.slice(0, 1)}</span>
