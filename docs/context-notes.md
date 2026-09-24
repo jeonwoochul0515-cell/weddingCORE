@@ -652,3 +652,24 @@ policy 분기 **밖**, 맨 먼저 본다. `treatAsMeeting`을 꺼도 풀리지 �
 **아직 문이 없는 것.** 제12조의2 ① 4호(기숙), 제12조 ④(무등록 광고 — 우리 화면 밖의
 일이다), 제13조 개인정보 제3자 제공. 그리고 게이트가 보는 것은 여전히 **우리 화면을
 거친 일**뿐이다. 밖에서 벌어진 일은 모른다 — 제품이 할 수 있는 말의 한계다.
+
+## 2026-09-24 — 접수 알림 문자 규칙 (전역 reference/lead-sms-rule.md)
+
+**웨딩코어 자체 상담(하람) → 중앙 접수함.** `submitConsult`가 저장 뒤 lead-inbox `/api/lead`에
+`site:'weddingCORE'`, `alertTo`(ADMIN_NOTIFY_PHONE = 사무실 010-2608-5099), `extKey:'weddingCORE:<세션id>'`,
+`detail`(대화 전달 동의 건만 대화 전문)을 넘긴다. 규칙 틀 문자는 **접수함이 보낸다**(siteProfile saas).
+응답 `alert`가 queued/skipped면 우리 문자는 보내지 않고, off·실패·8초 초과일 때만 종전 문자를 비상용으로 보낸다.
+저장·접수함·문자 중 하나라도 되면 손님에게 성공. 토큰은 시크릿 `LEAD_INBOX_TOKEN`(Secret Manager, .env 아님).
+lead-inbox는 weddingcoreAdmin으로 liveSessions(대화)만 읽고 접수 줄을 만들지 않으므로 줄 중복은 없다.
+실시험: `점검 문자규칙`/01026085099 1건 → 접수함 #140, alert_state sent, 비상 문자 없음. #140 종결 처리, 시험 세션 삭제.
+
+**업체 홈페이지 접수(`submitCheckLead`).** `notify:false`면 업체 전화 문자를 보내지 않고(저장 실패면 500),
+`source:'agency_site'`를 받으며, 응답에 `leadId`를 싣는다. 우리국제정복자(busanwedding.com → woori2)가
+이걸로 기록하고 규칙 틀 문자를 자기가 한 통 보낸다. **다른 업체의 빠른 점검 위젯 동작(문자 형식 포함)은 그대로다.**
+
+**접수 딥링크.** `https://weddingcore.net/agency/clients?tab=leads&lead=<lead 문서 id>` — 접수 탭이 그 건을
+「전체」에서 펼쳐 스크롤한다. 최근 200건에 없으면 안내 문구. 로그인 화면은 `state.from`이 `/agency…`일 때만
+그리로 돌려보낸다(`src/lib/returnPath.ts`, 바깥 주소 차단). woori(ag_nNCb6fthhdX6)·woori2 문자 링크가 이 형식이다.
+
+배포: `functions:default:submitConsult,functions:default:submitCheckLead`만, 웹은 `npm run deploy:cloudflare`
+(업로드·배포 성공. 마지막 score:seo가 GEO 75로 목표 미달이라 종료코드 1 — 이번 변경과 무관).
