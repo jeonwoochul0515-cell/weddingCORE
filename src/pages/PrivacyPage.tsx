@@ -8,7 +8,7 @@ import { usePageMeta } from '@/lib/usePageMeta';
 import { breadcrumbSchema, webPageSchema } from '@/lib/schema';
 import BusinessInfo from '@/components/layout/BusinessInfo';
 
-const UPDATED_AT = '2026-09-20';
+const UPDATED_AT = '2026-10-27';
 
 export default function PrivacyPage() {
   usePageMeta({
@@ -166,7 +166,25 @@ export default function PrivacyPage() {
             </p>
           </Section>
 
-          <Section title="9. 문의">
+          <Section title="9. 자동으로 개인정보를 수집하는 장치의 설치·운영 및 거부 (네이버 광고 전환 추적)">
+            <ol className="list-decimal space-y-2 pl-5">
+              <li>
+                사용 목적: 네이버 검색광고를 보고 방문하신 분이 상담 신청 등으로 이어졌는지 확인해 광고
+                효과를 측정합니다. (회원 업체 전용 화면에서는 수집하지 않습니다.)
+              </li>
+              <li>
+                수집 항목: 방문한 페이지 주소, 이전에 머문 페이지(유입 경로), 광고 클릭 정보, 쿠키 등
+                접속 기록. 성함·연락처·상담 내용은 보내지 않습니다.
+              </li>
+              <li>수집하는 곳: 네이버 주식회사(검색광고 전환 추적)</li>
+              <li>
+                거부 방법: 브라우저 설정에서 쿠키 저장을 거부할 수 있습니다(예: 크롬 — 설정 › 개인정보
+                및 보안 › 서드파티 쿠키). 거부하셔도 weddingCORE 이용에는 지장이 없습니다.
+              </li>
+            </ol>
+          </Section>
+
+          <Section title="10. 문의">
             <p>
               개인정보 보호책임자는 법률사무소 청송law 대표변호사 김창희입니다.
               전화 <a href="tel:16604452" className="font-medium text-emerald-700 underline">1660-4452</a>로
