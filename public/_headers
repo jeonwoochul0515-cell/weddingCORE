@@ -3,8 +3,10 @@
 #   js.tosspayments.com   결제 SDK 스크립트
 #   *.tosspayments.com    API 호출·결제창 iframe·폼 전송
 # 카드사 인증 페이지는 토스 도메인으로 넘어간 뒤에 뜨므로 우리 CSP 대상이 아니다.
+# 네이버 광고 전환 추적(2026-10-27) — wcs.naver.net 스크립트, 그것이 부르는 ssl.pstatic.net 스크립트,
+# 수집 서버 wcs.naver.com·nam.veta.naver.com 전송, index.html 공통 스크립트 한 덩어리의 sha256. 그 글자를 바꾸면 해시도 다시 계산한다.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com https://wcs.naver.net https://ssl.pstatic.net 'sha256-i47DgEwtGxGHKFZxaLWFna2aG+AkjXFBkXg3kC7Rcxg='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com https://wcs.naver.com https://nam.veta.naver.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin

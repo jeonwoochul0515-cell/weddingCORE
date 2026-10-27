@@ -113,6 +113,10 @@ async function main() {
         await page.evaluateOnNewDocument(() => {
           Object.defineProperty(window, '__PRERENDER__', { value: true });
         });
+        // 네이버 전환 추적 스크립트는 빌드 PC에서 받지 않는다. 받으면 페이지뷰가 나가고,
+        // 그 스크립트가 붙이는 다른 스크립트 태그가 정적 HTML에 그대로 저장된다.
+        await page.setRequestInterception(true);
+        page.on('request', (req) => (req.url().includes('wcs.naver.net') ? req.abort() : req.continue()));
         await page.goto(`http://127.0.0.1:${port}${route}`, {
           waitUntil: 'domcontentloaded',
           timeout: 45_000,

@@ -76,5 +76,14 @@
   <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- 네이버 광고 전환 추적 공통 스크립트(광고주센터 공통키) — 설치 확인이 원문 HTML을 보므로 여기 둔다.
+         프리렌더는 wcs.naver.net을 막는다(scripts/prerender.mjs). 아래 스크립트 글자를 바꾸면 public/_headers의 sha256 값도 다시 계산해야 한다. -->
+    <script type="text/javascript" src="//wcs.naver.net/wcslog.js"></script>
+    <script type="text/javascript">
+    if(!wcs_add) var wcs_add = {};
+    wcs_add["wa"] = "s_dce2d1ec4a7";
+    if(!_nasa) var _nasa = {};
+    if(window.wcs){ wcs.inflow(); wcs_do(_nasa); }
+    </script>
   </body>
 </html>

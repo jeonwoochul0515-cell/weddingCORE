@@ -219,6 +219,12 @@ export default function HaramChat() {
         setLeadError(data.error ?? '지금 접수가 되지 않았어요. 잠시 후 다시 시도해 주세요.');
         return;
       }
+      // 네이버 광고 전환(상담 접수) — 접수 성공 사실만 보낸다. 입력값은 싣지 않는다
+      try {
+        (window as unknown as { wcs?: { trans: (c: { type: string }) => void } }).wcs?.trans({ type: 'lead' });
+      } catch {
+        /* 전환 전송 실패가 접수 완료 안내를 막지 않게 한다 */
+      }
       setLeadDone(true);
       setLeadOpen(false);
       try {
