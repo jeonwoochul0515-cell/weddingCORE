@@ -6,7 +6,7 @@
 # 네이버 광고 전환 추적(2026-10-27) — wcs.naver.net 스크립트, 그것이 부르는 ssl.pstatic.net 스크립트,
 # 수집 서버 wcs.naver.com·nam.veta.naver.com 전송, index.html 공통 스크립트 한 덩어리의 sha256. 그 글자를 바꾸면 해시도 다시 계산한다.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com https://wcs.naver.net https://ssl.pstatic.net 'sha256-i47DgEwtGxGHKFZxaLWFna2aG+AkjXFBkXg3kC7Rcxg='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com https://wcs.naver.com https://nam.veta.naver.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com https://wcs.naver.net/wcslog.js https://ssl.pstatic.net/melona/libs/gfp-nac-module/ 'sha256-i47DgEwtGxGHKFZxaLWFna2aG+AkjXFBkXg3kC7Rcxg='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com https://wcs.naver.com https://nam.veta.naver.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
@@ -34,3 +34,31 @@
   ! X-Frame-Options
   ! Content-Security-Policy
   Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors *
+
+# 로그인 뒤 화면·결제 결과 화면 — 네이버 전환 추적을 막는다(2026-10-27 독립 검토).
+# 이 화면들도 같은 index.html을 받으므로, CSP에서 네이버 스크립트와 공통 스크립트 해시를 빼야
+# 결제 번호(paymentKey·orderId)·접수 문서 번호·업체 손님 ID가 든 주소가 네이버로 가지 않는다.
+# /* 의 CSP를 떼어내고(!) 네이버 항목만 뺀 원래 CSP를 다시 적는다(/call/* 와 같은 방식).
+/agency
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors 'none'
+
+/agency/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors 'none'
+
+/admin/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors 'none'
+
+/lawyer/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors 'none'
+
+/payment/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors 'none'
+
+/pending-approval
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.tosspayments.com https://apis.google.com https://www.google.com https://www.gstatic.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.tosspayments.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.google.com https://www.gstatic.com https://cloudflareinsights.com; frame-src https://*.tosspayments.com https://*.firebaseapp.com https://accounts.google.com https://www.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.tosspayments.com; frame-ancestors 'none'
